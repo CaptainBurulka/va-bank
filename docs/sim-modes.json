@@ -3,38 +3,16 @@
     "mode": "classic",
     "name": "Класика",
     "two": {
-      "firstToActWinPct": 48.5,
+      "firstToActWinPct": 48.4,
       "medianRounds": 11,
-      "bankruptPct": 60.1,
+      "bankruptPct": 59.3,
       "endedBeforeRound4Pct": 0.9,
-      "drawPct": 0.4
-    },
-    "three": {
-      "seatWinPct": [
-        33.6,
-        33.9,
-        32.2
-      ],
-      "medianRounds": 12,
-      "bustGamesPct": 87.4,
-      "medianFirstOutFrac": 0.67,
-      "medianFirstOutRound": 8
-    }
-  },
-  {
-    "mode": "chaos",
-    "name": "Ніч хаосу",
-    "two": {
-      "firstToActWinPct": 52.1,
-      "medianRounds": 11,
-      "bankruptPct": 59.6,
-      "endedBeforeRound4Pct": 1.9,
       "drawPct": 0.5
     },
     "three": {
       "seatWinPct": [
-        34.1,
         33.7,
+        33.8,
         32
       ],
       "medianRounds": 12,
@@ -44,23 +22,45 @@
     }
   },
   {
-    "mode": "blitz",
-    "name": "Бліц",
+    "mode": "chaos",
+    "name": "Ніч хаосу",
     "two": {
-      "firstToActWinPct": 48.9,
-      "medianRounds": 8,
-      "bankruptPct": 45.5,
-      "endedBeforeRound4Pct": 1.8,
-      "drawPct": 0.7
+      "firstToActWinPct": 52.6,
+      "medianRounds": 11,
+      "bankruptPct": 59.5,
+      "endedBeforeRound4Pct": 1.9,
+      "drawPct": 0.5
     },
     "three": {
       "seatWinPct": [
-        32.5,
-        34.8,
-        32.5
+        34.5,
+        33,
+        32.2
+      ],
+      "medianRounds": 12,
+      "bustGamesPct": 86.9,
+      "medianFirstOutFrac": 0.67,
+      "medianFirstOutRound": 8
+    }
+  },
+  {
+    "mode": "blitz",
+    "name": "Бліц",
+    "two": {
+      "firstToActWinPct": 48.6,
+      "medianRounds": 8,
+      "bankruptPct": 45.2,
+      "endedBeforeRound4Pct": 1.7,
+      "drawPct": 0.5
+    },
+    "three": {
+      "seatWinPct": [
+        32.6,
+        34.2,
+        33
       ],
       "medianRounds": 8,
-      "bustGamesPct": 64.5,
+      "bustGamesPct": 63.4,
       "medianFirstOutFrac": 0.75,
       "medianFirstOutRound": 6
     }
@@ -69,20 +69,20 @@
     "mode": "blind",
     "name": "Сліпа гра",
     "two": {
-      "firstToActWinPct": 48.5,
+      "firstToActWinPct": 47.8,
       "medianRounds": 11,
-      "bankruptPct": 60.3,
+      "bankruptPct": 60.4,
       "endedBeforeRound4Pct": 1,
-      "drawPct": 0.1
+      "drawPct": 0.2
     },
     "three": {
       "seatWinPct": [
-        32.2,
-        34.4,
-        33
+        32.3,
+        36,
+        31.3
       ],
       "medianRounds": 12,
-      "bustGamesPct": 83.3,
+      "bustGamesPct": 83.4,
       "medianFirstOutFrac": 0.67,
       "medianFirstOutRound": 8
     }
@@ -91,20 +91,20 @@
     "mode": "highstakes",
     "name": "Великі ставки",
     "two": {
-      "firstToActWinPct": 50.1,
+      "firstToActWinPct": 50.4,
       "medianRounds": 7,
-      "bankruptPct": 88.6,
+      "bankruptPct": 89.3,
       "endedBeforeRound4Pct": 14.3,
       "drawPct": 0.1
     },
     "three": {
       "seatWinPct": [
         31.2,
-        35.6,
-        33
+        35.2,
+        33.4
       ],
       "medianRounds": 9,
-      "bustGamesPct": 99.8,
+      "bustGamesPct": 99.9,
       "medianFirstOutFrac": 0.25,
       "medianFirstOutRound": 3
     }

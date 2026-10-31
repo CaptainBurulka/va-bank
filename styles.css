@@ -740,3 +740,5 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 .set-card .meter { height: 6px; border-radius: 3px; background: var(--panel-3); overflow: hidden; }
 .set-card .meter i { display: block; height: 100%; background: var(--gold); }
 .set-card.done { box-shadow: inset 0 0 0 1.5px var(--gold); }
+.jstats td, .jstats th { font-size: 12px; padding: 7px 4px; }
+.jstats td:first-child { white-space: nowrap; }

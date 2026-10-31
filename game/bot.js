@@ -48,8 +48,8 @@ function estimate(view) {
 
 /** Оцінка шансу виграти розкриття з джокером (для ставок бота). */
 const JOKER_EST = {
-  turncoat: 0.5, roulette: 0.5, thief: 0.2, fist: 0.55, insurance: 0.3, twin: 0.5, chameleon: 0.55, modest: 0.5,
-  tax: 0.5, dice: 0.55, counter: 0.5, brazen: 0.5, magnet: 0.55, temptation: 0.55, storm: 0.45, swap: 0.55,
+  turncoat: 0.5, roulette: 0.5, thief: 0.45, fist: 0.55, insurance: 0.5, twin: 0.5, chameleon: 0.55, modest: 0.5,
+  tax: 0.5, dice: 0.55, counter: 0.5, brazen: 0.45, magnet: 0.55, temptation: 0.45, storm: 0.45, swap: 0.55,
   highroller: 0.5, pocket: 0.5, sharper: 0.5, luck: 0.5, antitrump: 0.55, boom: 0.5, coin: 0.5, redeal: 0.45,
   echo: 0.5, quake: 0.5, castling: 0.5, frenzy: 0.5, apocalypse: 0.5, rewind: 0.5, chaosking: 0.5, duel: 0.5, mirrorworld: 0.5,
 };
@@ -59,6 +59,10 @@ function jokerWin(id, view) {
     return seen ? 0.92 : 0.45;
   }
   if (id === 'trap') return (view.bet?.owe ?? view.bet?.toCall) > 0 ? 0.95 : 0.35;
+  if (id === 'temptation') { // Аутсайдер: сильніший, коли відстаєш
+    const gap = Math.max(0, ...(view.players || [view.opp]).filter((x) => x.seat !== view.you).map((x) => x.chips)) - view.me.chips;
+    return Math.min(0.9, 0.35 + Math.max(0, gap) / 100);
+  }
   if (id === 'brave') return Math.min(0.9, 0.45 + 0.12 * (view.bet?.raises || 0));
   return JOKER_EST[id] ?? 0.5;
 }

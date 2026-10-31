@@ -2,7 +2,7 @@
 import { JOKERS, JOKER_BY_ID, RARITY_NAME, RARITIES } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID, SETS } from '../meta/catalog.js';
 import {
-  buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL, setProgress, completeSets,
+  buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL, setProgress, completeSets, recordJokers, jokerStatsCsv,
 } from '../meta/profile.js';
 import { META } from '../config.js';
 import { loadProfile, saveProfile, needsInstallHint } from './profile-store.js';
@@ -93,6 +93,7 @@ export function openCollection(tab = 'jokers') {
 function renderCollection(tab) {
   const p = loadProfile();
   const body = $('col-body');
+  if (tab === 'stats') return renderJokerStats(p, body);
   if (tab === 'jokers') {
     const owned = JOKERS.filter((j) => p.jokers[j.id]).length;
     const slots = [0, 1, 2].map((i) => {
@@ -317,6 +318,8 @@ export function awardAfterGame(view, mode, meta = null) {
   // Довічна статистика для титулів (на одному телефоні — ні: там грають різні люди)
   const titleBefore = titleOf(prof);
   if (mode !== 'hotseat') prof = { ...prof, life: addLife(prof.life, view.stats[me], { won: summary.won, rounds: view.round }) };
+  // Статистика джокерів реальних партій (на одному телефоні — ні)
+  if (mode !== 'hotseat') prof = { ...prof, jokerStats: recordJokers(prof.jokerStats, view.me.jokerSet, view.stats[me].jokerLog) };
   // Рахунок особистих зустрічей — лише з живими суперниками онлайн
   let rivalLines = [];
   if (mode === 'online' && meta?.pids) {
@@ -399,4 +402,31 @@ export function askNick(next) {
     { label: 'Пізніше', cls: 'tertiary', onClick: () => next() },
   ]);
   setTimeout(() => $('nick-ask')?.focus(), 250);
+}
+
+// ───────── статистика джокерів (локально, з реальних партій) ─────────
+function renderJokerStats(p, body) {
+  const st = p.jokerStats || {};
+  const rows = JOKERS.filter((j) => st[j.id]).sort((a, b) => st[b.id].played - st[a.id].played || st[b.id].picked - st[a.id].picked);
+  const pc = (a, n) => (n ? `${Math.round((100 * a) / n)}%` : '—');
+  body.innerHTML = `
+    <p class="hint-text">Лише твої партії на цьому телефоні (з ботом і онлайн). «Змінив» — розкриття закінчилось інакше, ніж якби джокер був звичайною картою своєї сили.</p>
+    ${rows.length ? `<table class="stats jstats"><tr><th>Джокер</th><th>У наборі</th><th>Зіграно</th><th>Перемог</th><th>Змінив</th></tr>${rows.map((j) => {
+      const r = st[j.id];
+      return `<tr><td>${j.icon} ${esc(j.name)}</td><td>${r.picked}</td><td>${r.played}</td><td>${pc(r.wins, r.played)}</td><td>${pc(r.changed, r.played)}</td></tr>`;
+    }).join('')}</table>` : '<p class="hint-text">Ще порожньо — зіграй партію з джокерами в наборі.</p>'}
+    <button class="btn secondary" id="jstats-export" style="width:100%;margin-top:12px" ${rows.length ? '' : 'disabled'}>Експорт статистики (CSV)</button>`;
+  body.onclick = null;
+  $('jstats-export').onclick = async () => {
+    sfx.tap();
+    const csv = jokerStatsCsv(loadProfile().jokerStats);
+    const file = typeof File === 'function' ? new File([csv], 'vabank-jokers.csv', { type: 'text/csv' }) : null;
+    try {
+      if (file && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Статистика джокерів' }); return; }
+      await navigator.clipboard.writeText(csv);
+      ui.toast('Скопійовано: таблиця CSV у буфері обміну');
+    } catch {
+      ui.modal(`<h3>Статистика джокерів</h3><textarea class="code-box" readonly rows="8">${esc(csv)}</textarea>`, [{ label: 'Готово', cls: 'primary' }]);
+    }
+  };
 }

@@ -16,10 +16,12 @@ const path = require('path');
   });
   await A.goto('http://localhost:8080/'); await B.goto('http://localhost:8080/');
   for (const P of [A, B]) await P.evaluate(() => localStorage.setItem('vabank-tutorial', 'done'));
-  await A.click('[data-go="friend"]'); await A.click('#modal-btns .btn.primary');
+  // перед першою онлайн-грою гра питає нік
+  const friend = async (P, nick) => { await P.click('[data-go="friend"]'); await P.waitForSelector('#modal:not(.hidden)'); if (await P.isVisible('#nick-ask')) { await P.fill('#nick-ask', nick); await P.click('#modal-btns .btn.primary'); await P.waitForTimeout(150); } };
+  await friend(A, 'Хост'); await A.click('#modal-btns .btn.primary');
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'));
   const code = (await A.textContent('#room-code')).trim();
-  await B.click('[data-go="friend"]'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code); await B.click('#btn-join');
+  await friend(B, 'Гість'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code); await B.click('#btn-join');
   await B.waitForTimeout(1500);
   console.log('HOST:', await A.textContent('#create-status'));
   console.log('GUEST:', await B.textContent('#join-status'));

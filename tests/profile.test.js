@@ -197,3 +197,17 @@ test('набори: останній предмет набору додає ра
   const again = grant(r.profile, 'cosmetic', st.items[0]);
   assert.ok(again.duplicate);
 });
+
+import { recordJokers, jokerStatsCsv, normalizeJokerStats } from '../meta/profile.js';
+
+test('статистика джокерів: набір, зіграні, перемоги, «змінив результат», CSV', () => {
+  let st = recordJokers({}, ['roulette', 'thief', 'nope'], [{ id: 'roulette', won: true, changed: true }, { id: 'thief', won: false, changed: false }]);
+  st = recordJokers(st, ['roulette'], [{ id: 'roulette', won: false, changed: true }]);
+  assert.deepEqual(st.roulette, { picked: 2, played: 2, wins: 1, changed: 2 });
+  assert.deepEqual(st.thief, { picked: 1, played: 1, wins: 0, changed: 0 });
+  assert.equal(st.nope, undefined);
+  const csv = jokerStatsCsv(st).split('\n');
+  assert.equal(csv[0], 'id,name,rarity,picked,played,wins,win_pct,changed,changed_pct');
+  assert.ok(csv.some((l) => l.startsWith('roulette,Рулетка,common,2,2,1,50,2,100')));
+  assert.deepEqual(normalizeJokerStats({ roulette: { played: 2, wins: 9 } }).roulette.wins, 2, 'перемог не більше, ніж зіграно');
+});

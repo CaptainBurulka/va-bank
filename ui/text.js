@@ -51,7 +51,7 @@ export function explain(detail, cards, trump) {
     case 'tie3': return 'ніхто не б\'є обох — нічия за перше місце';
     case 'joker':
       if (detail.pw) return `сила ${detail.pw.map((x) => x[1]).join(' / ')}${detail.lowWins ? ' (перемагає менша)' : ''}`;
-      return `сила ${detail.pa} проти ${detail.pb}${detail.lowWins ? ' (перемагає менша)' : ''}`;
+      return `сила ${detail.pa} проти ${detail.pb}${detail.near != null ? ` (перемагає ближча до ${detail.near})` : detail.lowWins ? ' (перемагає менша)' : ''}`;
     case 'forced': return 'перемога за ефектом джокера';
     case 'coin': return 'вирішила монетка';
     case 'duel': return detail.sums && detail.sums.length > 2 ? `сума карт ${detail.sums.filter((x) => x).join(' / ')}` : `сума карт ${detail.pa} проти ${detail.pb}`;

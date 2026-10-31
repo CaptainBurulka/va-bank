@@ -33,7 +33,46 @@ export function defaultProfile() {
     title: null,
     life: emptyLife(),
     rivals: {},
+    jokerStats: {}, // локальна статистика реальних партій: { id: { picked, played, wins, changed } }
   };
+}
+
+/** Записати джокерів партії: хто був у наборі, зіграний, з ким виграно, чи змінив результат. */
+export function recordJokers(stats, set, log) {
+  const out = normalizeJokerStats(stats);
+  const row = (id) => (out[id] ||= { picked: 0, played: 0, wins: 0, changed: 0 });
+  for (const id of set || []) if (JOKER_BY_ID[id]) row(id).picked += 1;
+  for (const e of log || []) {
+    if (!JOKER_BY_ID[e?.id]) continue;
+    const r = row(e.id);
+    r.played += 1;
+    if (e.won) r.wins += 1;
+    if (e.changed) r.changed += 1;
+  }
+  return out;
+}
+
+export function normalizeJokerStats(x) {
+  const out = {};
+  if (!x || typeof x !== 'object') return out;
+  for (const [id, r] of Object.entries(x)) {
+    if (!JOKER_BY_ID[id] || !r || typeof r !== 'object') continue;
+    const played = int(r.played);
+    out[id] = { picked: int(r.picked), played, wins: Math.min(int(r.wins), played), changed: Math.min(int(r.changed), played) };
+  }
+  return out;
+}
+
+/** CSV для експорту статистики джокерів. */
+export function jokerStatsCsv(stats) {
+  const rows = [['id', 'name', 'rarity', 'picked', 'played', 'wins', 'win_pct', 'changed', 'changed_pct']];
+  for (const j of JOKERS) {
+    const r = stats[j.id];
+    if (!r) continue;
+    const pc = (a) => (r.played ? Math.round((100 * a) / r.played) : '');
+    rows.push([j.id, j.name, j.rarity, r.picked, r.played, r.wins, pc(r.wins), r.changed, pc(r.changed)]);
+  }
+  return rows.map((x) => x.map((v) => (/[",;\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n');
 }
 
 /**
@@ -92,6 +131,7 @@ export function normalize(p) {
   out.title = cleanTitle(p.title);
   out.life = normalizeLife(p.life);
   out.rivals = normalizeRivals(p.rivals);
+  out.jokerStats = normalizeJokerStats(p.jokerStats);
   out.v = SCHEMA;
   return out;
 }

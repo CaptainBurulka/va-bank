@@ -74,17 +74,23 @@ test('Рулетка: сила 1–12', () => {
   assert.ok(v >= 1 && v <= T.roulette.max);
   assert.equal(s.result.winner, v > 7 ? 0 : v < 7 ? 1 : null);
 });
-test('Злодій: сила 2, але краде 10 за будь-якого результату', () => {
-  const s = duel({ j0: 'thief' });
-  assert.equal(s.result.winner, 1);
-  assert.equal(s.players[0].chips, 95 + T.thief.steal);
-  assert.equal(s.players[1].chips, 105 - T.thief.steal);
+test('Мисливець: б\'є будь-яку козирну карту, інакше — своя сила', () => {
+  // козир — Вогонь: f9 козирна (сила 10) — Мисливець стає сильнішим
+  let s = duel({ j0: 'thief', c1: 'f9', h1: ['f9', 'w3', 's5', 's8'], trumps: ['fire'] });
+  assert.equal(s.result.winner, 0);
+  assert.match(notes(s), /уполював/);
+  // некозирна сильніша — програє
+  s = duel({ j0: 'thief', c1: 's9', h1: ['s9', 'w3', 's5', 's8'], trumps: ['fire'] });
+  assert.equal(s.result.winner, T.thief.power > 9 ? 0 : 1);
 });
 test('Важкий кулак: без масті, нічию програє', () => { const s = duel({ j0: 'fist', c1: 'w7' }); assert.equal(s.result.winner, 1); });
-test('Страховка: при програші ставка повертається', () => {
-  const s = duel({ j0: 'insurance' });
+test('Чет-нечет: парний номінал суперника — сила висока, непарний — низька', () => {
+  let s = duel({ j0: 'insurance', c1: 'w8', h1: ['w8', 'f3', 's5', 's7'] });
+  assert.equal(s.result.detail.pa, T.insurance.high);
+  assert.equal(s.result.winner, 0);
+  s = duel({ j0: 'insurance', c1: 'w7' });
+  assert.equal(s.result.detail.pa, T.insurance.power);
   assert.equal(s.result.winner, 1);
-  assert.equal(s.players[0].chips, 100);
 });
 test('Двійник: копіює випадкову карту з руки', () => { const s = duel({ j0: 'twin' }); const v = Number(notes(s).match(/сила (\d+)/)[1]); assert.ok([7, 3, 2, 9].includes(v)); });
 test('Хамелеон: сила + бонус козиря і масть козиря', () => {
@@ -92,10 +98,10 @@ test('Хамелеон: сила + бонус козиря і масть коз�
   assert.equal(s.result.detail.pa, T.chameleon.power + 1);
   assert.equal(s.result.winner, T.chameleon.power + 1 >= 6 ? 0 : 1, 'за рівної сили Вогонь б\'є Камінь');
 });
-test('Скромник: переміг — суперник доплачує половину банку', () => {
-  const s = duel({ j0: 'modest', c1: 'w1', h1: ['w1', 'f3', 's5', 's8'] });
-  assert.equal(s.result.winner, 0);
-  assert.equal(s.players[0].chips, 95 + 10 + 5);
+test('Підробка: копіює силу суперника ±1 (монетка)', () => {
+  const s = duel({ j0: 'modest', c1: 'w7' });
+  assert.ok([7 + 1 + T.modest.bias, 7 - 1 + T.modest.bias].includes(s.result.detail.pa));
+  assert.equal(s.result.winner, s.result.detail.pa > 7 ? 0 : 1);
 });
 test('Податок: обидва платять у джекпот', () => {
   const s = duel({ j0: 'tax' });
@@ -106,16 +112,21 @@ test('Податок: обидва платять у джекпот', () => {
 });
 test('Кості: сума двох кубиків', () => { const s = duel({ j0: 'dice' }); const m = notes(s).match(/(\d)\+(\d)/); assert.ok(m); });
 test('Рахівник: сила = номер раунду + бонус', () => { const s = duel({ j0: 'counter' }); assert.match(notes(s), new RegExp(`сила ${1 + T.counter.plus}\\b`)); assert.equal(s.result.winner, 1); });
-test('Нахаба: програв — доплачує', () => {
-  const s = duel({ j0: 'brazen', c1: 's8' });
+test('Середняк: перемагає карта, ближча до цілі', () => {
+  // ціль 6: десятка далеко — Середняк (сила T.brazen.power) ближчий, якщо |p−6| < 4
+  let s = duel({ j0: 'brazen', c1: 'w10', h1: ['w10', 'f3', 's5', 's8'] });
+  assert.equal(s.result.winner, Math.abs(T.brazen.power - T.brazen.target) < 4 ? 0 : 1);
+  assert.equal(s.result.detail.near, T.brazen.target);
+  // шістка — точно в ціль, перемагає суперник
+  s = duel({ j0: 'brazen', c1: 's6', h1: ['s6', 'f3', 's5', 's8'] });
   assert.equal(s.result.winner, 1);
-  assert.equal(s.players[0].chips, 95 - T.brazen.fine);
 });
 test('Магніт: тягне силу суперника до своєї', () => { const s = duel({ j0: 'magnet', c1: 'f3' }); assert.equal(s.result.detail.pb, Math.round((3 + T.magnet.power) / 2)); assert.equal(s.result.winner, 0); });
-test('Спокуса: переміг — 25% виграшу в джекпот', () => {
-  const s = duel({ j0: 'temptation', c1: 'f3' });
-  assert.equal(s.result.winner, 0);
-  assert.equal(s.jackpot, Math.floor((10 * T.temptation.pct) / 100));
+test('Аутсайдер: сила росте з відставанням від суперника', () => {
+  let s = duel({ j0: 'temptation', c1: 'f3' });
+  assert.equal(s.result.detail.pa, T.temptation.power, 'не відстає');
+  s = duel({ j0: 'temptation', c1: 's8', setup: (st) => { st.players[0].chips -= 40; st.players[1].chips += 40; } });
+  assert.equal(s.result.detail.pa, Math.min(T.temptation.max, T.temptation.power + Math.floor(80 / T.temptation.step)));
 });
 test('Буря: обидві карти — з колоди', () => { const s = duel({ j0: 'storm', deck: ['w10', 'f2'] }); assert.equal(s.result.jokers.cards[0].id, 'w10'); assert.equal(s.result.winner, 0); });
 test('Обмін: забираєш карту суперника', () => { const s = duel({ j0: 'swap', deck: ['f2'] }); assert.equal(s.result.jokers.cards[0].id, 'w7'); assert.equal(s.result.winner, 0); });
@@ -135,7 +146,11 @@ test('Кишеньковий: випадкова карта з руки супе
   assert.ok(['f3', 's5', 's8'].includes(c.id));
   assert.equal(s.players[1].hand.length, 2, 'суперник втратив карту');
 });
-test('Шулер: сила 5 або 6, нічию виграє', () => { assert.equal(duel({ j0: 'sharper', c1: 's5' }).result.winner, 0); });
+test('Шулер: одна з двох сил, нічию виграє', () => {
+  const c = `s${T.sharper.power}`;
+  const s = duel({ j0: 'sharper', c1: c, h1: [c, 'f3', 'w2', 's8'] });
+  assert.equal(s.result.winner, 0, 'менша сила — нічия, і її виграє Шулер; більша — просто перемога');
+});
 test('Удача: висока або низька сила', () => { const s = duel({ j0: 'luck' }); assert.match(notes(s), new RegExp(`сила (${T.luck.high}|${T.luck.low})\\b`)); });
 test('Сміливець: +2 за кожне підняття', () => {
   const s = duel({ j0: 'brave', c1: 's8', bets: [act('raise', 0, { amount: 5 }), act('raise', 1, { amount: 5 }), act('call', 0)] });
@@ -159,7 +174,7 @@ test('Нова роздача: руки скинуто, карти з колод
 });
 test('Ехо: повторює джокера суперника або останнього, без них — сила 6', () => {
   assert.equal(duel({ j0: 'echo' }).result.winner, 1);
-  assert.match(notes(duel({ j0: 'echo', j1: 'thief' })), /Ехо → Злодій/);
+  assert.match(notes(duel({ j0: 'echo', j1: 'thief' })), /Ехо → Мисливець/);
   const s = duel({ j0: 'echo', setup: (st) => { st.lastJoker = 'turncoat'; } });
   assert.match(notes(s), /Ехо → Перевертень/);
   assert.equal(s.result.winner, 0);
@@ -243,4 +258,14 @@ test('«Назад у часі» не роздає джокерів удруге
   assert.equal(s.round, 1);
   assert.ok(!s.players[0].hand.some((c) => c.kind === 'joker'), 'новий джокер не прийшов');
   assert.equal(s.players[1].hand.filter((c) => c.kind === 'joker').length, 0, 'зіграний Злодій не повернувся');
+});
+
+test('статистика: рушій позначає, чи джокер змінив результат розкриття', () => {
+  // Підробка проти 7: без ефекту (номінал 5) програла б; з ефектом 8 — виграє
+  const s = duel({ j0: 'insurance', c1: 'w8', h1: ['w8', 'f3', 's5', 's7'] });
+  assert.equal(s.result.jokers.changed, true);
+  const log = s.stats[0].jokerLog;
+  assert.deepEqual(log, [{ id: 'insurance', won: true, changed: true }]);
+  const plain = duel({ j0: 'fist', c1: 'w3', h1: ['w3', 'f3', 's5', 's7'] });
+  assert.equal(plain.result.jokers.changed, false, 'Кулак 7 і так б\'є трійку');
 });

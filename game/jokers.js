@@ -39,10 +39,16 @@ const build = (T) => [
   { id: 'roulette', name: 'Рулетка', rarity: 'common', icon: '🎡', stage: 'power',
     desc: `Сила — випадкова від 1 до ${T.roulette.max}.`,
     apply: (api) => { const v = 1 + Math.floor(api.rng() * T.roulette.max); setPow(api, v); api.note(`Рулетка: сила ${v}`); } },
-  { id: 'thief', name: 'Злодій', rarity: 'common', icon: '🦝', power: T.thief.power, stage: 'power',
-    desc: `Сила ${T.thief.power}. За будь-якого результату забираєш у суперника ${T.thief.steal} фішок.`,
-    d3: `Сила ${T.thief.power}. За будь-якого результату забираєш ${T.thief.steal} фішок у лідера.`,
-    apply: (api) => api.after(() => { const n = api.transfer(api.opp, api.me, T.thief.steal); api.note(`Злодій поцупив ${n}`); }) },
+  { id: 'thief', name: 'Мисливець', rarity: 'common', icon: '🏹', power: T.thief.power, stage: 'power',
+    desc: `Б'є будь-яку козирну карту суперника; інакше сила ${T.thief.power}.`,
+    d3: `Б'є будь-яку козирну карту суперників; інакше сила ${T.thief.power}.`,
+    apply: (api) => {
+      if (!isMine(api)) return;
+      const me = api.me, trump = api.s.trump, X = api.X;
+      const prey = trump ? api.others.filter((q) => X.cards[q]?.kind === 'num' && X.cards[q].suit === trump) : [];
+      if (prey.length) api.mod((pw) => { for (const q of prey) if (pw[q] !== null) pw[me] = Math.max(pw[me] ?? 0, pw[q] + 1); });
+      api.note(prey.length ? 'Мисливець уполював козир!' : `Мисливець: козиря нема — сила ${T.thief.power}`);
+    } },
   { id: 'fist', name: 'Важкий кулак', rarity: 'common', icon: '👊', power: T.fist.power, stage: 'power',
     desc: `Сила ${T.fist.power} без масті, нічию програє; удар коштує ${T.fist.fee} фішки в джекпот.`,
     apply: (api) => {
@@ -50,14 +56,17 @@ const build = (T) => [
       api.note(`Важкий кулак: сила ${T.fist.power}`);
       if (T.fist.fee) api.after(() => api.burn(api.me, T.fist.fee));
     } },
-  { id: 'insurance', name: 'Страховка', rarity: 'common', icon: '☂️', power: T.insurance.power, stage: 'power',
-    desc: `Сила ${T.insurance.power}. Якщо програєш — твоя частина банку повертається тобі.`,
-    d3: `Сила ${T.insurance.power}. Якщо програєш — переможець повертає тобі ${T.insurance.pct < 100 ? `${T.insurance.pct}% твоєї частини` : 'твою частину'} банку.`,
-    apply: (api) => api.after(({ winner }) => {
-      if (winner === null || winner === api.me) return;
-      const n = api.transfer(winner, api.me, Math.floor((api.contrib(api.me) * T.insurance.pct) / 100));
-      api.note(`Страховка повернула ${n}`);
-    }) },
+  { id: 'insurance', name: 'Чет-нечет', rarity: 'common', icon: '⚖️', power: T.insurance.power, stage: 'power',
+    desc: `Номінал карти суперника парний — сила ${T.insurance.high}, непарний — ${T.insurance.power}.`,
+    d3: `Номінал карти лідера парний — сила ${T.insurance.high}, непарний — ${T.insurance.power}.`,
+    apply: (api) => {
+      if (!isMine(api)) return;
+      const c = api.X.cards[api.opp];
+      const nom = !c ? 1 : c.kind === 'num' ? c.value : c.kind === 'knife' ? 0 : c.kind === 'joker' ? c.power ?? 5 : c.kind === 'double' ? 5 : 1; // Дзеркало — непарне
+      const even = nom % 2 === 0;
+      setPow(api, even ? T.insurance.high : T.insurance.power);
+      api.note(even ? `Чет! Сила ${T.insurance.high}` : `Нечет: сила ${T.insurance.power}`);
+    } },
   { id: 'twin', name: 'Двійник', rarity: 'common', icon: '👯', stage: 'power',
     desc: `Копіює силу випадкової карти з твоєї руки${T.twin.plus ? ` ${signed(T.twin.plus)}` : ''}.`,
     apply: (api) => { const c = api.randomInHand(api.me); const v = (c?.pow ?? 1) + T.twin.plus; setPow(api, v); api.note(`Двійник: сила ${v}`); } },
@@ -70,16 +79,16 @@ const build = (T) => [
       setPow(api, T.chameleon.power + (t ? api.trumpDelta(api.me) : 0));
       api.note('Хамелеон став козирем');
     } },
-  { id: 'modest', name: 'Скромник', rarity: 'common', icon: '🐭', power: T.modest.power, stage: 'power',
-    desc: `Сила ${T.modest.power}. Якщо переможе — суперник доплачує половину банку.`,
-    d3: `Сила ${T.modest.power}. Якщо переможе — суперники навпіл доплачують половину банку.`,
-    apply: (api) => api.after(({ winner, pot }) => {
-      if (winner !== api.me) return;
-      const each = Math.floor(Math.floor(pot / 2) / api.others.length);
-      let n = 0;
-      for (const q of api.others) n += api.transfer(q, api.me, api.others.length === 1 ? Math.floor(pot / 2) : each);
-      api.note(`Скромник: суперник доплатив ${n}`);
-    }) },
+  { id: 'modest', name: 'Підробка', rarity: 'common', icon: '🎭', stage: 'power',
+    desc: `Копіює силу карти суперника${T.modest.bias ? ` ${T.modest.bias > 0 ? '+' : '−'}${Math.abs(T.modest.bias)}` : ''} і додає або віднімає 1 (монетка).`,
+    d3: `Копіює силу карти лідера${T.modest.bias ? ` ${T.modest.bias > 0 ? '+' : '−'}${Math.abs(T.modest.bias)}` : ''} і додає або віднімає 1 (монетка).`,
+    apply: (api) => {
+      if (!isMine(api)) return;
+      const d = (api.rng() < 0.5 ? 1 : -1) + T.modest.bias;
+      const me = api.me, t = api.opp;
+      api.mod((pw) => { pw[me] = (pw[t] ?? 5) + d; });
+      api.note(`Підробка: копія ${d > 0 ? '+' : '−'}${Math.abs(d)}`);
+    } },
   { id: 'tax', name: 'Податок', rarity: 'common', icon: '🧾', power: T.tax.power, stage: 'power',
     desc: `Сила ${T.tax.power}. Обидва платять по ${T.tax.fee} фішок у джекпот.`,
     d3: `Сила ${T.tax.power}. Усі платять по ${T.tax.fee} фішок у джекпот.`,
@@ -90,27 +99,22 @@ const build = (T) => [
   { id: 'counter', name: 'Рахівник', rarity: 'common', icon: '🧮', stage: 'power',
     desc: `Сила — номер раунду${T.counter.plus ? ` + ${T.counter.plus}` : ''} (максимум 11).`,
     apply: (api) => { const v = Math.min(11, api.s.round + T.counter.plus); setPow(api, v); api.note(`Рахівник: сила ${v}`); } },
-  { id: 'brazen', name: 'Нахаба', rarity: 'common', icon: '😤', power: T.brazen.power, stage: 'power',
-    desc: `Сила ${T.brazen.power}. Якщо програє — доплачуєш суперникові ${T.brazen.fine}.`,
-    d3: `Сила ${T.brazen.power}. Якщо програє — доплачуєш переможцеві ${T.brazen.fine}.`,
-    apply: (api) => api.after(({ winner }) => {
-      if (winner === null || winner === api.me) return;
-      const n = api.transfer(api.me, winner, T.brazen.fine);
-      api.note(`Нахаба доплатив ${n}`);
-    }) },
+  { id: 'brazen', name: 'Середняк', rarity: 'common', icon: '🎯', power: T.brazen.power, stage: 'power',
+    desc: `Цього розкриття перемагає карта, ближча до ${T.brazen.target}; сам — сила ${T.brazen.power}.`,
+    apply: (api) => { api.X.near = T.brazen.target; setPow(api, T.brazen.power); api.note(`Середняк: перемагає ближча до ${T.brazen.target}`); } },
   { id: 'magnet', name: 'Магніт', rarity: 'common', icon: '🧲', power: T.magnet.power, stage: 'power',
     desc: `Сила ${T.magnet.power}. Тягне силу суперника до ${T.magnet.power} (на півдорозі).`,
     d3: `Сила ${T.magnet.power}. Тягне сили обох суперників до ${T.magnet.power} (на півдорозі).`,
     apply: (api) => { api.mod((pw) => { for (const q of api.others) pw[q] = Math.round((pw[q] + T.magnet.power) / 2); }); api.note('Магніт притягнув силу суперника'); } },
-  { id: 'temptation', name: 'Спокуса', rarity: 'common', icon: '🍰', power: T.temptation.power, stage: 'power',
-    desc: `Сила ${T.temptation.power}. Якщо переможе — ${T.temptation.pct}% виграшу згорає в джекпот.`,
-    apply: (api) => api.after(({ winner, pot }) => {
-      if (winner !== api.me) return;
-      const n = api.burn(api.me, Math.floor((pot * T.temptation.pct) / 100));
-      api.note(`Спокуса: ${n} згоріло в джекпот`);
-    }) },
-
-  // ───── Рідкісні: змінюють ситуацію за столом ─────
+  { id: 'temptation', name: 'Аутсайдер', rarity: 'common', icon: '🐢', power: T.temptation.power, stage: 'power',
+    desc: `Сила ${T.temptation.power}, +1 за кожні ${T.temptation.step} фішок, на які ти відстаєш від суперника (до ${T.temptation.max}).`,
+    d3: `Сила ${T.temptation.power}, +1 за кожні ${T.temptation.step} фішок, на які ти відстаєш від лідера (до ${T.temptation.max}).`,
+    apply: (api) => {
+      const gap = Math.max(0, api.chips(api.opp) - api.chips(api.me));
+      const v = Math.min(T.temptation.max, T.temptation.power + Math.floor(gap / T.temptation.step));
+      setPow(api, v);
+      api.note(gap > 0 ? `Аутсайдер: відставання ${gap} → сила ${v}` : `Аутсайдер: не відстає — сила ${v}`);
+    } },
   { id: 'storm', name: 'Буря', rarity: 'rare', icon: '🌪️', stage: 'replace',
     desc: `Обидві карти замінюються випадковими з колоди${T.storm.oppBonus ? ` (карта суперника ${signed(T.storm.oppBonus)})` : ''}.`,
     d3: `Усі зіграні карти замінюються випадковими з колоди${T.storm.oppBonus ? ` (карти суперників ${signed(T.storm.oppBonus)})` : ''}.`,

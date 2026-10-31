@@ -828,10 +828,12 @@ function jokerCompare(s, X) {
     pw[p] = xs.length ? (X.lowWins ? Math.min(...xs) : Math.max(...xs)) : 5;
     X.winTie[p] = true;
   }
+  // «Середняк»: перемагає карта, ближча до X.near
+  const key = (p) => (X.near != null ? -Math.abs(pw[p] - X.near) : pw[p]);
   const pair = (p, q) => {
     if (knifeBeats(p, q)) return 1;
     if (knifeBeats(q, p)) return -1;
-    let cmp = pw[p] === pw[q] ? 0 : pw[p] > pw[q] ? 1 : -1;
+    let cmp = key(p) === key(q) ? 0 : key(p) > key(q) ? 1 : -1;
     if (X.lowWins) cmp = -cmp;
     if (cmp === 0) {
       if (X.winTie[p] !== X.winTie[q]) cmp = X.winTie[p] ? 1 : -1;
@@ -845,7 +847,7 @@ function jokerCompare(s, X) {
   };
   if (parts.length === 2) {
     const cmp = pair(a, b);
-    const detail = { cmp, reason: 'joker', pa: pw[a], pb: pw[b], lowWins: X.lowWins, joker: true };
+    const detail = { cmp, reason: 'joker', pa: pw[a], pb: pw[b], lowWins: X.lowWins, near: X.near ?? null, joker: true };
     if (N(s) > 2) Object.assign(detail, { a, b });
     return { winner: cmp > 0 ? a : cmp < 0 ? b : null, detail };
   }
@@ -853,9 +855,27 @@ function jokerCompare(s, X) {
   return { winner, detail: { cmp: winner === null ? 0 : 1, reason: winner === null ? 'tie3' : 'joker', pw: parts.map((q) => [q, pw[q]]), lowWins: X.lowWins, joker: true, a: winner } };
 }
 
+/** Хто переміг би без ефектів джокерів (кожен джокер — карта своєї номінальної сили). Для статистики «джокер змінив результат». */
+function plainWinner(s) {
+  const parts = participants(s);
+  const n = N(s);
+  const X0 = {
+    parts, cards: s.players.map((pl, q) => (parts.includes(q) ? pl.played : null)),
+    pow: Array(n).fill(null), suit: Array(n).fill(null), winTie: Array(n).fill(false), loseTie: Array(n).fill(false),
+    trumpDelta: Array(n).fill(s.cfg.trumpBonus), lowWins: false, mods: [],
+  };
+  return jokerCompare(s, X0).winner;
+}
+
 function jokerShowdown(s, ctx) {
+  const plain = plainWinner(s);
   const env = jokerEnv(s, ctx);
   const X = resolveJokers(s, ctx, env);
+  // Статистика джокерів: хто грав, чи виграв, чи змінив результат раунду (заповнюється нижче)
+  const logJokers = (winner, changed) => {
+    if (s.result?.jokers) s.result.jokers.changed = changed;
+    for (const f of X.fired) (s.stats[f.p].jokerLog ||= []).push({ id: f.joker, won: winner === f.p, changed });
+  };
   for (const f of X.fired) {
     s.lastJoker = f.as;
     s.stats[f.p].jokers.push(f.joker);
@@ -868,6 +888,7 @@ function jokerShowdown(s, ctx) {
     s.jackpot = s.pot; // увесь банк — у джекпот
     enterResult(s, ctx, null, 'void', { reason: 'void', joker: true });
     s.result.jokers = jokers;
+    logJokers(null, true);
     return;
   }
   if (X.cancel === 'replay') {
@@ -880,6 +901,7 @@ function jokerShowdown(s, ctx) {
     enterResult(s, ctx, null, 'replay', { reason: 'replay', joker: true });
     s.result.replay = true;
     s.result.jokers = jokers;
+    logJokers(null, true);
     return;
   }
   let winner, detail;
@@ -898,6 +920,7 @@ function jokerShowdown(s, ctx) {
   const pot = s.pot;
   enterResult(s, ctx, winner, 'showdown', detail, winner === null ? null : X.cards[winner]);
   s.result.jokers = jokers;
+  logJokers(winner, winner !== plain);
   const before = X.notes.length;
   for (const fn of X.afters) fn({ winner, pot });
   for (const n of X.notes.slice(before)) log(s, { t: 'joker', p: n.p, joker: n.joker, text: n.text });
