@@ -10,7 +10,7 @@ import { unlockAudio } from '../ui/sound.js';
 const $ = (id) => document.getElementById(id);
 const SUIT_NAME = { water: 'Води', fire: 'Вогню', stone: 'Каменю' };
 const SPECIAL = { knife: 'Ніж', mirror: 'Дзеркало', double: 'Подвоєння' };
-const UPCOMING = ['Самурай', 'Козацький', 'Ар-деко казино', 'Безодня', 'Піксель', 'Космос'];
+const UPCOMING = ['Козацький', 'Ар-деко казино', 'Безодня', 'Піксель', 'Космос'];
 const params = new URLSearchParams(location.search);
 let setId = SETS[params.get('set')] ? params.get('set') : 'kyiv';
 let rarity = RARITY_ORDER.includes(params.get('r')) ? params.get('r') : 'legendary';
@@ -68,7 +68,7 @@ function render() {
   chipWrap.insertAdjacentHTML('beforeend', '<div class="cap">Фішка</div>');
   const sound = document.createElement('div');
   sound.className = 'full btns';
-  sound.innerHTML = `<button data-r="${rarity}" id="snd"><i></i>Звуковий акцент: ${set.accent === 'bells' ? 'дзвони' : 'синтвейв'} (${RAR[rarity].name.toLowerCase()})</button>`;
+  sound.innerHTML = `<button data-r="${rarity}" id="snd"><i></i>Звуковий акцент: ${set.accentName || set.accent} (${RAR[rarity].name.toLowerCase()})</button>`;
   $('items').append(backWrap, chipWrap, sound);
   $('felt').append(item({ set: setId, kind: 'felt', rarity }, `Сукно «${set.name}»`, 'min(92vw, 640px)'));
   const stage = $('win-stage');

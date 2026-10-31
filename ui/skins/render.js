@@ -4,6 +4,7 @@ import { SKINS } from '../../config.js';
 import { SETS, reducedMotion, RAR } from './core.js';
 import './sets/kyiv.js';
 import './sets/cyber.js';
+import './sets/samurai.js';
 
 export { SETS };
 export const ITEM_KINDS = {

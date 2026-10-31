@@ -237,7 +237,7 @@ function win(layer, rar, limit) {
 }
 
 export default registerSet({
-  id: 'cyber', name: 'Кіберпанк', icon: '🌆', accent: 'synth',
+  id: 'cyber', name: 'Кіберпанк', icon: '🌆', accent: 'synth', accentName: 'синтвейв',
   blurb: 'Глітч, сканлайни, хроматична аберація, кислотний неон.',
   legendaryNote: 'Карта збоїть і перебудовується, по ній біжить цифровий дощ.',
   face, back, felt, chip, win, suits: SUITS, suitColor: SUIT_COLOR,

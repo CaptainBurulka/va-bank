@@ -7,6 +7,8 @@ const MOTIF = {
   // церковні дзвони над Дніпром: низький удар + обертони дзвона
   bells: (t, v) => [523, 392, 659].forEach((fq, i) => { const d = i * .34; t({ freq: fq, dur: 1.5, vol: .12 * v, delay: d, attack: .003 }); t({ freq: fq * 2.76, dur: .9, vol: .05 * v, delay: d }); t({ freq: fq * 5.4, dur: .45, vol: .025 * v, delay: d }); }),
   // синтвейв-арпеджіо з пилкою
+  // кото: пентатоніка міякобусі, щипок із довгим згасанням
+  koto: (t, v) => [587, 622, 784, 880, 932, 1175].forEach((fq, i) => { const d = i * .13; t({ freq: fq, dur: 1.1, vol: .1 * v, delay: d, type: 'triangle', attack: .002, lp: 3200 }); t({ freq: fq * 2, dur: .25, vol: .03 * v, delay: d, attack: .001 }); }),
   synth: (t, v) => [220, 277, 330, 440, 554, 660].forEach((fq, i) => t({ freq: fq, dur: .16, vol: .06 * v, delay: i * .06, type: 'sawtooth', lp: 1900 })),
 };
 

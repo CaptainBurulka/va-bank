@@ -15,6 +15,11 @@
 @font-face { font-family: 'Unbounded'; font-weight: 800; font-display: swap; src: url('../../fonts/unbounded-latin-800-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
 @font-face { font-family: 'Unbounded'; font-weight: 800; font-display: swap; src: url('../../fonts/unbounded-cyrillic-800-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
 
+@font-face { font-family: 'Playfair Display'; font-weight: 900; font-display: swap; src: url('../../fonts/playfair-display-latin-900-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
+@font-face { font-family: 'Playfair Display'; font-weight: 900; font-display: swap; src: url('../../fonts/playfair-display-cyrillic-900-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
+@font-face { font-family: 'Unbounded'; font-weight: 600; font-display: swap; src: url('../../fonts/unbounded-latin-600-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
+@font-face { font-family: 'Unbounded'; font-weight: 600; font-display: swap; src: url('../../fonts/unbounded-cyrillic-600-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
+
 @property --px { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
 @property --py { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
 @property --rx { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
@@ -393,3 +398,20 @@
   mix-blend-mode: color-dodge; opacity: calc(.42 + var(--hyp) * .4);
 }
 .sk-item.r-legendary.sk-cyber .sk-foil::before { display: none; }
+
+/* ═════════ Набір «Самурай» ═════════ */
+.sk-samurai .sk-tilt { background: #efe6d0; }
+/* легендарна: мазки туші промальовуються наново, туман дрейфує, пелюстки сакури летять */
+.sk-samurai .smflow, .sk-samurai .smenso { stroke-dasharray: 100; animation: smFlow 8s cubic-bezier(.5, 0, .3, 1) infinite; }
+.sk-samurai .smenso { animation-duration: 6s; }
+@keyframes smFlow { 0% { stroke-dashoffset: 100; } 35%, 82% { stroke-dashoffset: 0; opacity: 1; } 96% { stroke-dashoffset: 0; opacity: 0; } 100% { stroke-dashoffset: 100; opacity: 0; } }
+.sk-samurai .smmist { animation: smMist 14s ease-in-out infinite alternate; }
+@keyframes smMist { to { transform: translateX(12px); } }
+.sk-samurai .sp { position: absolute; width: calc(var(--w) * .035); height: calc(var(--w) * .024); border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffd9e4, #f39ab4); opacity: 0; animation: smPetal var(--d) linear var(--delay) infinite; }
+@keyframes smPetal { 0% { transform: translate(0, 0) rotate(0) scale(var(--s)); opacity: 0; } 10% { opacity: .95; } 85% { opacity: .9; } 100% { transform: translate(var(--dx), calc(var(--w) * 1.5)) rotate(520deg) scale(var(--s)); opacity: 0; } }
+.skwin .smp { position: absolute; top: -20px; width: 14px; height: 10px; border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffe0ea, #f08aa8); animation: smWinPetal 2.6s ease-in both; transform: scale(var(--s)); }
+@keyframes smWinPetal { to { transform: translate(var(--dx), 105vh) rotate(720deg) scale(var(--s)); } }
+.skwin .smstamp { position: absolute; left: 50%; top: 42%; padding: .2em .5em; font: 900 clamp(26px, 9vw, 54px)/1 'Playfair Display', Georgia, serif; letter-spacing: .05em; white-space: nowrap; color: #f6e7d2; background: #c4352b; border: 3px double #f6e7d2; border-radius: 6px; opacity: 0; animation: smStamp 2.4s cubic-bezier(.2, 1.6, .4, 1) .3s both; }
+@keyframes smStamp { 0% { transform: translate(-50%, -50%) rotate(-12deg) scale(2.6); opacity: 0; } 18% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); opacity: .95; } 85% { opacity: .95; } 100% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); opacity: 0; } }
+.skwin .smsplash { position: absolute; left: 50%; top: 45%; width: 30px; height: 30px; margin: -15px; border-radius: 50%; background: radial-gradient(circle, rgba(20, 16, 12, .55), rgba(20, 16, 12, 0) 70%); animation: smSplash 1.6s ease-out both; }
+@keyframes smSplash { from { transform: scale(.2); opacity: 1; } to { transform: scale(14); opacity: 0; } }
