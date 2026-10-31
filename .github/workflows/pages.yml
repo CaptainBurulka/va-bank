@@ -35,7 +35,7 @@ jobs:
       - name: Зібрати сайт (лише файли гри)
         run: |
           mkdir _site
-          cp -r index.html styles.css config.js manifest.json sw.js game meta net ui icons vendor fonts mockups _site/
+          cp -r index.html styles.css config.js manifest.json sw.js game meta net ui icons vendor fonts mockups skins _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -75,7 +75,7 @@ test('кеш service worker змінюється разом із версією 
 
 test('деплой: кожен каталог із кодом гри копіюється на сайт', () => {
   const wf = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
-  for (const d of ['game', 'meta', 'net', 'ui', 'fonts', 'icons', 'vendor']) assert.ok(new RegExp(`\\b${d}\\b`).test(wf.match(/cp -r (.*) _site/)[1]), d);
+  for (const d of ['game', 'meta', 'net', 'ui', 'fonts', 'icons', 'vendor', 'skins']) assert.ok(new RegExp(`\\b${d}\\b`).test(wf.match(/cp -r (.*) _site/)[1]), d);
 });
 
 test('протокол: привітання гостя несе набір джокерів і косметику (обрізано за формою)', () => {
