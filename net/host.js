@@ -29,6 +29,8 @@ export class GameHost {
     this.rematch = Array(this.n).fill(false);
     this.names = Array(this.n).fill(null); // публічні імена за місцями (для журналу й столу)
     this.looks = Array(this.n).fill(null); // косметика за місцями (лише для показу)
+    this.pids = Array(this.n).fill(null); // постійні ID гравців (для рахунку зустрічей)
+    this.titles = Array(this.n).fill(null); // титули біля ніків
     this.bots = Array(this.n).fill(false); // місця, які займає бот (бот завжди «на зв'язку» й погоджується на реванш)
     this.state = null;
     this._timer = null;
@@ -57,6 +59,8 @@ export class GameHost {
     if (saved.state?.jokerSets) this.gameOpts = { ...this.gameOpts, jokerSets: saved.state.jokerSets };
     if (saved.names) this.names = saved.names;
     if (saved.looks) this.looks = saved.looks;
+    if (saved.pids) this.pids = saved.pids;
+    if (saved.titles) this.titles = saved.titles;
     this.rematch = saved.rematch || Array(this.n).fill(false);
     if (this.state.timer && !this.state.timer.paused) {
       // Після перезавантаження час, що минув, не рахуємо — відновлюємо з паузи.
@@ -84,7 +88,7 @@ export class GameHost {
     try {
       localStorage.setItem(
         this.persistKey,
-        JSON.stringify({ state: this.state, rematch: this.rematch, names: this.names, looks: this.looks, savedAt: Date.now(), ...this.extra }),
+        JSON.stringify({ state: this.state, rematch: this.rematch, names: this.names, looks: this.looks, pids: this.pids, titles: this.titles, savedAt: Date.now(), ...this.extra }),
       );
     } catch {}
   }
@@ -168,6 +172,8 @@ export class GameHost {
         connected: this.connected.slice(),
         names: this.names.slice(),
         looks: this.looks.slice(),
+        pids: this.pids.slice(),
+        titles: this.titles.slice(),
         paused: !!this.state.timer?.paused,
         rematch: { me: this.rematch[p], opp: others.some((q) => this.rematch[q]), all: this.rematch.slice() },
       },
@@ -216,7 +222,7 @@ export class BotSeat {
       this._lastRound = view.round;
       if (this.rng() < (this.host.n > 2 ? 0.3 : 0.45)) {
         const won = view.result.winner === this.p;
-        const pool = view.result.winner === null ? ['😱', '🤡'] : won ? ['😎', '😂', '🔥'] : ['😱', '👏', '🤡'];
+        const pool = view.result.winner === null ? ['😱', '🤡', 'Ой-ой'] : won ? ['😎', '😂', '🔥', 'Щастить же!'] : ['😱', '👏', '🤡', 'Ну ти даєш!', 'Ще побачимо'];
         const emoji = pool[Math.floor(this.rng() * pool.length)];
         setTimeout(() => this.host.relayReaction(this.p, emoji), 500 + this.rng() * 800);
       }

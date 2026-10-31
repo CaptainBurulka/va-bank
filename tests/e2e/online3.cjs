@@ -10,20 +10,27 @@ const os = require('os');
   await ctx.addInitScript({ content: fs.readFileSync(path.join(__dirname, 'mockpeer.js'), 'utf8') });
   await ctx.route('**/vendor/peerjs.min.js', (r) => r.fulfill({ body: '/* mocked */', contentType: 'application/javascript' }));
   const A = await ctx.newPage(), B = await ctx.newPage(), C = await ctx.newPage();
+
+  // «Грати з другом»: за потреби ввести нік (перед першою онлайн-грою гра питає)
+  const friend = async (P, nick) => {
+    await P.click('[data-go="friend"]');
+    await P.waitForSelector('#modal:not(.hidden)');
+    if (await P.isVisible('#nick-ask')) { await P.fill('#nick-ask', nick); await P.click('#modal-btns .btn.primary'); await P.waitForTimeout(150); }
+  };
   const errs = [];
   for (const [n, p] of [['A', A], ['B', B], ['C', C]]) p.on('pageerror', (e) => errs.push(`${n}: ${e.message}`));
   for (const P of [A, B, C]) { await P.goto('http://localhost:8080/'); await P.evaluate(() => localStorage.setItem('vabank-tutorial', 'done')); }
   const fails = [];
   const check = (ok, label) => { console.log(ok ? '✓' : '✗', label); if (!ok) fails.push(label); };
 
-  await A.click('[data-go="friend"]'); await A.click('#modal-btns .btn.primary');
+  await friend(A, 'Хост'); await A.click('#modal-btns .btn.primary');
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-players button:nth-child(2)'); // троє
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-rounds button:last-child');
   const code = (await A.textContent('#room-code')).trim();
   check(await A.isVisible('#seat-list'), 'лобі показує місця');
-  const join = async (P) => { await P.click('[data-go="friend"]'); await P.click('#modal-btns .btn.secondary'); await P.fill('#join-code', code); await P.click('#btn-join'); };
+  const join = async (P) => { await friend(P, 'Гість' + Math.floor(Math.random() * 90 + 10)); await P.click('#modal-btns .btn.secondary'); await P.fill('#join-code', code); await P.click('#btn-join'); };
   await join(B);
   await B.waitForTimeout(800);
   check(!(await A.isVisible('#scr-game')), 'з одним гостем гра ще не почалась');
@@ -79,12 +86,12 @@ const os = require('os');
 
   // ── двоє + бот ──
   for (const P of [A, B, C, D]) await P.goto('http://localhost:8080/');
-  await A.click('[data-go="friend"]'); await A.click('#modal-btns .btn.primary');
+  await friend(A, 'Хост'); await A.click('#modal-btns .btn.primary');
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-players button:nth-child(2)');
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   const code2 = (await A.textContent('#room-code')).trim();
-  await B.click('[data-go="friend"]'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code2); await B.click('#btn-join');
+  await friend(B, 'Оля'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code2); await B.click('#btn-join');
   await B.waitForTimeout(1000);
   await A.click('#btn-add-bot');
   await A.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 });

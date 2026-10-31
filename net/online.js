@@ -69,10 +69,12 @@ export async function createOnlineHost(o) {
   const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: extra(), gameConfig: o.gameConfig || {}, gameOpts: { players: n, jokerSets: Array.from({ length: n }, (_, q) => (q === 0 ? sanitizeSet(me.set) : [])) } });
   host.names[0] = me.name || 'Господар';
   host.looks[0] = me.look || null;
+  host.pids[0] = me.pid || null;
+  host.titles[0] = me.title || null;
   const guestsOk = () => slots.every((x, q) => q === 0 || botSeats[q] || host.connected[q]);
   const status = (more = {}) => {
     o.onStatus({ started: !!host.state, oppConnected: guestsOk(), connected: host.connected.slice(), code, ...more });
-    o.onLobby?.(slots.map((x, q) => ({ seat: q, kind: q === 0 ? 'host' : botSeats[q] ? 'bot' : x.token ? 'guest' : 'free', connected: host.connected[q], name: host.names[q] })));
+    o.onLobby?.(slots.map((x, q) => ({ seat: q, kind: q === 0 ? 'host' : botSeats[q] ? 'bot' : x.token ? 'guest' : 'free', connected: host.connected[q], name: host.names[q], pid: host.pids[q] })));
   };
 
   // Місця гостей
@@ -160,6 +162,8 @@ export async function createOnlineHost(o) {
           host.extra = extra();
           host.names[q] = m.name || `Гість ${q}`;
           host.looks[q] = sanitizeLook(m.look);
+          host.pids[q] = m.pid || null;
+          host.titles[q] = m.title || null;
           c.send(msg('welcome', { token: slot.token, seat: q, players: n, app: APP_VERSION, look: me.look }));
           // Набір джокерів гостя фіксується на хості на початку партії; косметика — лише для показу
           o.onOppLook?.(host.looks[q], q);
@@ -331,7 +335,7 @@ export function joinOnline(o) {
       c.on('open', () => {
         clearTimeout(openTimer);
         lastSeen = Date.now();
-        c.send(msg('hello', { token, app: APP_VERSION, set: o.profile?.set || [], look: o.profile?.look || null, name: o.profile?.name || null }));
+        c.send(msg('hello', { token, app: APP_VERSION, set: o.profile?.set || [], look: o.profile?.look || null, name: o.profile?.name || null, pid: o.profile?.pid || null, title: o.profile?.title || null }));
       });
       c.on('data', (raw) => {
         if (c !== conn) return;

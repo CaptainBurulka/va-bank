@@ -72,6 +72,7 @@
         <button data-go="slot"><b>🎰</b>Автомат</button>
         <button data-go="shop"><b>🛒</b>Магазин</button>
         <button data-go="collection"><b>🃏</b>Колекція</button>
+        <button data-go="rivals"><b>⚔️</b>Суперники</button>
       </div>
       <nav class="menu-links">
         <button class="btn tertiary" data-go="tutorial">Навчання</button>
@@ -191,6 +192,12 @@
       <div class="fx-layer" id="fx"></div>
     </section>
 
+    <!-- Суперники: нік, ID, титули, рахунок зустрічей -->
+    <section class="screen hidden meta-screen" id="scr-rivals">
+      <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Суперники</h2><span></span></div>
+      <div class="meta-body" id="rivals-body"></div>
+    </section>
+
     <!-- Колекція -->
     <section class="screen hidden meta-screen" id="scr-collection">
       <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Колекція</h2><span class="wallet mini" data-wallet></span></div>
@@ -219,6 +226,7 @@
         <div class="end-score" id="end-score"></div>
         <div class="end-sub" id="end-sub"></div>
       </div>
+      <div class="moment hidden" id="end-moment" role="note"></div>
       <div class="rewards hidden" id="end-rewards"></div>
       <table class="stats" id="end-stats"></table>
       <div class="end-acts">

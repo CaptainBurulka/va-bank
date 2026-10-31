@@ -117,9 +117,26 @@ export const JOKER_TUNING_3 = Object.freeze({
 // Коли роздаються джокери: один і той самий випадковий раунд для обох
 export const JOKER_DEAL = Object.freeze({ fromRound: 3, toRound: 7, setSize: 3 });
 
+// ───────── Суперництво: титули, рахунок зустрічей, «момент партії» ─────────
+export const RIVALS = Object.freeze({
+  keep: 50, // скільки суперників пам'ятати (найдавніші відпадають)
+  titles: Object.freeze({
+    shark: Object.freeze({ wins: 20, rate: 0.6 }),
+    bluffking: Object.freeze({ total: 10, perGame: 0.8 }),
+    kamikaze: Object.freeze({ lost: 8 }),
+    lucky: Object.freeze({ won: 12 }),
+    allin: Object.freeze({ wins: 6 }),
+    rock: Object.freeze({ games: 10, foldsPerGame: 0.6 }),
+    spy: Object.freeze({ games: 8, perGame: 2 }),
+    jester: Object.freeze({ jokers: 15 }),
+  }),
+  // вага кандидатів у «момент партії»
+  moment: Object.freeze({ pot: 1, bluff: 40, bluffWeak: 40, legend: 150, don: 30, tie3: 60, comeback: 120, comebackFrom: 0.2 }),
+});
+
 // ───────── Прогресія: бали, магазин, автомат, уламки (лише віртуальні, без реальних грошей) ─────────
 export const META = Object.freeze({
-  schema: 1,
+  schema: 2,
   // Бали за партію: участь + бонус за перемогу (слабший гравець теж прогресує)
   points: Object.freeze({ play: 40, win: 40, firstWinOfDay: 60, mult: Object.freeze({ online: 1, bot: 0.3, hotseat: 0.3 }),
     // гра втрьох: бонус за місце (1-ше, 2-ге, 3-тє) замість бонусу за перемогу

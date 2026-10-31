@@ -9,15 +9,17 @@ import { CONFIG, APP_VERSION } from '../config.js';
 import { BOT_STYLES } from '../game/bot.js';
 import { buildDeck } from '../game/cards.js';
 import { createOnlineHost, joinOnline, ROOM_ALPHABET, loadGuestSave, clearGuestSave, loadHostSave, clearHostSave } from '../net/online.js';
-import { initMeta, renderWallet, openCollection, openShop, openSlot, awardAfterGame } from './meta-ui.js';
+import { initMeta, renderWallet, openCollection, openShop, openSlot, awardAfterGame, openRivals, askNick, titleIcon } from './meta-ui.js';
+import { titleOf, pickMoment, scoreLine, isPid } from '../meta/rivals.js';
+import { cardName } from './text.js';
 import { loadProfile, saveProfile } from './profile-store.js';
 import { applyOppLook, emojiSet } from './cosmetics.js';
 import { exportCode, importCode, publicLook } from '../meta/profile.js';
-import { JOKERS } from '../game/jokers.js';
+import { JOKERS, JOKER_BY_ID } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, DEFAULT_EQUIPPED } from '../meta/catalog.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['menu', 'create', 'join', 'rules', 'game', 'end', 'collection', 'shop', 'slot'];
+const SCREENS = ['menu', 'create', 'join', 'rules', 'game', 'end', 'collection', 'shop', 'slot', 'rivals'];
 const BOT_KEY = 'vabank-bot';
 
 let session = null;
@@ -266,33 +268,88 @@ function deliverToUi(msg, opts = {}) {
     return;
   }
   if (session) {
-    if (session.lastPhase === 'over') { game.reset(); session.awarded = false; $('end-rewards').classList.add('hidden'); }
+    if (session.lastPhase === 'over') { game.reset(); session.awarded = false; session.introShown = false; $('end-rewards').classList.add('hidden'); $('end-moment').classList.add('hidden'); }
     session.lastPhase = view.phase;
   }
   if (['end', 'menu', 'create', 'join'].includes(current)) show('game');
   applySeatMeta(msg, opts);
+  applyOnlineNames(msg);
   game.update(msg, opts);
+  maybeIntro(msg);
+}
+
+const isOnline = () => !!session?.mode?.startsWith('online');
+
+/** Онлайн удвох: нік і титул суперника з meta хоста. */
+function applyOnlineNames({ view, meta }) {
+  if (!isOnline() || (view.n || 2) > 2 || !meta?.names) return;
+  const q = 1 - view.you;
+  const nm = meta.names[q] || 'Суперник';
+  const label = `${titleIcon(meta.titles?.[q]) ? `${titleIcon(meta.titles[q])} ` : ''}${nm}`;
+  const mine = titleIcon(titleOf(loadProfile()));
+  const meLabel = mine ? `${mine} Ти` : 'Ти';
+  if (game.names[1] !== label || game.names[0] !== meLabel) game.setNames(meLabel, label);
+}
+
+/** Перед першим ходом онлайн-партії — великий рахунок зустрічей із кожним живим суперником. */
+function maybeIntro({ view, meta }) {
+  if (!isOnline() || session.introShown || view.round !== 1 || view.phase !== 'play' || !meta?.pids) return;
+  session.introShown = true;
+  const prof = loadProfile();
+  const rows = [];
+  for (let q = 0; q < (view.n || 2); q++) {
+    if (q === view.you || !isPid(meta.pids[q]) || meta.pids[q] === prof.pid) continue;
+    const sl = scoreLine(prof.rivals, meta.pids[q]);
+    const name = meta.names?.[q] || 'Суперник';
+    const line = !sl ? 'Перша зустріч!' : sl.streak >= 2 ? `У тебе серія: ${sl.streak} перемоги поспіль` : sl.streak <= -2 ? `${name} виграє ${-sl.streak} поспіль — час відігратися` : `Зіграно партій: ${sl.games}`;
+    rows.push({ me: sl?.wins || 0, them: sl?.losses || 0, name, line });
+  }
+  game.showIntro(rows);
+}
+
+/** Анімована картка «Момент партії» на фінальному екрані. */
+function renderMoment(view, names) {
+  const box = $('end-moment');
+  const m = pickMoment(view);
+  if (!m) { box.classList.add('hidden'); return; }
+  const who = (q) => (q === view.you ? 'Ти' : names[q] || `Гравець ${q + 1}`);
+  const R = m.r ? ` · раунд ${m.r}` : '';
+  const T = {
+    pot: ['💰', 'Найбільший банк', `${who(m.p)}: +${m.amount}`, `${m.reason === 'fold' ? 'без розкриття' : 'на розкритті'}${R}`],
+    bluff: ['🎭', 'Блеф партії', `${who(m.p)}: блеф із картою «${m.card ? cardName(m.card) : '?'}»`, `суперники спасували · +${m.amount}${R}`],
+    legend: ['👑', 'Легендарний джокер', `${who(m.p)}: «${JOKER_BY_ID[m.joker]?.name || m.joker}»`, `увесь стіл це бачив${R}`],
+    don: ['🎲', 'Подвій або нічого', `${who(m.p)}: +${m.amount} на «подвій»`, `вгадано ${m.wins} раз(и) поспіль${R}`],
+    tie3: ['🤝', 'Нічия на трьох', `Ніхто не побив обох — банк ${m.amount} у джекпот`, R.slice(3)],
+    comeback: ['🔥', 'Відіграш', `${who(m.p)}: з ${m.from} фішок — до перемоги`, 'ніколи не здавайся'],
+  }[m.kind];
+  if (!T) { box.classList.add('hidden'); return; }
+  box.innerHTML = `<span class="ic">${T[0]}</span><span class="eyebrow">Момент партії · ${T[1]}</span><b>${T[2].replace(/</g, '&lt;')}</b><span>${T[3]}</span>`;
+  box.classList.remove('hidden');
+  // перезапуск анімації при повторному показі
+  box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
 }
 
 /** Утрьох: імена й косметика за місцями (з meta хоста або з opts.seatNames). */
 function applySeatMeta({ view, meta }, opts = {}) {
   if ((view.n || 2) < 3) return;
-  const names = opts.seatNames || (meta?.names || []).map((x, q) => (q === view.you ? 'Ти' : x || `Гравець ${q + 1}`));
+  const names = opts.seatNames || (meta?.names || []).map((x, q) => (q === view.you ? 'Ти' : `${titleIcon(meta.titles?.[q]) ? `${titleIcon(meta.titles[q])} ` : ''}${x || `Гравець ${q + 1}`}`));
   game.setSeatNames(names, names[view.you] || 'Ти');
   if (meta?.looks && !opts.noLooks) prepareLooks3(meta.looks, view.you);
 }
 
 function renderEnd({ view, meta }, names) {
   if ((view.n || 2) > 2) return renderEnd3({ view, meta }, names);
+  if (isOnline() && meta?.names) names = [game.names[0], game.names[1]];
   // Бали й досягнення — один раз за партію (навчання не рахується)
   if (session && !session.awarded && session.mode !== 'tutorial') {
     session.awarded = true;
     const mode = session.mode === 'bot' ? 'bot' : session.mode === 'hotseat' ? 'hotseat' : 'online';
     const box = $('end-rewards');
-    box.innerHTML = awardAfterGame(view, mode);
+    box.innerHTML = awardAfterGame(view, mode, meta);
     box.classList.toggle('hidden', !box.innerHTML);
   }
   const me = view.you;
+  renderMoment(view, me === 0 ? [names[0], names[1]] : [names[1], names[0]]);
   const st = view.stats;
   const draw = view.winner === 'draw';
   const won = view.winner === me;
@@ -334,13 +391,14 @@ function renderEnd3({ view, meta }, namesIn) {
     session.awarded = true;
     const mode = session.mode === 'bot' ? 'bot' : session.mode === 'hotseat' ? 'hotseat' : 'online';
     const box = $('end-rewards');
-    box.innerHTML = awardAfterGame(view, mode);
+    box.innerHTML = awardAfterGame(view, mode, meta);
     box.classList.toggle('hidden', !box.innerHTML);
   }
   const me = view.you;
   const n = view.n;
   const names = Array.isArray(namesIn) && namesIn.length === n ? namesIn : (meta?.names || []).map((x, q) => (q === me ? 'Ти' : x || `Гравець ${q + 1}`));
   const order = [me, (me + 1) % n, (me + 2) % n];
+  renderMoment(view, names);
   const st = view.stats;
   const place = view.places?.[me];
   const hotseat = session?.mode === 'hotseat';
@@ -413,7 +471,7 @@ function startBot(resume = false, opts = {}) {
   lastLooksKey = '';
   if (players === 2) prepareLooks(loads[0].look);
   $('btn-react').classList.remove('hidden');
-  host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e) => game.showReaction(e, false) });
+  host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e, from) => game.showReaction(e, false, from) });
   bots.forEach((b, i) => host.attach(i + 1, b));
   if (saved && saved.state?.phase !== 'over') host.restore(saved);
   else host.start();
@@ -633,7 +691,7 @@ async function startCreate(resumeSave = null) {
         resume: resumeSave,
         players,
         gameConfig,
-        profile: { set: prof.set, look: publicLook(prof), name: prof.nick || null },
+        profile: { set: prof.set, look: publicLook(prof), name: prof.nick || null, pid: prof.pid, title: titleOf(prof) },
         botSet: () => botLoadout().set,
         botLook: () => botLoadout().look,
         onOppLook: (look) => { if (players === 2) prepareLooks(look); },
@@ -648,7 +706,7 @@ async function startCreate(resumeSave = null) {
           if (st.started && !st.oppConnected && current === 'create') show('game');
         },
         onMessage: (m) => deliverToUi(m, { names }),
-        onReaction: (e) => game.showReaction(e, false),
+        onReaction: (e, from) => game.showReaction(e, false, from),
       });
       session = await opening;
     } catch (e) {
@@ -671,7 +729,8 @@ function renderSeatList(seats, players) {
     const st = x.kind === 'host' ? 'ти' : x.kind === 'bot' ? 'бот готовий' : x.kind === 'free' ? 'вільне місце' : x.connected ? 'на місці' : "не на зв'язку";
     const ok = x.kind === 'host' || x.kind === 'bot' || (x.kind === 'guest' && x.connected);
     const nm = x.kind === 'free' ? `Місце ${x.seat + 1}` : x.kind === 'host' ? 'Ти' : x.name || `Гість ${x.seat}`;
-    return `<li class="${ok ? 'ok' : ''}"><span>${x.kind === 'bot' ? '🤖' : x.kind === 'free' ? '◌' : '👤'}</span><b>${nm.replace(/</g, '&lt;')}</b><span class="st">${st}</span></li>`;
+    const sl = x.kind === 'guest' && x.pid ? scoreLine(loadProfile().rivals, x.pid) : null;
+    return `<li class="${ok ? 'ok' : ''}"><span>${x.kind === 'bot' ? '🤖' : x.kind === 'free' ? '◌' : '👤'}</span><b>${nm.replace(/</g, '&lt;')}${sl ? ` <span class="st">ти ${sl.wins} : ${sl.losses}</span>` : x.kind === 'guest' ? ' <span class="st">перша зустріч</span>' : ''}</b><span class="st">${st}</span></li>`;
   }).join('');
 }
 $('btn-add-bot').addEventListener('click', () => { sfx.tap(); session?.addBot?.(); });
@@ -689,7 +748,7 @@ async function startJoin(code, resumeSave = null) {
     session = await joinOnline({
       code,
       resume: resumeSave,
-      profile: { set: prof.set, look: publicLook(prof), name: prof.nick || null },
+      profile: { set: prof.set, look: publicLook(prof), name: prof.nick || null, pid: prof.pid, title: titleOf(prof) },
       onOppLook: (look) => prepareLooks(look),
       onStatus: (st) => {
         if (st.error) { setLine('join-status', st.error, 'error'); if (current === 'game') toast(st.error, 3000, 'error'); }
@@ -697,7 +756,7 @@ async function startJoin(code, resumeSave = null) {
         game.setOffline(st.joined && !st.hostConnected, game.view && game.view.n > 2 ? "Господар не на зв'язку — гра на паузі" : "Суперник не на зв'язку");
       },
       onMessage: (m) => deliverToUi(m, { names }),
-      onReaction: (e) => game.showReaction(e, false),
+      onReaction: (e, from) => game.showReaction(e, false, from),
       onFatal: (text) => { leave(true); toast(text, 8000, 'error'); },
     });
   } catch (e) {
@@ -731,11 +790,11 @@ $('btn-share').addEventListener('click', async () => {
 });
 
 function openFriend() {
-  maybeTutorial(() => modal('<h3>Грати з другом</h3><p>Кожен — на своєму телефоні.</p>', [
+  maybeTutorial(() => askNick(() => modal('<h3>Грати з другом</h3><p>Кожен — на своєму телефоні.</p>', [
     { label: 'Створити кімнату', cls: 'primary', onClick: () => { clearHostSave(); clearGuestSave(); startCreate(); } },
     { label: 'Приєднатися за кодом', onClick: () => { show('join'); setTimeout(() => joinInput.focus(), 300); } },
     { label: 'Скасувати', cls: 'tertiary' },
-  ]));
+  ])));
 }
 
 // ───────── меню ─────────
@@ -748,6 +807,7 @@ document.addEventListener('click', (e) => {
   else if (go === 'settings') openSettings();
   else if (go === 'tutorial') startTutorial();
   else if (go === 'collection') openCollection();
+  else if (go === 'rivals') openRivals();
   else if (go === 'shop') openShop();
   else if (go === 'slot') openSlot();
   else if (go === 'friend') openFriend();
@@ -791,7 +851,7 @@ boot();
 
 // Налагодження/скриншоти: ?debug відкриває доступ до рендера (на гру не впливає)
 if (new URLSearchParams(location.search).has('debug')) {
-  window.__vb = { game, deliverToUi, renderEnd, show, openSettings, gameSetupModal, showRules, toast, modal, startTutorial, openFriend, setLine, openCollection, openShop, openSlot, prepareLooks, saveProfile, loadProfile, initMeta, awardAfterGame };
+  window.__vb = { game, deliverToUi, renderEnd, openRivals, renderMoment, show, openSettings, gameSetupModal, showRules, toast, modal, startTutorial, openFriend, setLine, openCollection, openShop, openSlot, prepareLooks, saveProfile, loadProfile, initMeta, awardAfterGame };
 }
 
 $('app-version').textContent = `версія ${APP_VERSION}`;

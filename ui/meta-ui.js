@@ -10,6 +10,7 @@ import { applyMyLook, playWin } from './cosmetics.js';
 import { cryptoRng } from '../net/host.js';
 import { sfx } from './sound.js';
 import { reducedMotion } from './motion.js';
+import { TITLES, TITLE_BY_ID, titlesOf, titleOf, cleanNick, addLife, recordGame } from '../meta/rivals.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -293,15 +294,32 @@ function showPrize(res, ach) {
  * @param mode — 'online' | 'bot' | 'hotseat'
  * @returns HTML для екрана кінця
  */
-export function awardAfterGame(view, mode) {
+export function awardAfterGame(view, mode, meta = null) {
   const me = view.you;
   const summary = {
     won: view.winner === me, draw: view.winner === 'draw', mode, endReason: view.endReason,
     me: view.stats[me], players: view.n || 2, place: view.places?.[me] ?? null,
   };
   const r = awardGame(loadProfile(), summary);
-  update(r.profile);
+  let prof = r.profile;
+  // Довічна статистика для титулів (на одному телефоні — ні: там грають різні люди)
+  const titleBefore = titleOf(prof);
+  if (mode !== 'hotseat') prof = { ...prof, life: addLife(prof.life, view.stats[me], { won: summary.won, rounds: view.round }) };
+  // Рахунок особистих зустрічей — лише з живими суперниками онлайн
+  let rivalLines = [];
+  if (mode === 'online' && meta?.pids) {
+    const rec = recordGame(prof.rivals, view, meta);
+    prof = { ...prof, rivals: rec.rivals };
+    rivalLines = rec.touched.map((pid) => {
+      const x = rec.rivals[pid];
+      return `<div><span>Рахунок зустрічей · ${esc(x.name)}</span><b>${x.wins} : ${x.losses}${x.draws ? ` (нічиїх ${x.draws})` : ''}</b></div>`;
+    });
+  }
+  update(prof);
   const lines = r.gained.map((g) => `<div><span>${esc(g.label)}</span><b>+${g.amount} ★</b></div>`);
+  const titleAfter = titleOf(prof);
+  if (titleAfter && titleAfter !== titleBefore) lines.push(`<div class="ach"><span>${TITLE_BY_ID[titleAfter].icon} Новий титул: ${esc(TITLE_BY_ID[titleAfter].name)}</span><b></b></div>`);
+  lines.push(...rivalLines);
   for (const a of r.achievements) {
     const A = ACH_BY_ID[a];
     const rew = A.reward.points ? `+${A.reward.points} ★` : `🎁 ${esc(COSMETIC_BY_ID[A.reward.cosmetic].name)}`;
@@ -309,4 +327,64 @@ export function awardAfterGame(view, mode) {
   }
   if (mode !== 'online') lines.push(`<div><span>${mode === 'bot' ? 'Проти бота' : 'На одному телефоні'} — бали ×${META.points.mult[mode]}</span><span></span></div>`);
   return lines.join('');
+}
+
+// ───────── суперники ─────────
+
+/** Іконка титулу для показу біля ніку. */
+export const titleIcon = (id) => (id && TITLE_BY_ID[id] ? TITLE_BY_ID[id].icon : '');
+
+export function openRivals() {
+  renderRivals();
+  ui.show('rivals');
+  $('rivals-body').scrollTop = 0;
+}
+
+function renderRivals() {
+  const p = loadProfile();
+  const earned = titlesOf(p.life);
+  const main = titleOf(p);
+  const l = p.life;
+  const rv = Object.entries(p.rivals).sort((a, b) => b[1].last - a[1].last);
+  const streak = (n) => (n > 0 ? `<span class="streak w">${n} ${n === 1 ? 'перемога' : n < 5 ? 'перемоги' : 'перемог'} поспіль</span>` : n < 0 ? `<span class="streak l">${-n} ${-n === 1 ? 'поразка' : -n < 5 ? 'поразки' : 'поразок'} поспіль</span>` : '<span>серії немає</span>');
+  $('rivals-body').innerHTML = `
+    <div class="me-card">
+      <div class="nick"><input id="nick-input" maxlength="16" placeholder="Твій нік" value="${esc(p.nick)}" autocomplete="off" enterkeyhint="done" aria-label="Нікнейм"><span class="pid" title="Постійний ID — за ним гра впізнає тебе в друзів">ID ${esc(p.pid.slice(1, 5).toUpperCase())}</span></div>
+      <div class="hint-text">Нік бачать друзі за столом. ID постійний — за ним рахунок зустрічей не плутається, навіть якщо змінити нік.</div>
+      <div class="titles" id="title-list">${TITLES.map((t) => `<button class="title-chip ${t.id === main ? 'on' : ''} ${earned.includes(t.id) ? '' : 'locked'}" data-title="${t.id}" title="${esc(t.desc)}">${t.icon} ${esc(t.name)}</button>`).join('')}</div>
+      <div class="hint-text">Титули з'являються біля ніку. Торкнись заробленого, щоб показувати саме його. Сірі — ще попереду: ${esc(TITLES.find((t) => !earned.includes(t.id))?.desc || 'усі зароблено!')}.</div>
+      <div class="hint-text">Усього: партій <b>${l.games}</b> · перемог <b>${l.wins}</b> · блефів <b>${l.bluffs}</b> · найбільший банк <b>${l.biggestPot}</b></div>
+    </div>
+    <h3 class="sec-title">Рахунок зустрічей</h3>
+    ${rv.length ? rv.map(([, r]) => `
+      <div class="rival">
+        <div class="nm">${r.title ? `<span class="title-tag">${titleIcon(r.title)}</span>` : ''}${esc(r.name)}</div>
+        <div class="score">${r.wins}<span class="sep">:</span>${r.losses}</div>
+        <div class="sub">${streak(r.streak)}${r.draws ? ` · нічиїх ${r.draws}` : ''} · партій ${r.games}</div>
+        <div class="facts"><span>Найбільший банк <b>${r.bigPot}</b></span><span>Блефи <b>${r.myBluffs} : ${r.theirBluffs}</b></span><span>Програні «подвій» <b>${r.myDonLost} : ${r.theirDonLost}</b></span></div>
+      </div>`).join('') : '<p class="hint-text">Зіграй із другом онлайн — тут з\'явиться ваш рахунок, серії й найбільший банк.</p>'}`;
+  const inp = $('nick-input');
+  const save = () => { const q = loadProfile(); const v = cleanNick(inp.value); if (v !== q.nick) { update({ ...q, nick: v }); ui.toast(v ? `Нік: ${v}` : 'Нік прибрано'); } inp.value = v; };
+  inp.addEventListener('change', save);
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
+  $('title-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-title]');
+    if (!b) return;
+    sfx.tap();
+    const id = b.dataset.title;
+    if (!titlesOf(loadProfile().life).includes(id)) { ui.toast(TITLE_BY_ID[id].desc); return; }
+    update({ ...loadProfile(), title: id });
+    renderRivals();
+  });
+}
+
+/** Попросити нік перед першою онлайн-грою. */
+export function askNick(next) {
+  const p = loadProfile();
+  if (p.nick) return next();
+  ui.modal('<h3>Як тебе звати?</h3><p>Нік побачать друзі за столом, а гра рахуватиме ваші зустрічі.</p><input id="nick-ask" class="code-box" style="height:48px;font-size:18px" maxlength="16" placeholder="Нік" autocomplete="off">', [
+    { label: 'Готово', cls: 'primary', onClick: () => { const v = cleanNick($('nick-ask').value); if (v) update({ ...loadProfile(), nick: v }); next(); } },
+    { label: 'Пізніше', cls: 'tertiary', onClick: () => next() },
+  ]);
+  setTimeout(() => $('nick-ask')?.focus(), 250);
 }

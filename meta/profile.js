@@ -5,6 +5,7 @@
 import { META } from '../config.js';
 import { JOKERS, JOKER_BY_ID, RARITIES, sanitizeSet } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID } from './catalog.js';
+import { newPid, isPid, cleanNick, normalizeLife, normalizeRivals, cleanTitle, emptyLife } from './rivals.js';
 
 export const SCHEMA = META.schema;
 const int = (x) => (Number.isFinite(x) ? Math.max(0, Math.floor(x)) : 0);
@@ -26,6 +27,12 @@ export function defaultProfile() {
     games: 0,
     wins: 0,
     flags: { legendarySpin: false },
+    // суперництво (схема 2)
+    nick: '',
+    pid: newPid(),
+    title: null,
+    life: emptyLife(),
+    rivals: {},
   };
 }
 
@@ -40,7 +47,13 @@ export function migrate(raw) {
     if (Array.isArray(p.jokers)) p.jokers = Object.fromEntries(p.jokers.filter((x) => typeof x === 'string').map((id) => [id, 1]));
     p.v = 1;
   }
-  // майбутні міграції: if (p.v === 1) { …; p.v = 2; }
+  if (p.v === 1) {
+    // v1 → v2: нікнейм, постійний ID, суперники і довічна статистика (з уже зіграних партій — лише кількість і перемоги)
+    p.life = { ...emptyLife(), games: p.games || 0, wins: p.wins || 0 };
+    p.rivals = {};
+    p.v = 2;
+  }
+  // майбутні міграції: if (p.v === 2) { …; p.v = 3; }
   return normalize(p);
 }
 
@@ -74,6 +87,11 @@ export function normalize(p) {
   out.playedRarities = Array.isArray(p.playedRarities) ? RARITIES.filter((r) => p.playedRarities.includes(r)) : [];
   out.daily = { day: typeof p.daily?.day === 'string' ? p.daily.day.slice(0, 10) : '', won: !!p.daily?.won };
   out.flags = { legendarySpin: !!p.flags?.legendarySpin };
+  out.nick = cleanNick(p.nick);
+  out.pid = isPid(p.pid) ? p.pid : d.pid;
+  out.title = cleanTitle(p.title);
+  out.life = normalizeLife(p.life);
+  out.rivals = normalizeRivals(p.rivals);
   out.v = SCHEMA;
   return out;
 }

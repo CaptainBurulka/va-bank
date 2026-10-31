@@ -31,8 +31,11 @@ export const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const PEER_PREFIX = 'vabank-ua-v1-';
 
 import { COSMETICS } from '../meta/catalog.js';
+import { PHRASES, isPid, cleanTitle } from '../meta/rivals.js';
 // Дозволені реакції — усі емодзі з усіх наборів косметики
 export const REACTIONS = [...new Set(COSMETICS.filter((c) => c.cat === 'emoji').flatMap((c) => c.set))];
+/** Реакція — емодзі з наборів або швидка фраза. */
+export const isReaction = (x) => REACTIONS.includes(x) || PHRASES.includes(x);
 
 export function randomCode(rng) {
   let s = '';
@@ -82,6 +85,8 @@ export function parseGuestMessage(m) {
           set: Array.isArray(m.set) ? m.set.filter((x) => typeof x === 'string' && x.length < 24).slice(0, 3) : [],
           look: m.look && typeof m.look === 'object' && !Array.isArray(m.look) ? m.look : null,
           name: cleanName(m.name),
+          pid: isPid(m.pid) ? m.pid : null,
+          title: cleanTitle(m.title),
         },
       };
     case 'action': {
@@ -95,7 +100,7 @@ export function parseGuestMessage(m) {
       return { ok: true, m: { type: 'action', action: clean } };
     }
     case 'react':
-      if (!REACTIONS.includes(m.emoji)) return { ok: false, error: 'bad-emoji' };
+      if (!isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
       return { ok: true, m: { type: 'react', emoji: m.emoji } };
     case 'ping':
     case 'pong':
@@ -112,6 +117,6 @@ export function parseHostMessage(m) {
   if (m.type === 'error' && m.code === 'version') return { ok: true, m: { type: 'error', code: 'version', app: typeof m.app === 'string' ? m.app : null } };
   if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version', app: typeof m.app === 'string' ? m.app : null };
   if (!['welcome', 'state', 'react', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
-  if (m.type === 'react' && !REACTIONS.includes(m.emoji)) return { ok: false, error: 'bad-emoji' };
+  if (m.type === 'react' && !isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
   return { ok: true, m };
 }

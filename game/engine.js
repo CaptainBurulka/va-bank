@@ -290,6 +290,20 @@ function doFold(s, ctx, p, auto = false) {
   advanceBet(s, ctx, p);
 }
 
+/**
+ * Кандидати в «момент партії» (розкриваються лише після кінця партії). Тримаємо найкращого в кожній категорії.
+ * На хід гри не впливає.
+ */
+function addMoment(s, m) {
+  if (!s.moments) s.moments = [];
+  const e = { r: s.round, ...m };
+  if (e.kind === 'legend') { if (s.moments.filter((x) => x.kind === 'legend').length < 3) s.moments.push(e); return; }
+  const i = s.moments.findIndex((x) => x.kind === e.kind);
+  const better = (a, b) => (e.kind === 'bluff' ? a.power < b.power || (a.power === b.power && a.amount > b.amount) : a.amount > b.amount);
+  if (i < 0) s.moments.push(e);
+  else if (better(e, s.moments[i])) s.moments[i] = e;
+}
+
 function updateBiggest(s, p, amount) {
   s.stats[p].biggestPot = Math.max(s.stats[p].biggestPot, amount);
 }
@@ -303,7 +317,7 @@ function enterResult(s, ctx, winner, reason, detail = null, winnerCard = null) {
   const shownCards = s.players.map((pl, q) => (res.parts.includes(q) ? pl.played : null));
   if (winner === null) {
     res.carry = s.pot;
-    if (N(s) > 2 && reason === 'showdown') s.jackpot = s.pot; // нічия за перше місце утрьох — банк у джекпот
+    if (N(s) > 2 && reason === 'showdown') { s.jackpot = s.pot; addMoment(s, { kind: 'tie3', amount: s.pot }); } // нічия за перше місце утрьох — банк у джекпот
     log(s, { t: 'tie', pot: s.pot, cards: shownCards, detail });
   } else {
     const opps = seats(s).filter((q) => q !== winner && inGame(s, q));
@@ -319,6 +333,7 @@ function enterResult(s, ctx, winner, reason, detail = null, winnerCard = null) {
       for (const q of losers) { paid[q] = transfer(s, q, winner, share[q]); res.penalty += paid[q]; }
     }
     res.won = potAmount + res.penalty;
+    addMoment(s, { kind: 'pot', p: winner, amount: res.won, reason });
     s.lastWinner = winner;
     if (N(s) === 2) s.lastLoser = other(winner);
     s.stats[winner].roundsWon += 1;
@@ -327,7 +342,11 @@ function enterResult(s, ctx, winner, reason, detail = null, winnerCard = null) {
       // Вдалий блеф: суперник спасував, хоча його карта була сильніша.
       const wc = s.players[winner].played;
       res.bluff = opps.some((q) => s.players[q].folded && s.players[q].played && compareDetail(wc, s.players[q].played, s.cfg, s.trump).cmp < 0);
-      if (res.bluff) s.stats[winner].bluffs += 1;
+      if (res.bluff) {
+        s.stats[winner].bluffs += 1;
+        const pw = wc.kind === 'num' ? wc.value : wc.kind === 'knife' ? s.cfg.knifePower : wc.kind === 'mirror' ? 11 : wc.kind === 'joker' ? wc.power ?? 5 : s.cfg.doublePower;
+        addMoment(s, { kind: 'bluff', p: winner, amount: res.won, card: wc, power: pw });
+      }
       if (wc.kind === 'num' && wc.value === 1) s.stats[winner].bluffOne += 1;
     }
     // Ризикувати можна лише чистим виграшем: тим, що внесли суперники (+ штраф «Подвоєння»).
@@ -837,7 +856,7 @@ function jokerShowdown(s, ctx) {
   for (const f of X.fired) {
     s.lastJoker = f.as;
     s.stats[f.p].jokers.push(f.joker);
-    if (JOKER_BY_ID[f.joker].rarity === 'legendary') s.stats[f.p].legendary += 1;
+    if (JOKER_BY_ID[f.joker].rarity === 'legendary') { s.stats[f.p].legendary += 1; addMoment(s, { kind: 'legend', p: f.p, joker: f.joker }); }
   }
   for (const n of X.notes) log(s, { t: 'joker', p: n.p, joker: n.joker, text: n.text });
   const jokers = { notes: X.notes, fired: X.fired, cards: X.cards, duel: X.duel || null, coin: null, sum: X.sum };
@@ -909,6 +928,7 @@ function resolveDon(s, ctx, p, guess) {
     attempt.outcome = 'win';
     attempt.delta = won;
     s.stats[p].donWon += 1;
+    addMoment(s, { kind: 'don', p, amount: d.stake - (d.attempts.length ? d.attempts[0].stakeBefore : stakeBefore), wins: d.wins });
     updateBiggest(s, p, r.won + (d.stake - stakeBefore));
   } else {
     // Програна ставка йде в банк наступного раунду як джекпот
@@ -1087,6 +1107,7 @@ export function viewFor(s, p, now) {
     endReason: s.endReason,
     // Статистика (зокрема блефи) розкривається лише в кінці партії.
     stats: s.phase === 'over' ? s.stats : null,
+    moments: s.phase === 'over' ? s.moments || [] : null,
     legal: legalActions(s, p),
   });
 }

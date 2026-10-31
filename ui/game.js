@@ -7,6 +7,7 @@ import { SUIT, SPECIAL, SCOUT, REACTIONS, logLine, explain } from './text.js';
 import { ms, reducedMotion } from './motion.js';
 import { JOKER_BY_ID, RARITIES, RARITY_NAME, jokerDesc } from '../game/jokers.js';
 import { playWin } from './cosmetics.js';
+import { PHRASES, isPhrase } from '../meta/rivals.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -97,7 +98,8 @@ export class GameScreen {
   }
 
   setEmojiSet(list) {
-    this.el.reactPanel.innerHTML = list.map((e) => `<button data-e="${e}" aria-label="${e}">${e}</button>`).join('');
+    this.el.reactPanel.innerHTML = list.map((e) => `<button data-e="${e}" aria-label="${e}">${e}</button>`).join('') +
+      `<div class="phrases">${PHRASES.map((t) => `<button data-e="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
   }
 
   /** Анімації перемоги гравців (косметика): [моя, суперника] */
@@ -170,9 +172,40 @@ export class GameScreen {
     this.onAction(a);
   }
 
-  showReaction(emoji, mine) {
+  /** Реакція: емодзі злітає; фраза — бульбашка біля того, хто її сказав (from — місце, якщо відоме). */
+  showReaction(emoji, mine, from = null) {
     sfx.pop();
-    floatEmoji(this.el.fx, emoji, !mine);
+    if (!isPhrase(emoji)) { floatEmoji(this.el.fx, emoji, !mine); return; }
+    const v = this.view;
+    let anchor = document.getElementById('me');
+    if (!mine) {
+      const i = v && from !== null && from !== undefined ? this.oppSeats(v).indexOf(from) : 0;
+      anchor = this.panels[Math.max(0, i)].root;
+    }
+    const layer = this.el.fx;
+    const a = anchor.getBoundingClientRect();
+    const l = layer.getBoundingClientRect();
+    const b = document.createElement('div');
+    b.className = `bubble ${mine ? 'up' : 'down'}`;
+    b.textContent = emoji;
+    b.style.left = `${Math.max(8, Math.min(l.width - 210, a.left - l.left + 12))}px`;
+    if (mine) b.style.bottom = `${l.bottom - a.top + 8}px`;
+    else b.style.top = `${a.bottom - l.top + 8}px`;
+    layer.append(b);
+    setTimeout(() => b.remove(), 2700);
+  }
+
+  /** Великий рахунок зустрічей перед партією. rows: [{ me, them, name, line }]. Тап — закрити. */
+  showIntro(rows, eyebrow = 'Рахунок зустрічей') {
+    document.querySelectorAll('.intro').forEach((x) => x.remove());
+    if (!rows.length) return;
+    const box = document.createElement('div');
+    box.className = 'intro';
+    box.innerHTML = `<div class="box"><div class="eyebrow">${esc(eyebrow)}</div>${rows.map((r) => `<div class="row"><div class="big">${r.me}<span class="sep">:</span>${r.them}</div><div class="who"><span>Ти</span><span>${esc(r.name)}</span></div>${r.line ? `<div class="line">${esc(r.line)}</div>` : ''}</div>`).join('')}<div class="line">торкнись, щоб грати</div></div>`;
+    const close = () => box.remove();
+    box.addEventListener('click', close);
+    document.getElementById('scr-game').append(box);
+    setTimeout(close, reducedMotion() ? 2500 : 3800);
   }
 
   /** Головний метод: отримати новий стан. opts: { conceal, coach, onCoachSkip } */

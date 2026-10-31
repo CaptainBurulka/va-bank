@@ -131,8 +131,10 @@ test('міграції: v0 і зламані дані лікуються', () =>
   assert.equal(broken.shards, 0);
   assert.equal(broken.jokers.boom, 99);
   assert.deepEqual(broken.set, ['boom']);
-  assert.deepEqual(migrate(null), defaultProfile());
-  assert.deepEqual(migrate('garbage'), defaultProfile());
+  const noPid = (x) => ({ ...x, pid: 'x' });
+  assert.deepEqual(noPid(migrate(null)), noPid(defaultProfile()));
+  assert.deepEqual(noPid(migrate('garbage')), noPid(defaultProfile()));
+  assert.match(migrate(null).pid, /^p[a-z2-9]{10}$/);
 });
 
 test('експорт/імпорт: код із контрольною сумою', () => {
