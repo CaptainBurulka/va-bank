@@ -10,6 +10,8 @@ const SUIT_BEATS = { water: 'fire', fire: 'stone', stone: 'water' };
 function estimate(view) {
   const card = view.me.played;
   const v2 = (view.rules || 1) >= 2;
+  // Джокер: бот знає, наскільки він сильний у розкритті (і що в деяких це залежить від ставок)
+  if (card.kind === 'joker') return { power: 5.5, win: jokerWin(card.joker, view) };
   const trump = view.trump;
   let power;
   if (card.kind === 'num') power = card.value + (v2 && trump === card.suit ? 1 : 0);
@@ -35,11 +37,26 @@ function estimate(view) {
   return { power, win: Math.max(0, Math.min(1, win)) };
 }
 
+/** Оцінка шансу виграти розкриття з джокером (для ставок бота). */
+const JOKER_EST = {
+  turncoat: 0.5, roulette: 0.5, thief: 0.2, fist: 0.55, insurance: 0.3, twin: 0.5, chameleon: 0.55, modest: 0.5,
+  tax: 0.5, dice: 0.55, counter: 0.5, brazen: 0.5, magnet: 0.55, temptation: 0.55, storm: 0.45, swap: 0.55,
+  highroller: 0.5, pocket: 0.5, sharper: 0.5, luck: 0.5, antitrump: 0.55, boom: 0.5, coin: 0.5, redeal: 0.45,
+  echo: 0.5, quake: 0.5, castling: 0.5, frenzy: 0.5, apocalypse: 0.5, rewind: 0.5, chaosking: 0.5, duel: 0.5, mirrorworld: 0.5,
+};
+function jokerWin(id, view) {
+  if (id === 'shadow') return view.opp.scouted ? 0.92 : 0.45;
+  if (id === 'trap') return view.bet?.toCall > 0 ? 0.95 : 0.35;
+  if (id === 'brave') return Math.min(0.9, 0.45 + 0.12 * (view.bet?.raises || 0));
+  return JOKER_EST[id] ?? 0.5;
+}
+
 function handPower(card, view) {
   const v2 = (view.rules || 1) >= 2;
   if (card.kind === 'num') return card.value + (v2 && view.trump === card.suit ? 1 : 0);
   if (card.kind === 'mirror') return v2 ? 11 : 5;
   if (card.kind === 'knife') return 2;
+  if (card.kind === 'joker') return 5.5;
   return 5;
 }
 
@@ -49,17 +66,21 @@ function handPower(card, view) {
  * @param {() => number} rng
  * @param {string} style — 'cautious' | 'aggressive' | 'bluffer'
  */
-export function botDecide(view, rng = Math.random, style = 'aggressive') {
-  const P = CONFIG.botStyles[style] || CONFIG.botStyles.aggressive;
+export function botDecide(view, rng = Math.random, style = 'aggressive', over = null) {
+  const P = over ? { ...(CONFIG.botStyles[style] || CONFIG.botStyles.aggressive), ...over } : (CONFIG.botStyles[style] || CONFIG.botStyles.aggressive);
   const legal = view.legal;
   if (!legal.length) return null;
   const has = (t) => legal.find((a) => a.type === t);
 
   switch (view.phase) {
     case 'play': {
-      const hand = view.me.hand.slice().sort((a, b) => handPower(a, view) - handPower(b, view));
+      // Джокер: розігрує з імовірністю jokerPlay (інакше тримає на потім)
+      const jk = view.me.hand.find((c) => c.kind === 'joker');
+      if (jk && (rng() < (P.jokerPlay ?? 0.5) || view.round >= view.maxRounds)) return { type: 'play', cardId: jk.id };
+      const hand = view.me.hand.filter((c) => c.kind !== 'joker').sort((a, b) => handPower(a, view) - handPower(b, view));
+      if (!hand.length) return { type: 'play', cardId: view.me.hand[0].id };
       // Обмін найслабшої карти
-      if (has('swap')) {
+      if (has('swap') && hand.length) {
         const worst = hand[0];
         if (handPower(worst, view) <= P.swapMax && rng() < P.swapProb) return { type: 'swap', cardId: worst.id };
       }
