@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Ва-банк</title>
+  <meta name="description" content="Карткова дуель для двох у нічному підпільному казино. Лише віртуальні фішки.">
+  <meta name="theme-color" content="#07060d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ва-банк">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/peerjs.min.js" defer></script>
+  <script type="module" src="ui/app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Головне меню -->
+    <section class="screen" id="scr-menu">
+      <div class="brand">
+        <div class="logo">ВА-БАНК</div>
+        <div class="tagline">підпільна карткова дуель</div>
+      </div>
+      <div class="menu-buttons">
+        <button class="btn neon-pink big" data-go="create">Створити кімнату</button>
+        <button class="btn neon-cyan big" data-go="join">Приєднатися за кодом</button>
+        <button class="btn ghost" data-go="bot">Гра проти бота</button>
+        <button class="btn ghost" data-go="hotseat">Передай телефон</button>
+        <button class="btn ghost hidden" id="btn-resume">Продовжити партію</button>
+        <button class="btn link" data-go="rules">Правила</button>
+      </div>
+      <div class="foot-note">Лише віртуальні фішки. Без реальних грошей, покупок і реклами.</div>
+    </section>
+
+    <!-- Створення кімнати -->
+    <section class="screen hidden" id="scr-create">
+      <h2>Твоя кімната</h2>
+      <div class="room-code" id="room-code">····</div>
+      <p class="muted" id="create-status">Підключаюся до сервера…</p>
+      <button class="btn ghost" id="btn-share">Поділитися кодом</button>
+      <button class="btn link" data-go="menu">Скасувати</button>
+    </section>
+
+    <!-- Приєднання -->
+    <section class="screen hidden" id="scr-join">
+      <h2>Введи код кімнати</h2>
+      <input id="join-code" class="code-input" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="ABCD">
+      <p class="muted" id="join-status">&nbsp;</p>
+      <button class="btn neon-cyan big" id="btn-join">Підключитися</button>
+      <button class="btn link" data-go="menu">Назад</button>
+    </section>
+
+    <!-- Правила -->
+    <section class="screen hidden scrollable" id="scr-rules">
+      <div class="rules" id="rules-body"></div>
+      <button class="btn neon-cyan" data-go="menu">Зрозуміло</button>
+    </section>
+
+    <!-- Гра -->
+    <section class="screen hidden" id="scr-game">
+      <header class="hud hud-opp">
+        <div class="who"><span class="avatar" id="opp-avatar">🎭</span><span id="opp-name">Суперник</span></div>
+        <div class="badges" id="opp-badges"></div>
+        <div class="chips"><span class="chip-ico"></span><b id="opp-chips">100</b></div>
+      </header>
+      <div class="opp-hand" id="opp-hand"></div>
+
+      <div class="table" id="table">
+        <div class="round-tag" id="round-tag">Раунд 1/12</div>
+        <button class="menu-btn" id="btn-menu" aria-label="Меню">☰</button>
+        <div class="slot" id="slot-opp"></div>
+        <div class="pot-wrap">
+          <div class="pot" id="pot"><small>БАНК</small><b id="pot-val">0</b></div>
+          <div class="carry hidden" id="carry"></div>
+          <div class="don-card" id="don-card"></div>
+        </div>
+        <div class="slot" id="slot-me"></div>
+      </div>
+
+      <div class="turn" id="turn">
+        <div class="turn-text" id="turn-text">&nbsp;</div>
+        <div class="timer"><div class="timer-bar" id="timer-bar"></div><span id="timer-num"></span></div>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="hand" id="hand"></div>
+      <div class="actions" id="actions"></div>
+
+      <footer class="hud hud-me">
+        <div class="who"><span class="avatar">😼</span><span id="me-name">Ти</span></div>
+        <div class="badges" id="me-badges"></div>
+        <button class="react-btn" id="btn-react" aria-label="Реакції">😎</button>
+        <div class="chips"><span class="chip-ico"></span><b id="me-chips">100</b></div>
+      </footer>
+
+      <div class="react-panel hidden" id="react-panel"></div>
+      <div class="banner hidden" id="banner"></div>
+      <div class="offline hidden" id="offline">Суперник не на зв'язку…</div>
+      <div class="fx-layer" id="fx"></div>
+    </section>
+
+    <!-- Кінець партії -->
+    <section class="screen hidden" id="scr-end">
+      <div class="end-title" id="end-title">Перемога!</div>
+      <div class="end-sub" id="end-sub"></div>
+      <table class="stats" id="end-stats"></table>
+      <p class="muted" id="rematch-status">&nbsp;</p>
+      <button class="btn neon-pink big" id="btn-rematch">Реванш</button>
+      <button class="btn link" id="btn-end-menu">У меню</button>
+    </section>
+
+    <!-- Шторка «передай телефон» -->
+    <div class="curtain hidden" id="curtain">
+      <div class="curtain-ico">📱</div>
+      <div class="curtain-text" id="curtain-text">Передай телефон</div>
+      <button class="btn neon-pink big" id="curtain-btn">Показати мої карти</button>
+    </div>
+
+    <!-- Діалог -->
+    <div class="modal hidden" id="modal">
+      <div class="modal-box">
+        <div id="modal-text"></div>
+        <div class="modal-btns" id="modal-btns"></div>
+      </div>
+    </div>
+    <div class="toast hidden" id="toast"></div>
+    <div class="rotate-hint">Поверни телефон вертикально</div>
+  </div>
+</body>
+</html>
