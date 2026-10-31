@@ -15,6 +15,8 @@ const MOTIF = {
   jazz: (t, v, n) => { [262, 330, 392, 494, 587].forEach((fq, i) => { const d = i * .07; t({ freq: fq, dur: 1.2, vol: .08 * v, delay: d, type: 'triangle', attack: .004, lp: 2200 }); t({ freq: fq * 2, dur: .4, vol: .02 * v, delay: d }); }); n?.({ dur: .35, vol: .08, freq: 6000, q: .4, delay: .05 }); },
   // сонар: «пінг» із відлунням у глибині та низький гул
   sonar: (t, v) => { [0, .42, .84].forEach((d, i) => t({ freq: 1320, dur: .9, vol: (.11 / (i + 1)) * v, delay: d, attack: .002 })); t({ freq: 98, to: 82, dur: 1.6, vol: .07 * v, lp: 300 }); },
+  // 8-біт: «монетка» квадратною хвилею і коротке арпеджіо
+  chip: (t, v) => { t({ freq: 988, dur: .08, vol: .06 * v, type: 'square' }); t({ freq: 1319, dur: .3, vol: .06 * v, delay: .08, type: 'square' }); [523, 659, 784, 1047].forEach((fq, i) => t({ freq: fq, dur: .09, vol: .045 * v, delay: .4 + i * .07, type: 'square' })); },
   synth: (t, v) => [220, 277, 330, 440, 554, 660].forEach((fq, i) => t({ freq: fq, dur: .16, vol: .06 * v, delay: i * .06, type: 'sawtooth', lp: 1900 })),
 };
 

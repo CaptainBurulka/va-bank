@@ -8,6 +8,7 @@ import './sets/samurai.js';
 import './sets/cossack.js';
 import './sets/deco.js';
 import './sets/abyss.js';
+import './sets/pixel.js';
 
 export { SETS };
 export const ITEM_KINDS = {

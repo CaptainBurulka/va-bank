@@ -467,3 +467,23 @@
 @keyframes abRing { from { transform: scale(.2); opacity: 1; } to { transform: scale(12); opacity: 0; } }
 .skwin .abw { position: absolute; bottom: -20px; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid rgba(200, 245, 255, .9); background: radial-gradient(circle at 30% 30%, #fff 0 15%, transparent 30%); animation: abWinRise 2s ease-in both; transform: scale(var(--s)); }
 @keyframes abWinRise { to { transform: translate(var(--dx), -110vh) scale(var(--s)); } }
+
+/* ═════════ Набір «Піксель» ═════════ */
+.sk-pixel .sk-tilt { background: #1d2b53; }
+.sk-pixel svg { image-rendering: pixelated; }
+/* легендарна: монетка крутиться покадрово, зірки блимають, цифра переливається, аркадні зорі летять */
+.sk-pixel .pxspin { animation: pxSpin 1.2s steps(4) infinite; }
+@keyframes pxSpin { 0% { transform: scaleX(1); } 25% { transform: scaleX(.5); } 50% { transform: scaleX(.12); } 75% { transform: scaleX(.5); } 100% { transform: scaleX(1); } }
+.sk-pixel .pxtw { animation: pxTw 1.6s steps(2) infinite; }
+@keyframes pxTw { 50% { opacity: 0; } }
+.sk-pixel .pxstar { animation: pxTw .8s steps(2) infinite; }
+.sk-pixel .pxblink { animation: pxTw 1s steps(1) infinite; }
+.sk-pixel .pxrain { animation: pxRain 2.4s steps(1) infinite; }
+@keyframes pxRain { 0% { fill: #ffec27; } 20% { fill: #ffa300; } 40% { fill: #ff77a8; } 60% { fill: #29adff; } 80% { fill: #00e436; } 100% { fill: #ffec27; } }
+.sk-pixel .pxf { position: absolute; top: -4%; width: calc(var(--w) * .022); height: calc(var(--w) * .022); background: var(--c); box-shadow: 0 calc(var(--w) * -.03) 0 0 color-mix(in srgb, var(--c) 50%, transparent); animation: pxFall var(--d) steps(14) var(--delay) infinite; }
+@keyframes pxFall { to { transform: translateY(calc(var(--w) * 1.5)); } }
+.skwin .pxwin { position: absolute; left: 50%; top: 40%; width: min(86%, 520px); transform: translate(-50%, -50%); animation: pxWin 2.8s steps(8) both; }
+.skwin .pxwin svg { width: 100%; height: auto; display: block; image-rendering: pixelated; }
+@keyframes pxWin { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } 30%, 85% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+.skwin.r-legendary .pxwin { animation-name: pxWin, pxWinBlink; animation-duration: 2.8s, .4s; animation-timing-function: steps(8), steps(1); animation-iteration-count: 1, 6; }
+@keyframes pxWinBlink { 50% { filter: brightness(1.6); } }
