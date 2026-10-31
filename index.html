@@ -32,9 +32,12 @@
         <button class="btn ghost" data-go="bot">Гра проти бота</button>
         <button class="btn ghost" data-go="hotseat">Передай телефон</button>
         <button class="btn ghost hidden" id="btn-resume">Продовжити партію</button>
-        <button class="btn link" data-go="rules">Правила</button>
+        <div class="menu-row">
+          <button class="btn link" data-go="rules">Правила</button>
+          <button class="btn link" data-go="settings">Налаштування</button>
+        </div>
       </div>
-      <div class="foot-note">Лише віртуальні фішки. Без реальних грошей, покупок і реклами.</div>
+      <div class="foot-note">Лише віртуальні фішки. Без реальних грошей, покупок і реклами.<br><span id="app-version"></span></div>
     </section>
 
     <!-- Створення кімнати -->
@@ -42,6 +45,8 @@
       <h2>Твоя кімната</h2>
       <div class="room-code" id="room-code">····</div>
       <p class="muted" id="create-status">Підключаюся до сервера…</p>
+      <div class="field-label">Довжина партії</div>
+      <div class="seg" id="create-rounds"></div>
       <button class="btn ghost" id="btn-share">Поділитися кодом</button>
       <button class="btn link" data-go="menu">Скасувати</button>
     </section>
@@ -72,6 +77,8 @@
 
       <div class="table" id="table">
         <div class="round-tag" id="round-tag">Раунд 1/12</div>
+        <div class="trump hidden" id="trump"></div>
+        <div class="deck-info" id="deck-info"></div>
         <button class="menu-btn" id="btn-menu" aria-label="Меню">☰</button>
         <div class="slot" id="slot-opp"></div>
         <div class="pot-wrap">
@@ -87,6 +94,7 @@
         <div class="timer"><div class="timer-bar" id="timer-bar"></div><span id="timer-num"></span></div>
       </div>
       <div class="log" id="log"></div>
+      <div class="tip hidden" id="tip"></div>
       <div class="hand" id="hand"></div>
       <div class="actions" id="actions"></div>
 
@@ -128,6 +136,10 @@
       </div>
     </div>
     <div class="toast hidden" id="toast"></div>
+    <div class="update-bar hidden" id="update-bar">
+      <span>Доступна нова версія</span>
+      <button class="btn neon-cyan" id="btn-update">Оновити</button>
+    </div>
     <div class="rotate-hint">Поверни телефон вертикально</div>
   </div>
 </body>

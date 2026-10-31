@@ -46,3 +46,29 @@ test('GameHost: гість не може діяти за хоста, систе�
   }
   h.stop();
 });
+
+import { compareVersions, versionAdvice } from '../net/protocol.js';
+import { APP_VERSION } from '../config.js';
+import { readFileSync } from 'node:fs';
+
+test('версії: порівняння і зрозуміла порада, кому оновитися', () => {
+  assert.equal(compareVersions('2.0.0', '1.0.0'), 1);
+  assert.equal(compareVersions('2.0.0', '2.0.1'), -1);
+  assert.equal(compareVersions('2.1', '2.1.0'), 0);
+  assert.match(versionAdvice('2.0.0', '1.0.0'), /Суперникові треба оновитися/);
+  assert.match(versionAdvice('2.0.0', '2.1.0'), /Онови гру на своєму телефоні/);
+  assert.match(versionAdvice('2.0.0', null), /Суперникові треба оновитися/, 'стара версія без номера');
+});
+
+test('протокол: нові дії обмін і подвоєння, помилка версії читається з будь-якою версією', () => {
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'swap', cardId: 'w3' } }).ok, true);
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'donStart' } }).ok, true);
+  assert.equal(parseGuestMessage({ v: 1, type: 'hello', app: '1.0.0' }).app, '1.0.0');
+  assert.equal(parseHostMessage({ v: 1, type: 'error', code: 'version' }).ok, true);
+});
+
+test('кеш service worker змінюється разом із версією застосунку', () => {
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  assert.ok(sw.includes(`'vabank-${APP_VERSION}'`), `sw.js має містити CACHE = 'vabank-${APP_VERSION}'`);
+  for (const f of ['ui/settings.js', 'game/engine.js', 'net/protocol.js']) assert.ok(sw.includes(`'${f}'`), f);
+});

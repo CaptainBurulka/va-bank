@@ -1,0 +1,147 @@
+{
+  "усе нове": {
+    "games": 2000,
+    "rounds": 12,
+    "medianRounds": 11,
+    "medianActions": 104,
+    "endedBeforeRound4Pct": 1.1,
+    "bankruptPct": 60.6,
+    "drawPct": 0.3,
+    "hostWinPct": 51.1,
+    "guestWinPct": 48.9,
+    "firstToActWinPct": 50.8,
+    "perRound": {
+      "scout": 30.4,
+      "raise": 95.9,
+      "allin": 37.4,
+      "fold": 44,
+      "tie": 0.5,
+      "don": 23.1,
+      "swap": 30.5,
+      "show": 12.5
+    },
+    "comebackPct": 5,
+    "dippedGames": 1633,
+    "styleWinPct": {
+      "cautious": 55.7,
+      "aggressive": 53.2,
+      "bluffer": 40.7
+    }
+  },
+  "без козиря": {
+    "games": 2000,
+    "rounds": 12,
+    "medianRounds": 12,
+    "medianActions": 111,
+    "endedBeforeRound4Pct": 0.7,
+    "bankruptPct": 51.7,
+    "drawPct": 0.3,
+    "hostWinPct": 49.4,
+    "guestWinPct": 50.6,
+    "firstToActWinPct": 51.3,
+    "perRound": {
+      "scout": 30.6,
+      "raise": 92.6,
+      "allin": 30.9,
+      "fold": 44.7,
+      "tie": 0.6,
+      "don": 23.5,
+      "swap": 32.6,
+      "show": 12.1
+    },
+    "comebackPct": 5.2,
+    "dippedGames": 1474,
+    "styleWinPct": {
+      "cautious": 55.6,
+      "aggressive": 55.4,
+      "bluffer": 38.6
+    }
+  },
+  "без обміну": {
+    "games": 2000,
+    "rounds": 12,
+    "medianRounds": 12,
+    "medianActions": 105,
+    "endedBeforeRound4Pct": 0.4,
+    "bankruptPct": 46.7,
+    "drawPct": 0.4,
+    "hostWinPct": 52,
+    "guestWinPct": 48,
+    "firstToActWinPct": 49.1,
+    "perRound": {
+      "scout": 30.8,
+      "raise": 88.3,
+      "allin": 33.1,
+      "fold": 49.3,
+      "tie": 0.4,
+      "don": 24.7,
+      "swap": 0,
+      "show": 14.1
+    },
+    "comebackPct": 4.6,
+    "dippedGames": 1399,
+    "styleWinPct": {
+      "cautious": 50.6,
+      "aggressive": 53.4,
+      "bluffer": 45.4
+    }
+  },
+  "без ліміту ва-банку": {
+    "games": 2000,
+    "rounds": 12,
+    "medianRounds": 8,
+    "medianActions": 80,
+    "endedBeforeRound4Pct": 22.7,
+    "bankruptPct": 69.3,
+    "drawPct": 0.3,
+    "hostWinPct": 50.6,
+    "guestWinPct": 49.4,
+    "firstToActWinPct": 50.4,
+    "perRound": {
+      "scout": 30.6,
+      "raise": 93.9,
+      "allin": 37.1,
+      "fold": 45.1,
+      "tie": 0.5,
+      "don": 21.9,
+      "swap": 30.5,
+      "show": 12.8
+    },
+    "comebackPct": 3.9,
+    "dippedGames": 1713,
+    "styleWinPct": {
+      "cautious": 55.1,
+      "aggressive": 54.3,
+      "bluffer": 40.2
+    }
+  },
+  "анте без росту": {
+    "games": 2000,
+    "rounds": 12,
+    "medianRounds": 12,
+    "medianActions": 111,
+    "endedBeforeRound4Pct": 1.1,
+    "bankruptPct": 50.8,
+    "drawPct": 0.3,
+    "hostWinPct": 51.4,
+    "guestWinPct": 48.6,
+    "firstToActWinPct": 51.5,
+    "perRound": {
+      "scout": 31.2,
+      "raise": 97.7,
+      "allin": 38,
+      "fold": 48.4,
+      "tie": 0.5,
+      "don": 23.7,
+      "swap": 30.7,
+      "show": 13.5
+    },
+    "comebackPct": 1.8,
+    "dippedGames": 1271,
+    "styleWinPct": {
+      "cautious": 57.4,
+      "aggressive": 52.4,
+      "bluffer": 39.9
+    }
+  }
+}

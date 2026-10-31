@@ -9,11 +9,14 @@ const { chromium, devices } = require('playwright');
   page.on('pageerror', e => errors.push('PAGEERR ' + e.message));
   await page.route('**/peerjs*', r => r.abort());
   await page.goto('http://localhost:8080/');
+  await page.waitForTimeout(800);
   await page.click(`[data-go="${mode}"]`);
+  await page.waitForSelector('#modal:not(.hidden)');
+  await page.click('#modal-btns .neon-pink');
   await page.waitForTimeout(600);
-  const prio = ['Розвідка', 'Чек', 'Колл', 'Більше', 'Показати карту', 'Далі', 'Забрати', 'Без розвідки'];
+  const prio = ['Висока чи низька', 'Чек', 'Колл', 'Ризикнути', 'Більше', 'Менше', 'Показати карту', 'Далі', 'Забрати', 'Не ризикувати', 'Без розвідки'];
   let shot = 0, rounds = new Set();
-  for (let i = 0; i < 600; i++) {
+  for (let i = 0; i < 2500; i++) {
     if (await page.isVisible('#scr-end')) break;
     if (await page.isVisible('#curtain')) {
       if (shot < 2 && mode === 'hotseat') await page.screenshot({ path: require('path').join(require('os').tmpdir(), `${mode}-curtain.png`) });
@@ -24,7 +27,7 @@ const { chromium, devices } = require('playwright');
     for (const p of prio) {
       for (const b of btns) {
         const t = await b.textContent();
-        if (t.includes(p) && (p !== 'Розвідка' || Math.random() < 0.3)) { await b.click().catch(()=>{}); clicked = true; break; }
+        if (t.includes(p) && (!['Висока чи низька', 'Ризикнути', 'Більше', 'Менше'].includes(p) || Math.random() < 0.5)) { await b.click().catch(()=>{}); clicked = true; break; }
       }
       if (clicked) break;
     }

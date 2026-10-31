@@ -1,9 +1,33 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
+
+/** Порівняння версій «2.0.1» → -1 / 0 / 1. */
+export function compareVersions(a, b) {
+  const pa = String(a || '0').split('.').map(Number);
+  const pb = String(b || '0').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
+/**
+ * Зрозуміле повідомлення про різні версії з точки зору цього гравця.
+ * mine/theirs — версії застосунку (theirs може бути невідома для дуже старих версій).
+ */
+export function versionAdvice(mine, theirs) {
+  const c = compareVersions(mine, theirs || '1.0.0');
+  if (c > 0) return `У суперника стара версія гри${theirs ? ` (${theirs})` : ''}, у тебе ${mine}. Суперникові треба оновитися: закрити й знову відкрити гру та натиснути «Оновити».`;
+  if (c < 0) return `У тебе стара версія гри (${mine}), у суперника ${theirs}. Онови гру на своєму телефоні: закрий і знову відкрий її, потім натисни «Оновити».`;
+  return 'Версії гри збігаються, але протокол різний — оновіть гру на обох телефонах.';
+}
 
 /** Без схожих символів: немає O (≈0) та I (≈1, L). */
 export const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+// Префікс не залежить від версії протоколу: так стара й нова версії «бачать» одна одну
+// і можуть чесно сказати, кому оновитися.
 export const PEER_PREFIX = 'vabank-ua-v1-';
 
 export const REACTIONS = ['😂', '😱', '😎', '🔥', '🤡', '👏'];
@@ -28,7 +52,7 @@ export function randomToken(rng) {
 
 export const msg = (type, body = {}) => ({ v: PROTOCOL_VERSION, type, ...body });
 
-const ACTION_TYPES = new Set(['play', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
+const ACTION_TYPES = new Set(['play', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
 
 /**
  * Перевірка повідомлення від гостя на боці хоста.
@@ -36,11 +60,12 @@ const ACTION_TYPES = new Set(['play', 'scout', 'skipScout', 'check', 'raise', 'c
  */
 export function parseGuestMessage(m) {
   if (!m || typeof m !== 'object') return { ok: false, error: 'not-object' };
-  if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version' };
+  const app = typeof m.app === 'string' && m.app.length < 20 ? m.app : null;
+  if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version', app, v: m.v };
   switch (m.type) {
     case 'hello':
       if (m.token !== null && m.token !== undefined && (typeof m.token !== 'string' || m.token.length > 64)) return { ok: false, error: 'bad-token' };
-      return { ok: true, m: { type: 'hello', token: m.token || null } };
+      return { ok: true, m: { type: 'hello', token: m.token || null, app } };
     case 'action': {
       const a = m.action;
       if (!a || typeof a !== 'object' || !ACTION_TYPES.has(a.type)) return { ok: false, error: 'bad-action' };
@@ -64,7 +89,9 @@ export function parseGuestMessage(m) {
 /** Перевірка повідомлення від хоста на боці гостя. */
 export function parseHostMessage(m) {
   if (!m || typeof m !== 'object') return { ok: false, error: 'not-object' };
-  if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version' };
+  // Повідомлення про різні версії приймаємо з будь-якою версією протоколу
+  if (m.type === 'error' && m.code === 'version') return { ok: true, m: { type: 'error', code: 'version', app: typeof m.app === 'string' ? m.app : null } };
+  if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version', app: typeof m.app === 'string' ? m.app : null };
   if (!['welcome', 'state', 'react', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
   if (m.type === 'react' && !REACTIONS.includes(m.emoji)) return { ok: false, error: 'bad-emoji' };
   return { ok: true, m };

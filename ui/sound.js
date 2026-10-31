@@ -2,8 +2,10 @@
 let ac = null;
 let master = null;
 let muted = false;
+let volume = 0.6;
 
 try { muted = localStorage.getItem('vabank-muted') === '1'; } catch {}
+try { const v = parseFloat(localStorage.getItem('vabank-volume')); if (v >= 0 && v <= 1) volume = v; } catch {}
 
 export function unlockAudio() {
   if (!ac) {
@@ -11,7 +13,7 @@ export function unlockAudio() {
     if (!AC) return;
     ac = new AC();
     master = ac.createGain();
-    master.gain.value = 0.5;
+    master.gain.value = volume;
     master.connect(ac.destination);
   }
   if (ac.state === 'suspended') ac.resume();
@@ -28,6 +30,13 @@ export function setMuted(v) {
   try { localStorage.setItem('vabank-muted', v ? '1' : '0'); } catch {}
 }
 export const isMuted = () => muted;
+
+export function setVolume(v) {
+  volume = Math.max(0, Math.min(1, v));
+  if (master) master.gain.value = volume;
+  try { localStorage.setItem('vabank-volume', String(volume)); } catch {}
+}
+export const getVolume = () => volume;
 
 function tone({ freq = 440, to = null, type = 'sine', dur = 0.15, vol = 0.3, delay = 0, attack = 0.005 }) {
   if (!ac || muted) return;

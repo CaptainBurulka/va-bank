@@ -1,0 +1,29 @@
+{
+  "games": 3000,
+  "rounds": 16,
+  "medianRounds": 11,
+  "medianActions": 105,
+  "endedBeforeRound4Pct": 1.5,
+  "bankruptPct": 78.8,
+  "drawPct": 0.1,
+  "hostWinPct": 49.6,
+  "guestWinPct": 50.4,
+  "firstToActWinPct": 51.8,
+  "perRound": {
+    "scout": 30.5,
+    "raise": 94.4,
+    "allin": 36.6,
+    "fold": 43.2,
+    "tie": 0.6,
+    "don": 21.8,
+    "swap": 30.3,
+    "show": 11.6
+  },
+  "comebackPct": 8.4,
+  "dippedGames": 2949,
+  "styleWinPct": {
+    "cautious": 55.2,
+    "aggressive": 56.3,
+    "bluffer": 38.3
+  }
+}
