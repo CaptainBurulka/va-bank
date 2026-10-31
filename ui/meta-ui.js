@@ -297,7 +297,7 @@ export function awardAfterGame(view, mode) {
   const me = view.you;
   const summary = {
     won: view.winner === me, draw: view.winner === 'draw', mode, endReason: view.endReason,
-    me: view.stats[me],
+    me: view.stats[me], players: view.n || 2, place: view.places?.[me] ?? null,
   };
   const r = awardGame(loadProfile(), summary);
   update(r.profile);

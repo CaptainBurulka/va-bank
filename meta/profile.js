@@ -229,7 +229,8 @@ export function awardGame(p, summary, now = new Date()) {
   const gained = [];
   const add = (label, n) => { const v = Math.round(n); if (v > 0) { gained.push({ label, amount: v }); q.points += v; } };
   add('За участь', META.points.play * mult);
-  if (summary.won) add('Бонус за перемогу', META.points.win * mult);
+  if (summary.players === 3 && summary.place) add(`Бонус за ${summary.place}-ге місце`, (META.points.place3[summary.place - 1] || 0) * mult);
+  else if (summary.won) add('Бонус за перемогу', META.points.win * mult);
   const today = dayKey(now);
   if (q.daily.day !== today) q.daily = { day: today, won: false };
   if (summary.won && !q.daily.won && mult > 0) { q.daily.won = true; add('Перша перемога дня', META.points.firstWinOfDay); }

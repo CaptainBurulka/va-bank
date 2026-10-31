@@ -1,6 +1,6 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** Порівняння версій «2.0.1» → -1 / 0 / 1. */
 export function compareVersions(a, b) {
@@ -54,6 +54,13 @@ export function randomToken(rng) {
 
 export const msg = (type, body = {}) => ({ v: PROTOCOL_VERSION, type, ...body });
 
+/** Нікнейм: 1–16 видимих символів, без керівних; інакше null. */
+export function cleanName(x) {
+  if (typeof x !== 'string') return null;
+  const t = x.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+  return t || null;
+}
+
 const ACTION_TYPES = new Set(['play', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
 
 /**
@@ -74,6 +81,7 @@ export function parseGuestMessage(m) {
           // набір джокерів і косметика гостя (довіряємо, але обрізаємо форму; повна перевірка — на хості)
           set: Array.isArray(m.set) ? m.set.filter((x) => typeof x === 'string' && x.length < 24).slice(0, 3) : [],
           look: m.look && typeof m.look === 'object' && !Array.isArray(m.look) ? m.look : null,
+          name: cleanName(m.name),
         },
       };
     case 'action': {
@@ -83,6 +91,7 @@ export function parseGuestMessage(m) {
       if (typeof a.cardId === 'string' && a.cardId.length <= 10) clean.cardId = a.cardId;
       if (a.amount === 'allin' || (Number.isInteger(a.amount) && a.amount > 0 && a.amount < 1e6)) clean.amount = a.amount;
       if (a.guess === 'higher' || a.guess === 'lower') clean.guess = a.guess;
+      if (Number.isInteger(a.target) && a.target >= 0 && a.target < 3) clean.target = a.target;
       return { ok: true, m: { type: 'action', action: clean } };
     }
     case 'react':

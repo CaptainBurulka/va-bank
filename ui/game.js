@@ -5,7 +5,7 @@ import { animateNumber, setNumber, flyChips, floatEmoji, floatText } from './fx.
 import { sfx } from './sound.js';
 import { SUIT, SPECIAL, SCOUT, REACTIONS, logLine, explain } from './text.js';
 import { ms, reducedMotion } from './motion.js';
-import { JOKER_BY_ID, RARITIES, RARITY_NAME } from '../game/jokers.js';
+import { JOKER_BY_ID, RARITIES, RARITY_NAME, jokerDesc } from '../game/jokers.js';
 import { playWin } from './cosmetics.js';
 
 const $ = (id) => document.getElementById(id);
@@ -43,6 +43,20 @@ export class GameScreen {
     for (const id of ids) this.el[id.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = $(id);
     this.el.hudMe = document.querySelector('#me .stack');
     this.el.hudOpp = document.querySelector('#opp .stack');
+    // Панелі суперників: ліворуч — наступний за годинниковою, праворуч — інший (лише втрьох)
+    this.panels = ['opp', 'opp2'].map((k) => ({
+      root: $(k), ava: $(`${k}-ava`), initial: $(`${k}-initial`), name: $(`${k}-name`), status: $(`${k}-status`),
+      hand: $(`${k}-hand`), chips: $(`${k}-chips`), hud: document.querySelector(`#${k} .stack`),
+      slot: $(`slot-${k}`), info: $(`info-${k}`), seatEl: $(`slot-${k}`).parentElement,
+    }));
+    this.seatNames = null;
+    // Утрьох розвідка: тап по панелі суперника
+    this.panels.forEach((pn, i) => pn.root.addEventListener('click', () => {
+      const v = this.view;
+      if (!v || v.phase !== 'scout') return;
+      const q = this.oppSeats(v)[i];
+      if (v.legal.some((a) => a.type === 'scout' && a.target === q)) this.act({ type: 'scout', target: q });
+    }));
 
     // Реакції
     this.setEmojiSet(REACTIONS.slice(0, 6));
@@ -87,28 +101,58 @@ export class GameScreen {
   }
 
   /** Анімації перемоги гравців (косметика): [моя, суперника] */
-  setWinFx(mine, opp) { this.winFx = [mine, opp]; }
+  setWinFx(mine, opp) { this.winFx = [mine, opp]; this.winFxBySeat = null; }
+  /** Утрьох: анімації перемоги за місцями. */
+  setWinFxSeats(list) { this.winFxBySeat = list; if (!this.winFx) this.winFx = [list[0], list[1]]; }
 
   reset() {
     this.view = null;
     this.selected = null;
     for (const k of ['slotOpp', 'slotMe', 'hand', 'donBase', 'donNext', 'fx']) this.el[k].innerHTML = '';
+    this.panels[1].slot.innerHTML = '';
     this.el.reactPanel.classList.add('hidden');
     this.el.don.classList.add('hidden');
     this.el.coach.classList.add('hidden');
     this.hideVerdict();
     document.querySelectorAll('.jk-reveal').forEach((x) => x.remove());
     for (const t of Object.values(this.st.timers || {})) clearTimeout(t);
-    this.st = { opp: null, me: null, don: 0, donBase: null, timers: {} };
+    this.st = { opp: null, me: null, slots: {}, don: 0, donBase: null, timers: {} };
   }
 
   setNames(me, opp) {
     this.names = [me, opp];
+    this.seatNames = null;
     this.el.meName.textContent = me;
     this.el.oppName.textContent = opp;
     this.el.oppInitial.textContent = (opp.replace(/^Бот · /, '')[0] || 'С').toUpperCase();
     document.querySelector('#me .ava span').textContent = (me[0] || 'Т').toUpperCase();
   }
+
+  /** Імена за місцями (гра втрьох, онлайн): names[seat]; своє місце підписується names[you] або «Ти». */
+  setSeatNames(names, meLabel = null) {
+    this.seatNames = names.slice();
+    if (meLabel) { this.names[0] = meLabel; this.el.meName.textContent = meLabel; document.querySelector('#me .ava span').textContent = (meLabel[0] || 'Т').toUpperCase(); }
+  }
+
+  /** Місця суперників: удвох — [інший], утрьох — [наступний за годинниковою, ще наступний]. */
+  oppSeats(v) {
+    const n = v.n || 2;
+    return n === 2 ? [1 - v.you] : [(v.you + 1) % n, (v.you + 2) % n];
+  }
+
+  nameOf(q, v = this.view) {
+    if (v && q === v.you) return this.names[0];
+    if (this.seatNames?.[q]) return this.seatNames[q];
+    return (v?.n || 2) === 2 ? this.names[1] : `Гравець ${q + 1}`;
+  }
+
+  /** Публічна інформація місця q. */
+  seat(v, q) { return v.players?.[q] || (q === v.you ? v.me : v.opp); }
+
+  /** Карта місця q, яку бачить глядач. */
+  playedOf(v, q) { return q === v.you ? v.me.played : this.seat(v, q).played; }
+
+  isThree(v) { return (v.n || 2) > 2; }
 
   /** Стан «не на зв'язку» показується в банері фази, нічого не перекриваючи. */
   setOffline(show, text = "Суперник не на зв'язку") {
@@ -145,7 +189,17 @@ export class GameScreen {
 
     const t = view.timer;
     this.timer = t ? { deadline: performance.now() + t.remaining, duration: t.duration, paused: t.paused, remaining: t.remaining } : null;
-    this.logNames = [0, 1].map((p) => (p === view.you ? this.names[0] : this.names[1]));
+    this.logNames = Array.from({ length: view.n || 2 }, (_, p) => this.nameOf(p, view));
+    const three = this.isThree(view);
+    document.getElementById('scr-game').classList.toggle('three', three);
+    this.panels[1].root.classList.toggle('hidden', !three);
+    this.panels[1].seatEl.classList.toggle('hidden', !three);
+    this.oppSeats(view).forEach((q, i) => {
+      const pn = this.panels[i];
+      const nm = this.nameOf(q, view);
+      if (pn.name.textContent !== nm) pn.name.textContent = nm;
+      pn.initial.textContent = (nm.replace(/^Бот · /, '')[0] || 'С').toUpperCase();
+    });
 
     this.renderNumbers(prev, view);
     this.renderPhase(view, prev);
@@ -165,41 +219,59 @@ export class GameScreen {
   }
 
   // ───────── банер фази ─────────
+  /** Імена тих суперників (не вибулих і не на пасі), для кого pred істинне. */
+  waitingNames(v, pred) {
+    return this.oppSeats(v).filter((q) => { const x = this.seat(v, q); return !x.out && !x.folded && pred(x); }).map((q) => this.nameOf(q)).join(', ');
+  }
+
   renderPhase(v, prev) {
+    const three = this.isThree(v);
     let kind = 'wait';
     let title = '';
     let sub = '';
     const r = v.result;
     switch (v.phase) {
       case 'play':
-        if (!v.me.played) { kind = 'act'; title = 'Обери карту'; sub = v.trump ? `Козир — ${SUIT[v.trump].name}: +${v.cfg.trumpBonus} до сили` : 'Вона ляже сорочкою догори'; }
+        if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери карту'; sub = v.trump ? `Козир — ${SUIT[v.trump].name}: +${v.cfg.trumpBonus} до сили` : 'Вона ляже сорочкою догори'; }
+        else if (three) { const w = this.waitingNames(v, (x) => !x.hasPlayed); title = w ? `Обирають карту: ${w}` : 'Карти на столі'; sub = v.me.out ? '' : 'Твою карту покладено'; }
         else { title = v.opp.hasPlayed ? 'Карти на столі' : 'Суперник обирає карту'; sub = 'Твою карту покладено'; }
         break;
       case 'scout':
-        if (!v.me.scoutDecided) { kind = 'act'; title = 'Розвідка?'; sub = `Висока чи низька в суперника — за ${v.cfg.scoutCost}`; }
+        if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Розвідка?'; sub = three ? `Торкнись суперника, до якого підглянути — за ${v.cfg.scoutCost}` : `Висока чи низька в суперника — за ${v.cfg.scoutCost}`; }
+        else if (three) { const w = this.waitingNames(v, (x) => !x.scoutDecided); title = w ? `Вирішують щодо розвідки: ${w}` : 'Розвідку завершено'; sub = v.me.scoutSeen ? `У ${this.nameOf(v.me.scoutTarget)} ${SCOUT[v.me.scoutSeen].name} карта` : ''; }
         else { title = 'Суперник вирішує щодо розвідки'; sub = v.me.scoutSeen ? `У суперника ${SCOUT[v.me.scoutSeen].name} карта` : ''; }
         break;
-      case 'bet':
+      case 'bet': {
+        const owe = v.bet.owe ?? v.bet.toCall;
         if (v.bet.toAct === v.you) {
           kind = 'act'; title = 'Твій хід';
-          sub = v.bet.toCall ? `Суперник підняв на ${v.bet.toCall}` : this.lastOppAction(v) === 'check' ? 'Суперник: чек' : 'Чек, підняти чи пас';
+          const last = this.lastOppAction(v);
+          sub = three ? (owe ? `Щоб лишитися — докласти ${owe}` : 'Чек, підняти чи пас (пас — вихід із раунду)')
+            : v.bet.toCall ? `Суперник підняв на ${v.bet.toCall}` : last === 'check' ? 'Суперник: чек' : 'Чек, підняти чи пас';
+        } else if (three) {
+          title = `Хід: ${this.nameOf(v.bet.toAct)}`;
+          sub = v.me.folded ? 'Ти спасував(-ла) — дивишся раунд' : owe ? `Тобі ще докласти ${owe}` : 'Думає над ставкою';
         } else {
           title = 'Хід суперника';
           sub = v.bet.toCall ? `Твоє підняття +${v.bet.toCall} — чекаємо відповіді` : 'Суперник думає над ставкою';
         }
         break;
-      case 'result':
-        if (r.don?.pending) { kind = r.winner === v.you ? 'act' : 'wait'; title = 'Подвій або нічого'; sub = r.winner === v.you ? 'Більше чи менше?' : 'Суперник ризикує виграшем'; }
-        else if (v.me.ready) { title = 'Чекаємо на суперника'; sub = 'Наступний раунд — зараз'; }
-        else if (r.winner === null) { kind = 'wait'; title = 'Нічия'; sub = `Банк ${r.carry} переходить у наступний раунд`; }
-        else if (r.winner === v.you) { kind = 'win'; title = 'Банк твій'; sub = this.explainText(v) || (r.reason === 'fold' ? 'Суперник спасував' : ''); }
-        else { kind = 'lose'; title = 'Банк у суперника'; sub = this.explainText(v) || (r.reason === 'fold' ? 'Ти спасував(-ла)' : ''); }
+      }
+      case 'result': {
+        const wn = r.winner === null ? '' : this.nameOf(r.winner);
+        if (r.don?.pending) { kind = r.winner === v.you ? 'act' : 'wait'; title = 'Подвій або нічого'; sub = r.winner === v.you ? 'Більше чи менше?' : three ? `${wn} ризикує виграшем` : 'Суперник ризикує виграшем'; }
+        else if (v.me.ready || v.me.out) { title = three ? 'Чекаємо на інших' : 'Чекаємо на суперника'; sub = 'Наступний раунд — зараз'; }
+        else if (r.winner === null) { kind = 'wait'; title = three && r.reason === 'showdown' ? 'Нічия за перше місце' : 'Нічия'; sub = three && r.reason === 'showdown' ? `Банк ${r.carry} → у джекпот` : `Банк ${r.carry} переходить у наступний раунд`; }
+        else if (r.winner === v.you) { kind = 'win'; title = 'Банк твій'; sub = this.explainText(v) || (r.reason === 'fold' ? (three ? 'Усі спасували' : 'Суперник спасував') : ''); }
+        else { kind = 'lose'; title = three ? `Банк забирає ${wn}` : 'Банк у суперника'; sub = this.explainText(v) || (r.reason === 'fold' ? (v.me.folded ? 'Ти спасував(-ла)' : 'Усі інші спасували') : ''); }
         break;
+      }
       case 'over':
         title = 'Партію завершено';
         break;
     }
     if (this.meta?.paused && v.timer && !this.offline) sub = '⏸ Пауза' + (sub ? ` · ${sub}` : '');
+    if (v.me.out && v.phase !== 'over') { kind = 'wait'; sub = title ? `${title}${sub ? ` · ${sub}` : ''}` : sub; title = '💀 Ти вибув — дивишся гру'; }
     if (this.offline) { kind = 'alert'; title = this.offline; sub = 'Таймер на паузі — чекаємо повернення'; }
     const el = this.el.phase;
     const cls = `phase ${kind}`;
@@ -217,73 +289,93 @@ export class GameScreen {
     for (let i = v.log.length - 1; i >= 0; i--) {
       const e = v.log[i];
       if (e.t === 'round') return null;
-      if (e.p === 1 - v.you && ['check', 'raise', 'call'].includes(e.t)) return e.t;
+      if (e.p !== undefined && e.p !== v.you && ['check', 'raise', 'call'].includes(e.t)) return e.t;
     }
     return null;
   }
 
   // ───────── гравці ─────────
   renderPlayers(v) {
-    const o = v.opp;
-    const parts = [];
-    if (this.offline || (this.meta && !this.meta.oppConnected)) parts.push(`<span class="warn">${ico('wifi-off')}не на зв'язку</span>`);
-    else {
-      // значки без тексту, щоб статус уміщався: 👁 — підглядав, ⇄ — міняв карту
-      if (o.scouted && v.phase !== 'result') parts.push(`<span class="ic" title="Суперник зробив розвідку" aria-label="розвідка">${ico('eye')}</span>`);
-      if (o.swapped && v.phase === 'play') parts.push(`<span class="ic" title="Суперник обміняв карту" aria-label="обмін">${ico('swap')}</span>`);
-      let s = '';
-      switch (v.phase) {
-        case 'play': s = o.hasPlayed ? 'карта на столі' : 'обирає карту…'; break;
-        case 'scout': s = o.scoutDecided ? (o.scouted ? '' : 'без розвідки') : 'думає про розвідку…'; break;
-        case 'bet': s = v.bet.toAct !== v.you ? 'думає над ставкою…' : (v.bet.toCall ? `підняття +${v.bet.toCall}` : 'чекає на тебе'); break;
-        case 'result': s = v.result.don?.pending && v.result.winner !== v.you ? 'ризикує виграшем…' : o.ready ? 'готово до наступного' : ''; break;
+    const three = this.isThree(v);
+    const conn = this.meta?.connected;
+    this.oppSeats(v).forEach((q, i) => {
+      const pn = this.panels[i];
+      const o = this.seat(v, q);
+      const offline = (!three && this.offline) || (conn ? conn[q] === false : (this.meta && !this.meta.oppConnected)) || (three && this.offline && false);
+      const parts = [];
+      if (o.out) parts.push('<span>💀 вибув</span>');
+      else if (offline) parts.push(`<span class="warn">${ico('wifi-off')}не на зв'язку</span>`);
+      else {
+        // значки без тексту, щоб статус уміщався: 👁 — підглядав, ⇄ — міняв карту
+        if (o.scouted && v.phase !== 'result') parts.push(`<span class="ic" title="Зробив розвідку${three && o.scoutTarget !== undefined ? `: ${this.nameOf(o.scoutTarget)}` : ''}" aria-label="розвідка">${ico('eye')}${three && o.scoutTarget === v.you ? '→ти' : ''}</span>`);
+        if (o.swapped && v.phase === 'play') parts.push(`<span class="ic" title="Обміняв карту" aria-label="обмін">${ico('swap')}</span>`);
+        let s = '';
+        switch (v.phase) {
+          case 'play': s = o.hasPlayed ? 'карта на столі' : 'обирає карту…'; break;
+          case 'scout': s = o.scoutDecided ? (o.scouted ? '' : 'без розвідки') : 'думає про розвідку…'; break;
+          case 'bet':
+            if (o.folded) s = 'пас';
+            else if (three) s = v.bet.toAct === q ? 'думає над ставкою…' : '';
+            else s = v.bet.toAct !== v.you ? 'думає над ставкою…' : (v.bet.toCall ? `підняття +${v.bet.toCall}` : 'чекає на тебе');
+            break;
+          case 'result': s = o.folded && three ? 'пас' : v.result.don?.pending && v.result.winner === q ? 'ризикує виграшем…' : o.ready ? 'готово' + (three ? '' : ' до наступного') : ''; break;
+        }
+        if (s) parts.push(`<span>${s}</span>`);
+        if (o.jokerInHand) parts.unshift('<span class="jk-badge" title="Джокер ще не зіграно">🃏</span>');
       }
-      if (s) parts.push(`<span>${s}</span>`);
-      if (o.jokerInHand) parts.unshift('<span class="jk-badge" title="Джокер ще не зіграно">🃏</span>');
-    }
-    this.el.oppStatus.innerHTML = parts.join('');
-    this.el.oppAva.classList.toggle('offline', !!(this.offline || (this.meta && !this.meta.oppConnected)));
-    const n = o.handCount;
-    if (this.el.oppHand.childElementCount !== n) this.el.oppHand.innerHTML = '<i></i>'.repeat(n);
-    this.el.oppHand.setAttribute('aria-label', `Карт у суперника: ${n}`);
+      pn.status.innerHTML = parts.join('');
+      pn.ava.classList.toggle('offline', !!offline);
+      pn.root.classList.toggle('out', !!o.out);
+      pn.root.classList.toggle('acting', three && v.phase === 'bet' && v.bet.toAct === q);
+      pn.root.classList.toggle('pick', v.phase === 'scout' && v.legal.some((a) => a.type === 'scout' && a.target === q));
+      pn.seatEl.classList.toggle('folded', !!o.folded);
+      const n = o.handCount;
+      if (pn.hand.childElementCount !== n) pn.hand.innerHTML = '<i></i>'.repeat(n);
+      pn.hand.setAttribute('aria-label', `Карт у суперника: ${n}`);
+    });
 
     const m = [];
-    if (v.me.scoutSeen && v.phase !== 'result') m.push(`<span class="gold">${ico('eye')}розвідка: ${SCOUT[v.me.scoutSeen].name}</span>`);
+    if (v.me.out) m.push('<span>💀 вибув · реакції працюють</span>');
+    if (v.me.scoutSeen && v.phase !== 'result') m.push(`<span class="gold">${ico('eye')}${three ? `${esc(this.nameOf(v.me.scoutTarget))}: ` : 'розвідка: '}${SCOUT[v.me.scoutSeen].name}</span>`);
     if (v.me.swapped && v.phase === 'play') m.push(`<span>${ico('swap')}обмін ✓</span>`);
     if (v.me.hand.some((c) => c.kind === 'joker')) m.unshift('<span class="jk-badge" title="Твій джокер ще не зіграно">🃏 джокер</span>');
     this.el.meStatus.innerHTML = m.join('<span>·</span>');
+    this.el.me = this.el.me || document.getElementById('me');
+    this.el.me.classList.toggle('out', !!v.me.out);
   }
 
   // ───────── числа і фішки ─────────
   renderNumbers(prev, v) {
     const e = this.el;
-    if (!prev) {
+    const opps = this.oppSeats(v).map((q, i) => ({ q, pn: this.panels[i] }));
+    if (!prev || prev.you !== v.you || (prev.n || 2) !== (v.n || 2)) {
       setNumber(e.meChips, v.me.chips);
-      setNumber(e.oppChips, v.opp.chips);
+      for (const { q, pn } of opps) setNumber(pn.chips, this.seat(v, q).chips);
       setNumber(e.potVal, v.pot);
       return;
     }
     const dMe = v.me.chips - prev.me.chips;
-    const dOpp = v.opp.chips - prev.opp.chips;
+    const dOpp = opps.map(({ q }) => this.seat(v, q).chips - this.seat(prev, q).chips);
     const dPot = v.pot - prev.pot;
     const n = (x) => Math.ceil(Math.abs(x) / 5);
     if (dPot > 0) {
       if (dMe < 0) flyChips(e.fx, e.hudMe, e.pot, n(dMe));
-      if (dOpp < 0) flyChips(e.fx, e.hudOpp, e.pot, n(dOpp));
+      opps.forEach(({ pn }, i) => { if (dOpp[i] < 0) flyChips(e.fx, pn.hud, e.pot, n(dOpp[i])); });
       sfx.chip(n(dPot));
     } else if (dPot < 0) {
       if (dMe > 0) flyChips(e.fx, e.pot, e.hudMe, n(dPot));
-      if (dOpp > 0) flyChips(e.fx, e.pot, e.hudOpp, n(dPot));
+      opps.forEach(({ pn }, i) => { if (dOpp[i] > 0) flyChips(e.fx, e.pot, pn.hud, n(dPot)); });
       sfx.chips(n(dPot));
-    } else if (dMe && dOpp) {
-      if (dMe > 0) flyChips(e.fx, e.hudOpp, e.hudMe, n(dMe));
-      else flyChips(e.fx, e.hudMe, e.hudOpp, n(dMe));
+    } else if (dMe && dOpp.some(Boolean)) {
+      const i = dOpp.findIndex(Boolean);
+      if (dMe > 0) flyChips(e.fx, opps[i].pn.hud, e.hudMe, n(dMe));
+      else flyChips(e.fx, e.hudMe, opps[i].pn.hud, n(dMe));
       sfx.chips(n(dMe));
     }
     if (dMe) floatText(e.fx, e.hudMe, `${dMe > 0 ? '+' : ''}${dMe}`, dMe > 0 ? 'var(--win)' : 'var(--lose)');
-    if (dOpp) floatText(e.fx, e.hudOpp, `${dOpp > 0 ? '+' : ''}${dOpp}`, dOpp > 0 ? 'var(--win)' : 'var(--lose)');
+    opps.forEach(({ pn }, i) => { if (dOpp[i]) floatText(e.fx, pn.hud, `${dOpp[i] > 0 ? '+' : ''}${dOpp[i]}`, dOpp[i] > 0 ? 'var(--win)' : 'var(--lose)'); });
     animateNumber(e.meChips, v.me.chips, ms('--t-count'));
-    animateNumber(e.oppChips, v.opp.chips, ms('--t-count'));
+    opps.forEach(({ q, pn }) => animateNumber(pn.chips, this.seat(v, q).chips, ms('--t-count')));
     if (dPot) {
       animateNumber(e.potVal, v.pot, ms('--t-count'));
       e.pot.classList.remove('bump');
@@ -310,6 +402,7 @@ export class GameScreen {
     e.jackpot.textContent = jp ? `джекпот ${jp}` : carry ? `з минулого ${carry}` : '';
     e.jackpot.classList.toggle('hidden', !jp && !carry);
     this.renderSlots(prev, v);
+    if (this.isThree(v)) { this.renderPills3(v); return; }
     // під картами: що на кону
     const facing = v.phase === 'bet' && v.bet.toCall > 0;
     const oppHot = facing && v.bet.toAct === v.you;
@@ -325,7 +418,27 @@ export class GameScreen {
     }
   }
 
+  /** Утрьох під кожною картою — внесок у банк; під моєю — скільки докласти; після раунду — виграш. */
+  renderPills3(v) {
+    const e = this.el;
+    const showPot = ['scout', 'bet'].includes(v.phase);
+    const pill = (txt, cls = '') => `<span class="pill ${cls}">${chipIco()}${txt}</span>`;
+    const owe = v.phase === 'bet' ? v.bet.owe ?? 0 : 0;
+    e.infoMe.innerHTML = owe > 0 && !v.me.folded ? pill(`+${owe}`, 'hot') : showPot ? pill(`у банку ${v.me.inPot}`) : '';
+    this.oppSeats(v).forEach((q, i) => {
+      const x = this.seat(v, q);
+      this.panels[i].info.innerHTML = x.out ? '' : x.folded && showPot ? '<span class="pill">пас</span>' : showPot ? pill(`у банку ${x.inPot}`) : '';
+    });
+    if (v.phase === 'result' && v.result.winner !== null && !v.result.don?.pending) {
+      const won = v.result.don ? v.result.won + v.result.don.attempts.reduce((s, a) => s + a.delta, 0) : v.result.won;
+      const w = v.result.winner;
+      const target = w === v.you ? e.infoMe : this.panels[this.oppSeats(v).indexOf(w)]?.info;
+      if (target) target.innerHTML = `<span class="pill win">+${won}</span>`;
+    }
+  }
+
   renderSlots(prev, v) {
+    if (this.isThree(v)) return this.renderSlots3(prev, v);
     const st = this.st;
     const opt = { trump: v.trump, bonus: v.cfg.trumpBonus };
     // Суперник
@@ -373,6 +486,58 @@ export class GameScreen {
       const meWon = r.winner === v.you;
       (meWon ? mc : oc)?.classList.add('win');
       if (r.revealed) (meWon ? oc : mc)?.classList.add('lose');
+    }
+  }
+
+  /** Слот суперника: сорочка → лице при розкритті. */
+  fillOppSlot(prev, v, slot, key, played, st) {
+    if (key === st) return;
+    const opt = { trump: v.trump, bonus: v.cfg.trumpBonus };
+    if (!key) slot.innerHTML = '';
+    else if (key === 'back') {
+      slot.innerHTML = '';
+      const c = cardEl(null);
+      c.classList.add('drop');
+      c.style.setProperty('--from', '-120px');
+      slot.append(c);
+      if (prev) sfx.place();
+    } else {
+      let c = slot.querySelector('.card');
+      if (!c) { c = cardEl(null); slot.innerHTML = ''; slot.append(c); }
+      fillFace(c, played, opt);
+      requestAnimationFrame(() => requestAnimationFrame(() => c.classList.remove('back-up')));
+      if (prev) sfx.flip();
+    }
+  }
+
+  renderSlots3(prev, v) {
+    const st = this.st;
+    const opt = { trump: v.trump, bonus: v.cfg.trumpBonus };
+    this.oppSeats(v).forEach((q, i) => {
+      const x = this.seat(v, q);
+      const key = x.played ? x.played.id : x.hasPlayed ? 'back' : null;
+      this.fillOppSlot(prev, v, this.panels[i].slot, key, x.played, st.slots[q]);
+      st.slots[q] = key;
+      const seen = v.me.scoutSeen && v.me.scoutTarget === q && v.phase !== 'result';
+      this.tagSlot(this.panels[i].slot, seen ? `<span class="pill ${v.me.scoutSeen === 'high' ? 'hi' : 'lo'}">${v.me.scoutSeen === 'high' ? '↑' : '↓'} ${SCOUT[v.me.scoutSeen].name}</span>` : '');
+    });
+    const meKey = v.me.played ? v.me.played.id : null;
+    if (meKey !== st.me) {
+      const slot = this.el.slotMe;
+      slot.innerHTML = '';
+      if (meKey) { const c = cardEl(v.me.played, opt); c.classList.add('drop'); slot.append(c); }
+      st.me = meKey;
+    }
+    const peeked = v.players.some((x) => x.seat !== v.you && x.scouted && x.scoutTarget === v.you);
+    const hidden = v.me.played && !(v.result && ((v.result.revealed && !v.me.folded) || v.me.shown));
+    this.tagSlot(this.el.slotMe, hidden ? `<span class="pill">${ico(peeked ? 'eye' : 'lock')}${peeked ? 'підглянуто' : 'закрита'}</span>` : '');
+    this.el.slotMe.parentElement.classList.toggle('folded', !!v.me.folded);
+    const cardOf = (q) => (q === v.you ? this.el.slotMe : this.panels[this.oppSeats(v).indexOf(q)].slot).querySelector('.card');
+    for (let q = 0; q < v.n; q++) cardOf(q)?.classList.remove('win', 'lose');
+    const r = v.result;
+    if (r && r.winner !== null && v.phase === 'result') {
+      cardOf(r.winner)?.classList.add('win');
+      if (r.revealed) for (const q of r.parts || []) if (q !== r.winner) cardOf(q)?.classList.add('lose');
     }
   }
 
@@ -426,24 +591,39 @@ export class GameScreen {
     let html = '';
     switch (v.phase) {
       case 'play': {
-        if (!has('play')) { html = waitCard('Карту покладено', v.opp.hasPlayed ? '' : 'Суперник ще обирає'); break; }
+        if (me.out) { html = waitCard('Ти вибув', 'Дивишся гру до кінця · реакції працюють'); break; }
+        if (!has('play')) { html = waitCard('Карту покладено', this.isThree(v) ? 'Чекаємо на інших' : v.opp.hasPlayed ? '' : 'Суперник ще обирає'); break; }
         const sel = this.selected && me.hand.find((c) => c.id === this.selected);
         const canSwap = L.some((a) => a.type === 'swap');
         const swapWhy = sel?.kind === 'joker' ? 'джокера не обміняти' : me.swapped ? 'вже використано цього раунду' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'спершу обери карту' : `нова карта замість ${cardTitle(sel)}`;
         html += `<div class="row" style="--n:1">${btn(`${ico('swap', 'ico')} Обмін −${v.cfg.swapCost}`, { type: 'swap', cardId: this.selected }, 'secondary', canSwap && !!sel && sel.kind !== 'joker', swapWhy)}</div>`;
         html += sel
-          ? btn(sel.kind === 'joker' ? `Зіграти ${cardTitle(sel)}` : `Покласти ${cardTitle(sel)}`, { type: 'play', cardId: sel.id }, 'primary stack-label', true, sel.kind === 'joker' ? JOKER_BY_ID[sel.joker].desc : 'сорочкою догори')
+          ? btn(sel.kind === 'joker' ? `Зіграти ${cardTitle(sel)}` : `Покласти ${cardTitle(sel)}`, { type: 'play', cardId: sel.id }, 'primary stack-label', true, sel.kind === 'joker' ? jokerDesc(sel.joker, v.n || 2) : 'сорочкою догори')
           : btn('Покласти карту', { type: 'play' }, 'primary stack-label', false, 'спершу торкнись карти в руці');
         break;
       }
       case 'scout': {
-        if (!L.length) { html = waitCard('Чекаємо на суперника', 'Суперник вирішує щодо розвідки'); break; }
+        if (me.out) { html = waitCard('Ти вибув', 'Дивишся гру'); break; }
+        if (!L.length) { html = waitCard(this.isThree(v) ? 'Чекаємо на інших' : 'Чекаємо на суперника', this.isThree(v) ? 'Вирішують щодо розвідки' : 'Суперник вирішує щодо розвідки'); break; }
         const canScout = !!has('scout');
+        if (this.isThree(v)) {
+          // тапом обираєш, до кого підглянути: кнопки з іменами (або тап по панелі суперника)
+          const targets = this.oppSeats(v).filter((q) => !this.seat(v, q).out);
+          const row = targets.map((q) => {
+            const a = L.find((x) => x.type === 'scout' && x.target === q);
+            return btn(`${ico('eye', 'ico')} ${esc(this.nameOf(q))}`, { type: 'scout', target: q }, 'secondary', !!a, a ? `−${v.cfg.scoutCost} · висока чи низька?` : 'не вистачає фішок');
+          }).join('');
+          html += `<div class="row" style="--n:${targets.length}">${row}</div>`;
+          html += btn('Далі без розвідки', { type: 'skipScout' }, 'primary');
+          break;
+        }
         html += `<div class="row" style="--n:1">${btn(`${ico('eye', 'ico')} Розвідка −${v.cfg.scoutCost}`, { type: 'scout' }, 'secondary', canScout, canScout ? `лишиться ${me.chips - v.cfg.scoutCost} · висока чи низька?` : 'не вистачає фішок')}</div>`;
         html += btn('Далі без розвідки', { type: 'skipScout' }, 'primary');
         break;
       }
       case 'bet': {
+        if (me.out) { html = waitCard('Ти вибув', 'Дивишся гру'); break; }
+        if (this.isThree(v) && !L.length) { html = waitCard(me.folded ? 'Ти на пасі' : `Хід: ${esc(this.nameOf(v.bet.toAct))}`, me.folded ? 'Чекаємо кінця раунду' : 'Чекаємо на ставку'); break; }
         if (!L.length) { html = waitCard('Хід суперника', v.bet.toCall ? `Твоє підняття +${v.bet.toCall}` : 'Суперник думає над ставкою'); break; }
         const call = has('call');
         const toCall = call ? call.amount : 0;
@@ -452,7 +632,9 @@ export class GameScreen {
           : btn('Чек', { type: 'check' }, 'primary stack-label', true, 'без ставки');
         const raises = L.filter((a) => a.type === 'raise');
         const limit = v.bet.raises >= v.cfg.maxRaises;
-        const reason = limit ? 'ліміт піднять' : v.opp.chips === 0 ? 'у суперника 0' : me.chips - toCall <= 0 ? 'немає фішок' : 'недоступно';
+        const rivals = this.oppSeats(v).map((q) => this.seat(v, q)).filter((x) => !x.out && !x.folded);
+        const minOpp = Math.min(...rivals.map((x) => x.chips));
+        const reason = limit ? 'ліміт піднять' : minOpp === 0 ? 'у суперника 0' : me.chips - toCall <= 0 ? 'немає фішок' : 'недоступно';
         const verb = call ? 'Ре-рейз ' : '';
         let row = '';
         for (const size of v.cfg.raiseSizes) {
@@ -460,18 +642,20 @@ export class GameScreen {
           row += btn(`${verb}+${size}`, { type: 'raise', amount: size }, 'secondary', !!a, a ? `лишиться ${me.chips - toCall - size}` : reason);
         }
         const allin = raises.find((x) => x.amount === 'allin');
-        const capped = allin && v.round < (v.cfg.allinFreeFromRound || 4) && allin.value < Math.min(me.chips - toCall, v.opp.chips);
-        row += btn(allin ? `Ва-банк +${allin.value}` : 'Ва-банк', { type: 'raise', amount: 'allin' }, 'allin', !!allin, allin ? (capped ? 'ліміт = банк' : `лишиться ${me.chips - toCall - allin.value}`) : reason);
+        const capped = allin && allin.value < me.chips - toCall;
+        const capWhy = allin && v.round < (v.cfg.allinFreeFromRound || 4) && allin.value < Math.min(me.chips - toCall, minOpp) ? 'ліміт = банк' : 'ліміт = найменший стек';
+        row += btn(allin ? `Ва-банк +${allin.value}` : 'Ва-банк', { type: 'raise', amount: 'allin' }, 'allin', !!allin, allin ? (capped ? capWhy : `лишиться ${me.chips - toCall - allin.value}`) : reason);
         html += `<div class="row">${row}</div>`;
-        html += btn(`Пас — віддати банк ${v.pot}`, { type: 'fold' }, 'link');
+        html += btn(this.isThree(v) ? 'Пас — вийти з раунду' : `Пас — віддати банк ${v.pot}`, { type: 'fold' }, 'link');
         break;
       }
       case 'result': {
         const r = v.result;
-        if (r.don?.pending) { html = waitCard(r.winner === v.you ? 'Подвій або нічого' : 'Суперник ризикує виграшем', ''); break; }
-        if (!L.length || me.ready) { html = waitCard('Чекаємо на суперника', 'Наступний раунд — щойно він натисне «Далі»'); break; }
+        if (r.don?.pending) { html = waitCard(r.winner === v.you ? 'Подвій або нічого' : this.isThree(v) ? `${esc(this.nameOf(r.winner))} ризикує виграшем` : 'Суперник ризикує виграшем', ''); break; }
+        if (me.out) { html = waitCard('Ти вибув', 'Дивишся гру'); break; }
+        if (!L.length || me.ready) { html = this.isThree(v) ? waitCard('Чекаємо на інших', 'Наступний раунд — щойно всі натиснуть «Далі»') : waitCard('Чекаємо на суперника', 'Наступний раунд — щойно він натисне «Далі»'); break; }
         const sec = [];
-        if (has('donStart')) sec.push(btn('🎲 Подвій або нічого', { type: 'donStart' }, 'secondary', true, `ризикнути ${r.don.stake}`));
+        if (has('donStart')) sec.push(btn('🎲 Подвій або нічого', { type: 'donStart' }, 'secondary', true, this.isThree(v) ? `ризикнути ${r.don.stake} · платять обидва` : `ризикнути ${r.don.stake}`));
         if (has('show')) sec.push(btn('Показати карту', { type: 'show' }, 'secondary', true, 'похизуватися'));
         if (sec.length) html += `<div class="row" style="--n:${sec.length}">${sec.join('')}</div>`;
         const iWon = r.winner === v.you;
@@ -492,6 +676,14 @@ export class GameScreen {
   explainText(v) {
     const r = v.result;
     if (!r?.detail) return '';
+    if (this.isThree(v)) {
+      const d = r.detail;
+      if (d.reason === 'tie3' || d.pw) return explain(d, [null, null], v.trump);
+      if (d.a === undefined || d.b === undefined || d.a === null) return explain(d, [null, null], v.trump) || '';
+      const cards = [this.playedOf(v, d.a), this.playedOf(v, d.b)];
+      if (!cards[0] || !cards[1]) return '';
+      return explain(d, cards, v.trump);
+    }
     const cards = v.you === 0 ? [v.me.played, v.opp.played] : [v.opp.played, v.me.played];
     if (!cards[0] || !cards[1]) return '';
     return explain(r.detail, cards, v.trump);
@@ -504,8 +696,9 @@ export class GameScreen {
     let cls = '', title, amt;
     if (r.reason === 'void') { cls = 'tie'; title = 'Вибух!'; amt = `банк ${r.carry} → у джекпот`; }
     else if (r.reason === 'replay') { cls = 'tie'; title = 'Назад у часі'; amt = 'ставки повернуто, раунд ще раз'; }
-    else if (r.winner === null) { cls = 'tie'; title = 'Нічия'; amt = `банк ${r.carry} → наступний раунд`; }
-    else if (r.winner === v.you) { title = r.reason === 'fold' ? 'Суперник спасував' : r.penalty ? 'Подвоєння!' : 'Перемога!'; amt = `+${r.won}`; }
+    else if (r.winner === null) { cls = 'tie'; title = this.isThree(v) && r.reason === 'showdown' ? 'Нічия за перше місце' : 'Нічия'; amt = this.isThree(v) && r.reason === 'showdown' ? `банк ${r.carry} → у джекпот` : `банк ${r.carry} → наступний раунд`; }
+    else if (r.winner === v.you) { title = r.reason === 'fold' ? (this.isThree(v) ? 'Усі спасували' : 'Суперник спасував') : r.penalty ? 'Подвоєння!' : 'Перемога!'; amt = `+${r.won}`; }
+    else if (this.isThree(v)) { cls = 'lose'; title = `${this.nameOf(r.winner)} забирає банк`; amt = `банк ${r.won}`; }
     else { cls = 'lose'; title = r.reason === 'fold' ? 'Пас' : 'Програно'; amt = `банк ${r.won} — супернику`; }
     const jk = r.jokers;
     const jkDelay = jk ? this.showJokerReveal(v, jk) : 0;
@@ -514,7 +707,7 @@ export class GameScreen {
     const showV = () => {
       this.st.showVerdict = null;
       if (r.winner === null) sfx.tie(); else if (r.winner === v.you) sfx.win(); else sfx.lose();
-      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFx[r.winner === v.you ? 0 : 1], reducedMotion());
+      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion());
       const el = this.el.verdict;
       el.className = `verdict ${cls}`;
       const lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
@@ -529,8 +722,8 @@ export class GameScreen {
   /** Драматичне розкриття джокерів: анімація за рідкістю, пояснення в один рядок, тап — пропустити. */
   showJokerReveal(v, jk) {
     const cards = [];
-    for (const p of [0, 1]) {
-      const c = p === v.you ? v.me.played : v.opp.played;
+    for (let p = 0; p < (v.n || 2); p++) {
+      const c = this.isThree(v) ? this.playedOf(v, p) : p === v.you ? v.me.played : v.opp.played;
       if (c?.kind === 'joker') cards.push({ p, c });
     }
     if (!cards.length) return 0;
@@ -539,15 +732,19 @@ export class GameScreen {
     const dur = { common: 1500, rare: 1800, epic: 2200, legendary: 3000 }[rarity];
     const box = document.createElement('div');
     box.className = `jk-reveal r-${rarity}`;
-    const names = cards.map(({ p, c }) => `${p === v.you ? 'Твій' : 'Суперника'}: ${JOKER_BY_ID[c.joker].name}`).join(' · ');
+    const names = cards.map(({ p, c }) => `${p === v.you ? 'Твій' : this.isThree(v) ? this.nameOf(p) : 'Суперника'}: ${JOKER_BY_ID[c.joker].name}`).join(' · ');
     const lines = (jk.notes || []).map((n) => `<div>${esc(n.text)}</div>`).join('');
     box.innerHTML = `<h3>${rarity === 'legendary' ? 'ЛЕГЕНДАРНИЙ ДЖОКЕР!' : `${RARITY_NAME[rarity]} джокер`}</h3><div class="vs"></div><div class="lines">${lines}</div><small>${esc(names)} · торкнись, щоб пропустити</small>`;
     const vs = box.querySelector('.vs');
     for (const { c } of cards) vs.append(cardEl(c));
     // якщо карти замінено (Буря, Обмін…) — показуємо, чим зрештою порівнювали
     const fin = jk.cards || [];
-    const replaced = fin.some((c, p) => c && c.id !== (p === v.you ? v.me.played : v.opp.played)?.id);
-    if (replaced && fin[0] && fin[1]) {
+    const replaced = fin.some((c, p) => c && c.id !== (this.isThree(v) ? this.playedOf(v, p) : p === v.you ? v.me.played : v.opp.played)?.id);
+    if (replaced && this.isThree(v)) {
+      const arrow = document.createElement('span'); arrow.textContent = '→'; arrow.className = 'hint-text';
+      vs.append(arrow);
+      for (const q of [v.you, ...this.oppSeats(v)]) if (fin[q]) { const m = cardEl(fin[q], { trump: v.trump }); m.classList.add('mini'); vs.append(m); }
+    } else if (replaced && fin[0] && fin[1]) {
       const mine = fin[v.you], theirs = fin[1 - v.you];
       const a = cardEl(theirs, { trump: v.trump }); a.classList.add('mini');
       const b = cardEl(mine, { trump: v.trump }); b.classList.add('mini');
@@ -556,7 +753,7 @@ export class GameScreen {
     }
     if (jk.duel) {
       const d = document.createElement('div'); d.className = 'hint-text';
-      d.textContent = `Дуель: ${[v.you, 1 - v.you].map((p) => (jk.duel[p] || []).map((c) => c?.value).join('+')).join('  проти  ')}`;
+      d.textContent = `Дуель: ${[v.you, ...this.oppSeats(v)].filter((p) => jk.duel[p]).map((p) => (jk.duel[p] || []).map((c) => c?.value).join('+')).join('  проти  ')}`;
       box.querySelector('.lines').append(d);
     }
     const close = () => { clearTimeout(t); box.remove(); };
@@ -603,7 +800,7 @@ export class GameScreen {
     }
     el.donSub.innerHTML = mine
       ? `Ризикуєш чистим виграшем <b>${d.pending ? d.stake : d.attempts.at(-1)?.stakeBefore ?? d.stake}</b>. Наступна карта більша чи менша за базу?`
-      : `Суперник ризикує виграшем <b>${d.pending ? d.stake : d.attempts.at(-1)?.stakeBefore ?? d.stake}</b> — дивись наживо`;
+      : `${this.isThree(v) ? esc(this.nameOf(v.result.winner)) : 'Суперник'} ризикує виграшем <b>${d.pending ? d.stake : d.attempts.at(-1)?.stakeBefore ?? d.stake}</b> — дивись наживо`;
     // Результат спроби: пауза → переворот → підсумок
     if (n > st.don) {
       st.don = n;
@@ -741,7 +938,7 @@ export class GameScreen {
     if (!v) return;
     const ring = this.el.phaseRing;
     const ava = this.el.oppAva;
-    if (!t) { ava.classList.remove('ticking'); return; }
+    if (!t) { for (const pn of this.panels) pn.ava.classList.remove('ticking'); return; }
     const rem = t.paused ? t.remaining : Math.max(0, t.deadline - performance.now());
     const k = t.duration ? rem / t.duration : 0;
     const sec = Math.ceil(rem / 1000);
@@ -754,6 +951,17 @@ export class GameScreen {
       if (low && sec !== this.lastTick) { this.lastTick = sec; sfx.tick(); }
     }
     // кільце довкола аватара суперника, коли чекаємо на нього
+    if (this.isThree(v)) {
+      this.oppSeats(v).forEach((q, i) => {
+        const x = this.seat(v, q);
+        const a = this.panels[i].ava;
+        const w = !x.out && !x.folded && (v.phase === 'play' ? !x.hasPlayed : v.phase === 'scout' ? !x.scoutDecided : v.phase === 'bet' ? v.bet.toAct === q : v.phase === 'result' ? !x.ready : false);
+        a.classList.toggle('ticking', w);
+        a.classList.toggle('low', w && low);
+        if (w) a.querySelector('.tring .val').style.strokeDashoffset = String(160.2 * (1 - k));
+      });
+      return;
+    }
     const waitingOpp = !mine && v.phase !== 'over' && !(v.phase === 'result' && v.opp.ready);
     ava.classList.toggle('ticking', waitingOpp);
     ava.classList.toggle('low', waitingOpp && low);

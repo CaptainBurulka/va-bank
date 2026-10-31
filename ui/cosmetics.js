@@ -34,8 +34,8 @@ export function applyMyLook(look) {
 }
 
 /** Косметика суперника — лише на його зону (рамка, фішки, сорочка, лице карти). */
-export function applyOppLook(look) {
-  for (const id of ['opp', 'slot-opp', 'opp-hand']) applyTo(document.getElementById(id), look, ['deck', 'back', 'chips', 'frame']);
+export function applyOppLook(look, panel = 'opp') {
+  for (const id of [panel, `slot-${panel}`, `${panel}-hand`]) applyTo(document.getElementById(id), look || DEFAULT_EQUIPPED, ['deck', 'back', 'chips', 'frame']);
 }
 
 export const emojiSet = (look) => COSMETIC_BY_ID[look?.emoji]?.set || COSMETIC_BY_ID.emoji_classic.set;
