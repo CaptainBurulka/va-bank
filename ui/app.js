@@ -8,6 +8,7 @@ import { tutorial } from './settings.js';
 import { CONFIG, APP_VERSION, MODES, MODE_IDS, META } from '../config.js';
 import { BOT_STYLES } from '../game/bot.js';
 import { buildDeck } from '../game/cards.js';
+import { upgradeState } from '../game/engine.js';
 import { createOnlineHost, joinOnline, ROOM_ALPHABET, loadGuestSave, clearGuestSave, loadHostSave, clearHostSave } from '../net/online.js';
 import { initMeta, renderWallet, openCollection, openShop, openSlot, awardAfterGame, openRivals, askNick, titleIcon } from './meta-ui.js';
 import { titleOf, pickMoment, scoreLine, isPid } from '../meta/rivals.js';
@@ -489,8 +490,14 @@ function startBot(resume = false, opts = {}) {
   $('btn-react').classList.remove('hidden');
   host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e, from) => game.showReaction(e, false, from) });
   bots.forEach((b, i) => host.attach(i + 1, b));
-  if (saved && saved.state?.phase !== 'over') host.restore(saved);
-  else host.start();
+  if (saved && saved.state?.phase !== 'over') {
+    if (!host.restore(saved)) {
+      // збереження старої версії, яке не вдалося прочитати: не висимо в меню, а починаємо нову партію
+      GameHost.clear(BOT_KEY);
+      toast('Збережену партію не вдалося відкрити — починаємо нову', 4000);
+      host.start();
+    }
+  } else host.start();
   host.setHidden(document.hidden);
 }
 
@@ -570,6 +577,8 @@ function maybeTutorial(next) {
 
 function askBot() {
   const fresh = () => gameSetupModal({ withStyle: true, players: 'bot', title: 'Гра проти бота', onStart: (o) => { GameHost.clear(BOT_KEY); startBot(false, o); } });
+  const sv = GameHost.load(BOT_KEY);
+  if (sv?.state && !upgradeState(sv.state)) GameHost.clear(BOT_KEY);
   if (GameHost.load(BOT_KEY)?.state?.phase && GameHost.load(BOT_KEY).state.phase !== 'over') {
     modal('<h3>Є незавершена партія</h3><p>Продовжити її чи почати нову?</p>', [
       { label: 'Продовжити', cls: 'primary', onClick: () => startBot(true) },
@@ -844,9 +853,13 @@ document.addEventListener('click', (e) => {
 
 function refreshResume() {
   const btn = $('btn-resume');
-  const h = loadHostSave();
+  // збереження, які не прочитати (зламані), не пропонуємо — і прибираємо
+  const ok = (sv) => sv && sv.state && upgradeState(sv.state);
+  let h = loadHostSave();
+  if (h?.state && !ok(h)) { clearHostSave(); h = null; }
   const g = loadGuestSave();
-  const b = GameHost.load(BOT_KEY);
+  let b = GameHost.load(BOT_KEY);
+  if (b?.state && !ok(b)) { GameHost.clear(BOT_KEY); b = null; }
   if (h && h.state?.phase !== 'over') { btn.textContent = `Продовжити кімнату ${h.code}`; btn.onclick = () => startCreate(h); }
   else if (g) { btn.textContent = `Повернутися в кімнату ${g.code}`; btn.onclick = () => startJoin(g.code, g); }
   else if (b && b.state?.phase !== 'over') { btn.textContent = 'Продовжити партію з ботом'; btn.onclick = () => startBot(true); }
@@ -872,6 +885,7 @@ function boot() {
   if (q) history.replaceState(null, '', location.pathname + (location.search.includes('debug') ? '?debug' : ''));
   if (valid) startJoin(code);
   else show('menu');
+  window.__vbBooted = true; // гра стартувала (див. страховку в index.html)
   const sp = $('splash');
   setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, 350);
 }

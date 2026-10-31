@@ -92,7 +92,8 @@ export async function createOnlineHost(o) {
   }
   host.hidden = document.hidden;
 
-  if (saved?.state) host.restore(saved);
+  // збереження старої версії, яке не вдалося прочитати, — кімната відкривається з новою партією
+  if (saved?.state && !host.restore(saved)) o.onStatus?.({ started: false, oppConnected: false, code, error: 'Стару партію не вдалося відкрити — гра почнеться заново' });
 
   function seatBot(q) {
     botSeats[q] = true;

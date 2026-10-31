@@ -1,7 +1,9 @@
 // Service worker: офлайн-оболонка (бот і «передай телефон» працюють без мережі).
-// Стратегія stale-while-revalidate: миттєвий старт із кешу, оновлення — з наступного запуску.
+// Стратегія: кеш кожної версії незмінний. Файли завантажуються разом під час встановлення нової версії
+// (повз HTTP-кеш браузера) і більше не переписуються по одному — інакше після деплою в кеші могла
+// опинитися мішанина файлів двох версій, і модулі не завантажувались («гра висить у меню»).
 // Версія кешу = APP_VERSION із config.js (перевіряє тест). Змінюйте разом із кожним релізом.
-const CACHE = 'vabank-4.0.0';
+const CACHE = 'vabank-4.0.1';
 const FONTS = ['playfair-display-cyrillic-700', 'playfair-display-latin-700', 'playfair-display-cyrillic-900', 'playfair-display-latin-900',
   'manrope-cyrillic-500', 'manrope-latin-500', 'manrope-cyrillic-700', 'manrope-latin-700', 'manrope-cyrillic-800', 'manrope-latin-800']
   .map((f) => `fonts/${f}-normal.woff2`);
@@ -19,7 +21,7 @@ const ASSETS = [
 
 self.addEventListener('install', (e) => {
   // Без skipWaiting: нова версія чекає, доки гравець натисне «Оновити» на банері.
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))));
 });
 
 self.addEventListener('message', (e) => {
@@ -38,10 +40,11 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(e.request, { ignoreSearch: true });
-      const fresh = fetch(e.request)
-        .then((res) => { if (res.ok) cache.put(e.request, res.clone()); return res; })
-        .catch(() => cached);
-      return cached || fresh;
+      if (cached) return cached;
+      // чого немає в кеші цієї версії (напр. splash-картинки) — з мережі, і додаємо; наявне не переписуємо
+      const res = await fetch(e.request);
+      if (res.ok) cache.put(e.request, res.clone());
+      return res;
     }),
   );
 });

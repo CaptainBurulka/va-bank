@@ -5,7 +5,7 @@ import { CONFIG, JOKER_DEAL, MODES } from '../config.js';
 import { buildDeck, shuffle, compareDetail, scoutClass, donOdds, SUITS } from './cards.js';
 import { resolveJokers, jokerCard, sanitizeSet, JOKER_BY_ID } from './jokers.js';
 
-export const STATE_VERSION = 2;
+export const STATE_VERSION = 3;
 
 const other = (p) => 1 - p; // лише для двох гравців
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -133,6 +133,54 @@ export function createGame(opts = {}, ctx) {
     s.jokerRound = opts.jokerRound ?? from + Math.floor(ctx.rng() * (to - from + 1));
   }
   startRound(s, ctx, true);
+  return s;
+}
+
+// ───────────── міграція збережених партій ─────────────
+
+/**
+ * Партія, збережена старішою версією (стан v2 — версія 3.x, лише для двох), → поточний формат.
+ * Повертає новий стан або null, якщо збереження не вдається прочитати (тоді його краще відкинути).
+ */
+export function upgradeState(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.players)) return null;
+  if (raw.v === STATE_VERSION) return raw;
+  if (raw.v !== 2 || raw.players.length !== 2) return null;
+  const s = clone(raw);
+  const n = 2;
+  s.cfg = { ...CONFIG, ...s.cfg, players: n, mode: s.cfg?.mode || 'classic' };
+  s.cfg.features = { trump: true, swap: true, ...(s.cfg.features || {}) };
+  s.contrib = Array.isArray(s.contrib) ? s.contrib : [0, 0];
+  s.roundRaises = Array.isArray(s.roundRaises) ? s.roundRaises : [0, 0];
+  s.players.forEach((pl, q) => {
+    pl.folded = false;
+    pl.out = false;
+    pl.scoutTarget = pl.scouted ? other(q) : null;
+  });
+  s.lastWinner = s.lastLoser === null || s.lastLoser === undefined ? null : other(s.lastLoser);
+  s.outOrder = [];
+  s.moments = s.moments || [];
+  for (const st of s.stats || []) { st.outRound = st.outRound ?? null; st.place = st.place ?? null; }
+  if (s.bet) {
+    // старі торги: toCall — скільки має докласти той, хто ходить; чеків 0 — відповісти мають обоє
+    const t = s.bet.toAct;
+    s.bet.need = [0, 0];
+    s.bet.need[t] = s.bet.toCall || 0;
+    s.bet.pending = s.bet.toCall > 0 || s.bet.checks >= 1 ? [t] : [t, other(t)];
+  }
+  if (s.result) {
+    s.result.parts = [0, 1];
+    const d = s.result.don;
+    if (d && !d.payers) {
+      d.payers = [0, 0];
+      if (s.result.winner === 0 || s.result.winner === 1) d.payers[other(s.result.winner)] = d.stake;
+    }
+  }
+  if (s.phase === 'over' && !s.places) {
+    s.places = s.winner === 'draw' ? [1, 1] : s.winner === 0 ? [1, 2] : [2, 1];
+    s.stats?.forEach((st, q) => { st.place = s.places[q]; });
+  }
+  s.v = STATE_VERSION;
   return s;
 }
 

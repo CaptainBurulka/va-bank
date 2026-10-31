@@ -23,7 +23,25 @@
   <link rel="stylesheet" href="ui/tokens.css">
   <link rel="stylesheet" href="styles.css">
   <script src="vendor/peerjs.min.js" defer></script>
-  <script type="module" src="ui/app.js"></script>
+  <script>
+  // Страховка: якщо гра не стартувала за 8 с (напр. після невдалого оновлення), пропонуємо перезапуск начисто.
+  // Прогрес (профіль у localStorage) не зачіпається — очищається лише кеш застосунку.
+  setTimeout(function () {
+    if (window.__vbBooted) return;
+    var b = document.createElement('button');
+    b.textContent = 'Гра не запустилась — перезапустити начисто';
+    b.setAttribute('style', 'position:fixed;left:16px;right:16px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:9999;min-height:56px;border:0;border-radius:14px;background:#e2b75a;color:#1b1206;font:800 17px/1.2 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5)');
+    b.onclick = function () {
+      b.disabled = true; b.textContent = 'Перезапускаю…';
+      var jobs = [];
+      if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+      if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+      Promise.all(jobs).catch(function () {}).then(function () { location.reload(); });
+    };
+    document.body.appendChild(b);
+  }, 8000);
+</script>
+<script type="module" src="ui/app.js"></script>
 </head>
 <body>
   <!-- Іконки: масті відрізняються і кольором, і ФОРМОЮ -->
