@@ -110,6 +110,26 @@ export const sfx = {
   pop: () => tone({ freq: 520, to: 1040, dur: 0.12, vol: 0.1, type: 'sine' }),
   fanfare: () => { chord([392, 494, 587], { dur: 0.4 }); chord([523, 659, 784, 1046], { delay: 0.35, step: 0.06, dur: 0.9 }); },
   /** Напруга перед відкриттям карти в «Подвої»: низький гул і серцебиття, що прискорюється. */
+  joker: (rarity = 'common') => {
+    if (rarity === 'common') { tone({ freq: 660, to: 990, dur: 0.18, vol: 0.12, type: 'triangle' }); clink(0.12, 1.2); }
+    else if (rarity === 'rare') { [784, 988, 1175, 1568].forEach((f, i) => tone({ freq: f, dur: 0.18, vol: 0.09, delay: i * 0.06, type: 'sine' })); }
+    else if (rarity === 'epic') { tone({ freq: 220, to: 880, dur: 0.6, vol: 0.12, type: 'sawtooth', lp: 1800 }); chord([523, 659, 784, 1046], { delay: 0.45, step: 0.05, dur: 0.8 }); }
+    else {
+      // легендарний: удар, сповільнений гул і фанфари
+      tone({ freq: 55, to: 40, dur: 1.2, vol: 0.35, type: 'sine' });
+      noise({ dur: 0.5, vol: 0.25, freq: 200, type: 'lowpass' });
+      tone({ freq: 110, to: 220, dur: 1.4, vol: 0.12, type: 'sawtooth', lp: 900, delay: 0.2 });
+      chord([392, 494, 587, 784, 988], { delay: 1.1, step: 0.09, dur: 1.2, vol: 0.13 });
+    }
+  },
+  reelTick: () => noise({ dur: 0.02, vol: 0.12, freq: 3200, q: 4 }),
+  reelStop: (i = 0) => { noise({ dur: 0.06, vol: 0.25, freq: 600, type: 'lowpass' }); tone({ freq: 300 + i * 120, dur: 0.08, vol: 0.12, type: 'square', lp: 1500 }); },
+  jackpot: (rarity = 'rare') => {
+    if (rarity === 'legendary') { sfx.joker('legendary'); for (let i = 0; i < 14; i++) clink(1.4 + i * 0.07, 0.8 + (i % 4) * 0.1); }
+    else if (rarity === 'epic') { chord([523, 659, 784, 1046, 1318], { step: 0.07, dur: 0.7 }); for (let i = 0; i < 8; i++) clink(0.4 + i * 0.06); }
+    else if (rarity === 'rare') chord([587, 740, 880], { step: 0.07, dur: 0.4 });
+    else tone({ freq: 520, dur: 0.15, vol: 0.1, type: 'triangle' });
+  },
   tension: () => {
     if (!ac || muted) return;
     tone({ freq: 73, to: 98, dur: 0.75, vol: 0.14, type: 'sawtooth', attack: 0.15, lp: 420 });

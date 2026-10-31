@@ -50,6 +50,7 @@ export class GameHost {
   restore(saved) {
     this.state = saved.state;
     if (saved.state?.cfg?.maxRounds) this.gameConfig = { ...this.gameConfig, maxRounds: saved.state.cfg.maxRounds };
+    if (saved.state?.jokerSets) this.gameOpts = { ...this.gameOpts, jokerSets: saved.state.jokerSets };
     this.rematch = saved.rematch || [false, false];
     if (this.state.timer && !this.state.timer.paused) {
       // Після перезавантаження час, що минув, не рахуємо — відновлюємо з паузи.

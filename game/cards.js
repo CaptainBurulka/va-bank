@@ -31,6 +31,7 @@ export function shuffle(arr, rng) {
 /** Номінальна сила (без козиря). Дзеркало номіналу не має — null. */
 export function basePower(card, cfg) {
   if (card.kind === 'num') return card.value;
+  if (card.kind === 'joker') return card.power ?? 5;
   if (card.kind === 'knife') return cfg.knifePower;
   if (card.kind === 'double') return cfg.doublePower;
   return null;

@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '2.1.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '3.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 2,             // версія правил (для бота і симуляцій)
@@ -34,8 +34,67 @@ export const CONFIG = Object.freeze({
   logSize: 40,
   // Стилі бота (рівні складності і гравці для симуляцій). Пороги — оцінка шансу виграти 0..1.
   botStyles: Object.freeze({
-    cautious: Object.freeze({ raiseAt: 0.72, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.32, bluff: 0.03, scoutProb: 0.45, donStart: 0.25, donMinP: 0.75, swapMax: 3, swapProb: 0.7, playStrong: 0.3, playWeak: 0.15, showProb: 0.1 }),
-    aggressive: Object.freeze({ raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
-    bluffer: Object.freeze({ raiseAt: 0.6, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.2, bluff: 0.3, scoutProb: 0.3, donStart: 0.5, donMinP: 0.6, swapMax: 2, swapProb: 0.4, playStrong: 0.25, playWeak: 0.35, showProb: 0.8 }),
+    cautious: Object.freeze({ jokerPlay: 0.4, raiseAt: 0.72, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.32, bluff: 0.03, scoutProb: 0.45, donStart: 0.25, donMinP: 0.75, swapMax: 3, swapProb: 0.7, playStrong: 0.3, playWeak: 0.15, showProb: 0.1 }),
+    aggressive: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
+    bluffer: Object.freeze({ jokerPlay: 0.5, raiseAt: 0.6, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.2, bluff: 0.3, scoutProb: 0.3, donStart: 0.5, donMinP: 0.6, swapMax: 2, swapProb: 0.4, playStrong: 0.25, playWeak: 0.35, showProb: 0.8 }),
   }),
+});
+
+// ───────── Джокери: числа ефектів (підібрано симуляціями на ~50% перемог) ─────────
+export const JOKER_TUNING = Object.freeze({
+  turncoat: { power: 6 },
+  roulette: { max: 12 },
+  thief: { power: 2, steal: 10 },
+  fist: { power: 7, fee: 10, loseTie: true },
+  insurance: { power: 2 },
+  chameleon: { power: 5 },
+  modest: { power: 6 },
+  tax: { power: 6, fee: 5 },
+  dice: { minus: 1 },
+  counter: { plus: 1 },
+  brazen: { power: 6, fine: 5 },
+  magnet: { power: 7 },
+  temptation: { power: 6, pct: 30 },
+  shadow: { power: 6, scouted: 10 },
+  trap: { power: 2 },
+  highroller: { power: 6 },
+  sharper: { power: 5, alt: 6 },
+  luck: { high: 9, low: 1 },
+  brave: { power: 5, perRaise: 2 },
+  antitrump: { power: 6 },
+  quake: { power: 6 },
+  frenzy: { power: 6 },
+  mirrorworld: { power: 5, trump: -2 },
+  echo: { power: 6 },
+  storm: { oppBonus: 0 },
+  redeal: { oppBonus: 0 },
+  castling: { power: 6 },
+});
+
+// Коли роздаються джокери: один і той самий випадковий раунд для обох
+export const JOKER_DEAL = Object.freeze({ fromRound: 3, toRound: 7, setSize: 3 });
+
+// ───────── Прогресія: бали, магазин, автомат, уламки (лише віртуальні, без реальних грошей) ─────────
+export const META = Object.freeze({
+  schema: 1,
+  // Бали за партію: участь + бонус за перемогу (слабший гравець теж прогресує)
+  points: Object.freeze({ play: 40, win: 40, firstWinOfDay: 60, mult: Object.freeze({ online: 1, bot: 0.3, hotseat: 0.3 }) }),
+  // Ціни в магазині. Джокер: звичайний ≈ 2 партії, рідкісний ≈ 4, епічний ≈ 8 (у середньому ~60 балів за партію з другом)
+  prices: Object.freeze({
+    joker: Object.freeze({ common: 120, rare: 240, epic: 480 }),
+    // косметика напряму дорожча, ніж середня ціна предмета з автомата (1 спін = 100)
+    cosmetic: Object.freeze({ common: 180, rare: 360, epic: 720, legendary: 1500 }),
+  }),
+  spin: Object.freeze({
+    cost: 100,
+    odds: Object.freeze({ common: 0.62, rare: 0.27, epic: 0.09, legendary: 0.02 }),
+    pityEpic: 15,       // епічне або краще — не рідше ніж раз на 15 спінів
+    pityLegendary: 60,  // легендарне — не рідше ніж раз на 60 спінів
+    jokerShare: 0.55,   // частка джокерів серед виграшів (решта — косметика)
+  }),
+  shards: Object.freeze({
+    dupe: Object.freeze({ common: 20, rare: 50, epic: 120, legendary: 300 }), // дублікат → уламки
+    exchange: Object.freeze({ common: 150, rare: 350, epic: 800, legendary: 2000 }), // уламки → предмет (легендарні джокери — ні)
+  }),
+  startJokers: Object.freeze(['roulette', 'thief', 'insurance']),
 });

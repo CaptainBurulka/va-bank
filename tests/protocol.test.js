@@ -70,5 +70,17 @@ test('протокол: нові дії обмін і подвоєння, пом
 test('кеш service worker змінюється разом із версією застосунку', () => {
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.ok(sw.includes(`'vabank-${APP_VERSION}'`), `sw.js має містити CACHE = 'vabank-${APP_VERSION}'`);
-  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'net/protocol.js']) assert.ok(sw.includes(`'${f}'`), f);
+  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'game/jokers.js', 'meta/profile.js', 'meta/catalog.js', 'ui/meta-ui.js', 'ui/profile-store.js', 'ui/cosmetics.js', 'net/protocol.js']) assert.ok(sw.includes(`'${f}'`), f);
+});
+
+test('деплой: кожен каталог із кодом гри копіюється на сайт', () => {
+  const wf = readFileSync(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
+  for (const d of ['game', 'meta', 'net', 'ui', 'fonts', 'icons', 'vendor']) assert.ok(new RegExp(`\\b${d}\\b`).test(wf.match(/cp -r (.*) _site/)[1]), d);
+});
+
+test('протокол: привітання гостя несе набір джокерів і косметику (обрізано за формою)', () => {
+  const p = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'hello', token: null, set: ['storm', 42, 'x'.repeat(50), 'boom', 'duel', 'coin'], look: { felt: 'felt_wine' } });
+  assert.deepEqual(p.m.set, ['storm', 'boom', 'duel']);
+  assert.equal(p.m.look.felt, 'felt_wine');
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'hello', look: [1, 2] }).m.look, null);
 });

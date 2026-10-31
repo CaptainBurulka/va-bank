@@ -4,7 +4,9 @@ import { cardEl, fillFace, suitIcon } from './cardview.js';
 import { animateNumber, setNumber, flyChips, floatEmoji, floatText } from './fx.js';
 import { sfx } from './sound.js';
 import { SUIT, SPECIAL, SCOUT, REACTIONS, logLine, explain } from './text.js';
-import { ms } from './motion.js';
+import { ms, reducedMotion } from './motion.js';
+import { JOKER_BY_ID, RARITIES, RARITY_NAME } from '../game/jokers.js';
+import { playWin } from './cosmetics.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -12,9 +14,10 @@ const ico = (id, cls = '') => `<svg class="${cls}" aria-hidden="true"><use href=
 const chipIco = () => ico('chip', 'chip');
 const pct = (p) => `${Math.round(p * 100)}%`;
 
-/** «7 Вогню», «Ніж» */
+/** «7 Вогню», «Ніж», «джокера Буря» */
 export function cardTitle(c) {
   if (!c) return '';
+  if (c.kind === 'joker') return `джокера «${JOKER_BY_ID[c.joker].name}»`;
   return c.kind === 'num' ? `${c.value} ${SUIT[c.suit].gen}` : SPECIAL[c.kind].name;
 }
 
@@ -42,7 +45,7 @@ export class GameScreen {
     this.el.hudOpp = document.querySelector('#opp .stack');
 
     // Реакції
-    this.el.reactPanel.innerHTML = REACTIONS.map((e) => `<button data-e="${e}" aria-label="${e}">${e}</button>`).join('');
+    this.setEmojiSet(REACTIONS.slice(0, 6));
     this.el.btnReact.addEventListener('click', () => { sfx.tap(); this.el.reactPanel.classList.toggle('hidden'); });
     this.el.reactPanel.addEventListener('click', (ev) => {
       const e = ev.target.closest('button')?.dataset.e;
@@ -79,6 +82,13 @@ export class GameScreen {
     requestAnimationFrame(this.loop);
   }
 
+  setEmojiSet(list) {
+    this.el.reactPanel.innerHTML = list.map((e) => `<button data-e="${e}" aria-label="${e}">${e}</button>`).join('');
+  }
+
+  /** Анімації перемоги гравців (косметика): [моя, суперника] */
+  setWinFx(mine, opp) { this.winFx = [mine, opp]; }
+
   reset() {
     this.view = null;
     this.selected = null;
@@ -87,6 +97,7 @@ export class GameScreen {
     this.el.don.classList.add('hidden');
     this.el.coach.classList.add('hidden');
     this.hideVerdict();
+    document.querySelectorAll('.jk-reveal').forEach((x) => x.remove());
     for (const t of Object.values(this.st.timers || {})) clearTimeout(t);
     this.st = { opp: null, me: null, don: 0, donBase: null, timers: {} };
   }
@@ -228,6 +239,7 @@ export class GameScreen {
         case 'result': s = v.result.don?.pending && v.result.winner !== v.you ? 'ризикує виграшем…' : o.ready ? 'готово до наступного' : ''; break;
       }
       if (s) parts.push(`<span>${s}</span>`);
+      if (o.jokerInHand) parts.unshift('<span class="jk-badge" title="Джокер ще не зіграно">🃏</span>');
     }
     this.el.oppStatus.innerHTML = parts.join('');
     this.el.oppAva.classList.toggle('offline', !!(this.offline || (this.meta && !this.meta.oppConnected)));
@@ -238,6 +250,7 @@ export class GameScreen {
     const m = [];
     if (v.me.scoutSeen && v.phase !== 'result') m.push(`<span class="gold">${ico('eye')}розвідка: ${SCOUT[v.me.scoutSeen].name}</span>`);
     if (v.me.swapped && v.phase === 'play') m.push(`<span>${ico('swap')}обмін ✓</span>`);
+    if (v.me.hand.some((c) => c.kind === 'joker')) m.unshift('<span class="jk-badge" title="Твій джокер ще не зіграно">🃏 джокер</span>');
     this.el.meStatus.innerHTML = m.join('<span>·</span>');
   }
 
@@ -390,6 +403,7 @@ export class GameScreen {
       } else if (!prev || prev.trump !== v.trump) fillFace(el, card, opt);
       if (hand.children[i] !== el) hand.insertBefore(el, hand.children[i] || null);
     });
+    hand.classList.toggle('five', v.me.hand.length > 4);
     hand.classList.toggle('passive', !v.legal.some((a) => a.type === 'play'));
     hand.classList.toggle('concealed', this.conceal);
     this.renderHandSelection();
@@ -415,10 +429,10 @@ export class GameScreen {
         if (!has('play')) { html = waitCard('Карту покладено', v.opp.hasPlayed ? '' : 'Суперник ще обирає'); break; }
         const sel = this.selected && me.hand.find((c) => c.id === this.selected);
         const canSwap = L.some((a) => a.type === 'swap');
-        const swapWhy = me.swapped ? 'вже використано цього раунду' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'спершу обери карту' : `нова карта замість ${cardTitle(sel)}`;
-        html += `<div class="row" style="--n:1">${btn(`${ico('swap', 'ico')} Обмін −${v.cfg.swapCost}`, { type: 'swap', cardId: this.selected }, 'secondary', canSwap && !!sel, swapWhy)}</div>`;
+        const swapWhy = sel?.kind === 'joker' ? 'джокера не обміняти' : me.swapped ? 'вже використано цього раунду' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'спершу обери карту' : `нова карта замість ${cardTitle(sel)}`;
+        html += `<div class="row" style="--n:1">${btn(`${ico('swap', 'ico')} Обмін −${v.cfg.swapCost}`, { type: 'swap', cardId: this.selected }, 'secondary', canSwap && !!sel && sel.kind !== 'joker', swapWhy)}</div>`;
         html += sel
-          ? btn(`Покласти ${cardTitle(sel)}`, { type: 'play', cardId: sel.id }, 'primary stack-label', true, 'сорочкою догори')
+          ? btn(sel.kind === 'joker' ? `Зіграти ${cardTitle(sel)}` : `Покласти ${cardTitle(sel)}`, { type: 'play', cardId: sel.id }, 'primary stack-label', true, sel.kind === 'joker' ? JOKER_BY_ID[sel.joker].desc : 'сорочкою догори')
           : btn('Покласти карту', { type: 'play' }, 'primary stack-label', false, 'спершу торкнись карти в руці');
         break;
       }
@@ -488,18 +502,71 @@ export class GameScreen {
     const r = v.result;
     const why = this.explainText(v);
     let cls = '', title, amt;
-    if (r.winner === null) { cls = 'tie'; title = 'Нічия'; amt = `банк ${r.carry} → наступний раунд`; sfx.tie(); }
-    else if (r.winner === v.you) { title = r.reason === 'fold' ? 'Суперник спасував' : r.penalty ? 'Подвоєння!' : 'Перемога!'; amt = `+${r.won}`; sfx.win(); }
-    else { cls = 'lose'; title = r.reason === 'fold' ? 'Пас' : 'Програно'; amt = `банк ${r.won} — супернику`; sfx.lose(); }
-    const delay = r.revealed ? ms('--t-flip') : 0;
+    if (r.reason === 'void') { cls = 'tie'; title = 'Вибух!'; amt = `банк ${r.carry} → у джекпот`; }
+    else if (r.reason === 'replay') { cls = 'tie'; title = 'Назад у часі'; amt = 'ставки повернуто, раунд ще раз'; }
+    else if (r.winner === null) { cls = 'tie'; title = 'Нічия'; amt = `банк ${r.carry} → наступний раунд`; }
+    else if (r.winner === v.you) { title = r.reason === 'fold' ? 'Суперник спасував' : r.penalty ? 'Подвоєння!' : 'Перемога!'; amt = `+${r.won}`; }
+    else { cls = 'lose'; title = r.reason === 'fold' ? 'Пас' : 'Програно'; amt = `банк ${r.won} — супернику`; }
+    const jk = r.jokers;
+    const jkDelay = jk ? this.showJokerReveal(v, jk) : 0;
+    const delay = (r.revealed ? ms('--t-flip') : 0) + jkDelay;
     clearTimeout(this.st.timers.verdict);
-    this.st.timers.verdict = setTimeout(() => {
+    const showV = () => {
+      this.st.showVerdict = null;
+      if (r.winner === null) sfx.tie(); else if (r.winner === v.you) sfx.win(); else sfx.lose();
+      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFx[r.winner === v.you ? 0 : 1], reducedMotion());
       const el = this.el.verdict;
       el.className = `verdict ${cls}`;
-      el.innerHTML = `<b>${esc(title)}</b>${why ? `<div class="why">${esc(why)}</div>` : ''}<div class="amt">${esc(amt)}</div><small>торкнись, щоб закрити</small>`;
+      const lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
+      el.innerHTML = `<b>${esc(title)}</b>${lines}${why && r.reason === 'showdown' ? `<div class="why">${esc(why)}</div>` : ''}<div class="amt">${esc(amt)}</div><small>торкнись, щоб закрити</small>`;
       clearTimeout(this.st.timers.verdictHide);
-      this.st.timers.verdictHide = setTimeout(() => this.hideVerdict(), ms('--t-banner'));
-    }, delay);
+      this.st.timers.verdictHide = setTimeout(() => this.hideVerdict(), ms('--t-banner') + (jk ? 800 : 0));
+    };
+    this.st.showVerdict = showV;
+    this.st.timers.verdict = setTimeout(showV, delay);
+  }
+
+  /** Драматичне розкриття джокерів: анімація за рідкістю, пояснення в один рядок, тап — пропустити. */
+  showJokerReveal(v, jk) {
+    const cards = [];
+    for (const p of [0, 1]) {
+      const c = p === v.you ? v.me.played : v.opp.played;
+      if (c?.kind === 'joker') cards.push({ p, c });
+    }
+    if (!cards.length) return 0;
+    const top = cards.reduce((a, b) => (RARITIES.indexOf(JOKER_BY_ID[b.c.joker].rarity) > RARITIES.indexOf(JOKER_BY_ID[a.c.joker].rarity) ? b : a));
+    const rarity = JOKER_BY_ID[top.c.joker].rarity;
+    const dur = { common: 1500, rare: 1800, epic: 2200, legendary: 3000 }[rarity];
+    const box = document.createElement('div');
+    box.className = `jk-reveal r-${rarity}`;
+    const names = cards.map(({ p, c }) => `${p === v.you ? 'Твій' : 'Суперника'}: ${JOKER_BY_ID[c.joker].name}`).join(' · ');
+    const lines = (jk.notes || []).map((n) => `<div>${esc(n.text)}</div>`).join('');
+    box.innerHTML = `<h3>${rarity === 'legendary' ? 'ЛЕГЕНДАРНИЙ ДЖОКЕР!' : `${RARITY_NAME[rarity]} джокер`}</h3><div class="vs"></div><div class="lines">${lines}</div><small>${esc(names)} · торкнись, щоб пропустити</small>`;
+    const vs = box.querySelector('.vs');
+    for (const { c } of cards) vs.append(cardEl(c));
+    // якщо карти замінено (Буря, Обмін…) — показуємо, чим зрештою порівнювали
+    const fin = jk.cards || [];
+    const replaced = fin.some((c, p) => c && c.id !== (p === v.you ? v.me.played : v.opp.played)?.id);
+    if (replaced && fin[0] && fin[1]) {
+      const mine = fin[v.you], theirs = fin[1 - v.you];
+      const a = cardEl(theirs, { trump: v.trump }); a.classList.add('mini');
+      const b = cardEl(mine, { trump: v.trump }); b.classList.add('mini');
+      const arrow = document.createElement('span'); arrow.textContent = '→'; arrow.className = 'hint-text';
+      vs.append(arrow, a, b);
+    }
+    if (jk.duel) {
+      const d = document.createElement('div'); d.className = 'hint-text';
+      d.textContent = `Дуель: ${[v.you, 1 - v.you].map((p) => (jk.duel[p] || []).map((c) => c?.value).join('+')).join('  проти  ')}`;
+      box.querySelector('.lines').append(d);
+    }
+    const close = () => { clearTimeout(t); box.remove(); };
+    // тап пропускає розкриття — вердикт одразу
+    box.addEventListener('click', () => { close(); clearTimeout(this.st.timers.verdict); this.st.showVerdict?.(); });
+    this.el.table.parentElement.append(box);
+    sfx.joker(rarity);
+    const t = setTimeout(close, dur);
+    this.st.timers.jk = t;
+    return dur;
   }
 
   hideVerdict() {

@@ -53,11 +53,13 @@
 
     <!-- Головне меню -->
     <section class="screen hidden" id="scr-menu">
+      <div class="wallet" id="wallet"></div>
       <div class="brand">
         <div class="brand-card" aria-hidden="true"><span>ВБ</span></div>
         <h1 class="logo">Ва-банк</h1>
         <div class="logo-sub">карткова дуель для двох</div>
       </div>
+      <div class="install-hint hidden" id="install-hint">Щоб прогрес не загубився — встанови гру: «Поділитися» → «На початковий екран». У вкладці Safari прогрес зберігається окремо.</div>
       <div class="menu-main">
         <button class="btn primary big" data-go="friend">Грати з другом</button>
         <button class="btn secondary hidden" id="btn-resume">Продовжити партію</button>
@@ -65,6 +67,11 @@
           <button class="btn secondary" data-go="bot">Проти бота</button>
           <button class="btn secondary" data-go="hotseat">На одному телефоні</button>
         </div>
+      </div>
+      <div class="club">
+        <button data-go="slot"><b>🎰</b>Автомат</button>
+        <button data-go="shop"><b>🛒</b>Магазин</button>
+        <button data-go="collection"><b>🃏</b>Колекція</button>
       </div>
       <nav class="menu-links">
         <button class="btn tertiary" data-go="tutorial">Навчання</button>
@@ -169,6 +176,26 @@
       <div class="fx-layer" id="fx"></div>
     </section>
 
+    <!-- Колекція -->
+    <section class="screen hidden meta-screen" id="scr-collection">
+      <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Колекція</h2><span class="wallet mini" data-wallet></span></div>
+      <div class="tabs" id="col-tabs"><button data-tab="jokers" class="on">Джокери</button><button data-tab="cosmetics">Косметика</button></div>
+      <div class="meta-body" id="col-body"></div>
+    </section>
+
+    <!-- Магазин -->
+    <section class="screen hidden meta-screen" id="scr-shop">
+      <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Магазин</h2><span class="wallet mini" data-wallet></span></div>
+      <div class="tabs" id="shop-tabs"><button data-tab="jokers" class="on">Джокери</button><button data-tab="cosmetics">Косметика</button><button data-tab="shards">Уламки</button></div>
+      <div class="meta-body" id="shop-body"></div>
+    </section>
+
+    <!-- Ігровий автомат -->
+    <section class="screen hidden meta-screen" id="scr-slot">
+      <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Автомат</h2><span class="wallet mini" data-wallet></span></div>
+      <div class="meta-body" id="slot-body"></div>
+    </section>
+
     <!-- Кінець партії -->
     <section class="screen hidden" id="scr-end">
       <div class="end-hero">
@@ -177,6 +204,7 @@
         <div class="end-score" id="end-score"></div>
         <div class="end-sub" id="end-sub"></div>
       </div>
+      <div class="rewards hidden" id="end-rewards"></div>
       <table class="stats" id="end-stats"></table>
       <div class="end-acts">
         <div class="wait-line" id="rematch-status">&nbsp;</div>

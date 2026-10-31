@@ -1,16 +1,21 @@
 // Стан партії, правила та reducer дій. Чиста логіка без DOM і мережі.
 // Усі випадкові рішення беруться з ctx.rng(), час — з ctx.now.
 
-import { CONFIG } from '../config.js';
+import { CONFIG, JOKER_DEAL } from '../config.js';
 import { buildDeck, shuffle, compareDetail, scoutClass, donOdds, SUITS } from './cards.js';
+import { resolveJokers, jokerCard, sanitizeSet, JOKER_BY_ID } from './jokers.js';
 
 export const STATE_VERSION = 2;
 
 const other = (p) => 1 - p;
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
-function newStats() {
-  return { biggestPot: 0, bluffs: 0, donWon: 0, donLost: 0, donPush: 0, roundsWon: 0, scouts: 0, folds: 0, swaps: 0 };
+function newStats(start = 100) {
+  return {
+    biggestPot: 0, bluffs: 0, donWon: 0, donLost: 0, donPush: 0, roundsWon: 0, scouts: 0, folds: 0, swaps: 0,
+    // для досягнень
+    jokers: [], minChips: start, bluffOne: 0, legendary: 0, knife10: 0, allinWins: 0, donRoundMax: 0,
+  };
 }
 
 /** Анте для раунду: 5 → 10 → 15 → … кожні anteEvery раундів. */
@@ -57,12 +62,23 @@ export function createGame(opts = {}, ctx) {
     lastLoser: null,
     result: null,
     log: [],
-    stats: [newStats(), newStats()],
+    stats: [newStats(cfg.startChips), newStats(cfg.startChips)],
     winner: null,
     endReason: null,
     timer: null,
     seq: 0,
+    // Джокери: набори фіксуються на хості на початку партії
+    jokerSets: [sanitizeSet(opts.jokerSets?.[0], JOKER_DEAL.setSize), sanitizeSet(opts.jokerSets?.[1], JOKER_DEAL.setSize)],
+    jokerRound: null,
+    lastJoker: null,
+    roundRaises: [0, 0],
+    roundAllin: false,
+    jokerTrash: [],
   };
+  if (s.jokerSets[0].length || s.jokerSets[1].length) {
+    const span = JOKER_DEAL.toRound - JOKER_DEAL.fromRound + 1;
+    s.jokerRound = opts.jokerRound ?? JOKER_DEAL.fromRound + Math.floor(ctx.rng() * span);
+  }
   startRound(s, ctx, true);
   return s;
 }
@@ -133,6 +149,9 @@ function startRound(s, ctx, first = false) {
   s.result = null;
   s.bet = null;
   s.contrib = [0, 0];
+  s.roundRaises = [0, 0];
+  s.roundAllin = false;
+  s.jokerTrash = [];
   if (s.pot === 0) s.jackpot = 0;
   for (const pl of s.players) {
     Object.assign(pl, { played: null, swapped: false, scouted: false, scoutDecided: false, scoutSeen: null, shown: false, ready: false });
@@ -154,6 +173,17 @@ function startRound(s, ctx, first = false) {
       if (!c) break;
       hand.push(c);
     }
+  }
+  // Раунд джокерів: обидва отримують по одному випадковому джокеру зі свого набору
+  if (s.round === s.jokerRound && !s.jokersDealt) {
+    s.jokersDealt = true; // лише раз за партію (навіть якщо раунд переграється)
+    for (const p of [0, 1]) {
+      const set = s.jokerSets[p];
+      if (!set.length) continue;
+      const jid = set[Math.floor(ctx.rng() * set.length)];
+      s.players[p].hand.push(jokerCard(jid, p));
+    }
+    log(s, { t: 'jokerDeal', who: [0, 1].filter((p) => s.jokerSets[p].length) });
   }
   s.phase = 'play';
   setTimer(s, 'play', ctx);
@@ -178,10 +208,10 @@ function updateBiggest(s, p, amount) {
   s.stats[p].biggestPot = Math.max(s.stats[p].biggestPot, amount);
 }
 
-function enterResult(s, ctx, winner, reason, detail = null) {
+function enterResult(s, ctx, winner, reason, detail = null, winnerCard = null) {
   s.phase = 'result';
   s.bet = null;
-  const res = { winner, reason, won: 0, penalty: 0, revealed: reason === 'showdown', bluff: false, don: null, detail };
+  const res = { winner, reason, won: 0, penalty: 0, revealed: reason === 'showdown' || reason === 'void' || reason === 'replay', bluff: false, don: null, detail };
   if (winner === null) {
     res.carry = s.pot;
     log(s, { t: 'tie', pot: s.pot, cards: [s.players[0].played, s.players[1].played], detail });
@@ -191,7 +221,7 @@ function enterResult(s, ctx, winner, reason, detail = null) {
     s.players[winner].chips += potAmount;
     s.pot = 0;
     s.jackpot = 0;
-    if (reason === 'showdown' && s.players[winner].played.kind === 'double') {
+    if (reason === 'showdown' && (winnerCard || s.players[winner].played).kind === 'double') {
       res.penalty = transfer(s, loser, winner, potAmount);
     }
     res.won = potAmount + res.penalty;
@@ -202,6 +232,8 @@ function enterResult(s, ctx, winner, reason, detail = null) {
       // Вдалий блеф: суперник спасував, хоча його карта була сильніша.
       res.bluff = compareDetail(s.players[winner].played, s.players[loser].played, s.cfg, s.trump).cmp < 0;
       if (res.bluff) s.stats[winner].bluffs += 1;
+      const wc = s.players[winner].played;
+      if (wc.kind === 'num' && wc.value === 1) s.stats[winner].bluffOne += 1;
       s.stats[loser].folds += 1;
     }
     // Ризикувати можна лише чистим виграшем: тим, що вніс суперник (+ штраф «Подвоєння»).
@@ -216,6 +248,8 @@ function enterResult(s, ctx, winner, reason, detail = null) {
       };
     }
     if (reason === 'showdown') {
+      if (s.roundAllin) s.stats[winner].allinWins += 1;
+      if (detail?.reason === 'knife10' && (winnerCard || s.players[winner].played).kind === 'knife') s.stats[winner].knife10 += 1;
       log(s, { t: 'showdown', p: winner, amount: res.won, penalty: res.penalty, cards: [s.players[0].played, s.players[1].played], detail });
     } else {
       log(s, { t: 'foldwin', p: winner, amount: res.won });
@@ -237,9 +271,14 @@ function cancelPending(s) {
 function endRound(s, ctx) {
   cancelPending(s);
   for (const pl of s.players) {
-    if (pl.played) s.discard.push(pl.played);
+    // зіграний джокер згорає (не повертається в колоду)
+    if (pl.played && pl.played.kind !== 'joker') s.discard.push(pl.played);
     pl.played = null;
   }
+  for (const c of s.jokerTrash) if (c.kind !== 'joker') s.discard.push(c);
+  s.jokerTrash = [];
+  for (const p of [0, 1]) s.stats[p].minChips = Math.min(s.stats[p].minChips, s.players[p].chips);
+  if (s.result?.replay) s.round -= 1; // «Назад у часі»: той самий раунд ще раз
   const bankrupt = [0, 1].filter((p) => s.players[p].chips === 0);
   if (bankrupt.length && s.pot === 0) {
     return finish(s, 'bankrupt');
@@ -296,7 +335,7 @@ export function legalActions(s, p) {
     case 'play':
       if (!me.played) {
         if (s.cfg.features.swap && !me.swapped && me.chips >= s.cfg.swapCost) {
-          for (const c of me.hand) out.push({ type: 'swap', cardId: c.id });
+          for (const c of me.hand) if (c.kind !== 'joker') out.push({ type: 'swap', cardId: c.id });
         }
         for (const c of me.hand) out.push({ type: 'play', cardId: c.id });
       }
@@ -386,6 +425,7 @@ export function reduce(state, action, ctx) {
       if (me.chips < s.cfg.swapCost) return err('no-chips');
       const idx = me.hand.findIndex((c) => c.id === action.cardId);
       if (idx < 0) return err('no-such-card');
+      if (me.hand[idx].kind === 'joker') return err('cannot-swap-joker');
       pay(s, p, s.cfg.swapCost);
       const old = me.hand.splice(idx, 1)[0];
       const fresh = drawCard(s, ctx);
@@ -448,6 +488,8 @@ export function reduce(state, action, ctx) {
       if (amt <= 0 || amt > maxR) return err('cannot-raise');
       const called = pay(s, p, s.bet.toCall);
       pay(s, p, amt);
+      s.roundRaises[p] += 1;
+      if (action.amount === 'allin') s.roundAllin = true;
       s.bet.toCall = amt;
       s.bet.raises += 1;
       log(s, { t: 'raise', p, amount: amt, called, allin: action.amount === 'allin' || me.chips === 0 });
@@ -523,8 +565,146 @@ export function reduce(state, action, ctx) {
 
 function showdown(s, ctx) {
   const [a, b] = [s.players[0].played, s.players[1].played];
+  if (a.kind === 'joker' || b.kind === 'joker') return jokerShowdown(s, ctx);
   const d = compareDetail(a, b, s.cfg, s.trump);
   enterResult(s, ctx, d.cmp > 0 ? 0 : d.cmp < 0 ? 1 : null, 'showdown', d);
+}
+
+// ───────────── джокери при розкритті ─────────────
+
+function jokerEnv(s, ctx) {
+  const burns = [];
+  const env = {
+    burns,
+    api: (X) => ({
+      contrib: (p) => s.contrib[p],
+      chips: (p) => s.players[p].chips,
+      pay: (p, amt) => pay(s, p, amt),
+      transfer: (from, to, amt) => transfer(s, from, to, amt),
+      burn: (p, amt) => {
+        const a = Math.max(0, Math.min(amt, s.players[p].chips));
+        s.players[p].chips -= a;
+        s.pot += a;
+        s.jackpot += a; // згорілі фішки — у джекпот наступного раунду
+        burns.push(a);
+        return a;
+      },
+      drawNum: () => { const c = drawNumeric(s, ctx); if (c) s.jokerTrash.push(c); return c; },
+      trumpDelta: (p) => X.trumpDelta[p],
+      bestInHand: (p) => {
+        let best = null;
+        for (const c of s.players[p].hand) {
+          const v = c.kind === 'num' ? c.value + (s.trump && c.suit === s.trump ? X.trumpDelta[p] : 0)
+            : c.kind === 'knife' ? 0 : c.kind === 'double' ? 5 : c.kind === 'joker' ? -1 : 5;
+          if (c.kind !== 'joker' && (!best || v > best.pow)) best = { card: c, pow: v };
+        }
+        return best;
+      },
+      randomInHand: (p) => {
+        const h = s.players[p].hand.filter((c) => c.kind !== 'joker');
+        if (!h.length) return null;
+        const c = h[Math.floor(ctx.rng() * h.length)];
+        const v = c.kind === 'num' ? c.value + (s.trump && c.suit === s.trump ? X.trumpDelta[p] : 0) : c.kind === 'knife' ? 0 : 5;
+        return { card: c, pow: v };
+      },
+      takeFromHand: (p, card) => {
+        const h = s.players[p].hand;
+        const i = h.findIndex((c) => c.id === card.id);
+        if (i >= 0) { h.splice(i, 1); s.jokerTrash.push(card); }
+      },
+      dumpHand: (p) => {
+        for (const c of s.players[p].hand) if (c.kind !== 'joker') s.discard.push(c);
+        s.players[p].hand = [];
+      },
+      quake: () => {
+        const all = shuffle([...s.players[0].hand, ...s.players[1].hand], ctx.rng);
+        const n0 = s.players[0].hand.length;
+        s.players[0].hand = all.slice(0, n0);
+        s.players[1].hand = all.slice(n0);
+      },
+    }),
+  };
+  return env;
+}
+
+/** Сили карт з урахуванням ефектів джокерів і порівняння. */
+function jokerCompare(s, X) {
+  const pw = [0, 0];
+  const suit = [null, null];
+  const kind = [0, 1].map((p) => X.cards[p]?.kind);
+  for (const p of [0, 1]) {
+    const c = X.cards[p];
+    if (X.pow[p] != null) { pw[p] = X.pow[p]; suit[p] = X.suit[p] ?? (c?.kind === 'num' ? c.suit : null); continue; }
+    if (!c) { pw[p] = 0; continue; }
+    if (c.kind === 'num') { pw[p] = c.value + (s.trump && c.suit === s.trump ? X.trumpDelta[p] : 0); suit[p] = c.suit; }
+    else if (c.kind === 'joker') { pw[p] = c.power ?? 5; suit[p] = X.suit[p]; }
+    else if (c.kind === 'knife') pw[p] = s.cfg.knifePower;
+    else if (c.kind === 'double') pw[p] = s.cfg.doublePower;
+    else pw[p] = null; // Дзеркало — нижче
+  }
+  for (const fn of X.mods) fn(pw);
+  // Ніж б'є десятку за номіналом
+  for (const p of [0, 1]) {
+    const o = X.cards[1 - p];
+    if (kind[p] === 'knife' && X.pow[p] == null && ((o?.kind === 'num' && o.value === s.cfg.knifeBeats) || o?.kind === 'mirror')) {
+      return { winner: p, detail: { cmp: p === 0 ? 1 : -1, reason: o.kind === 'mirror' ? 'knife-mirror' : 'knife10', pa: pw[0] ?? 0, pb: pw[1] ?? 0, joker: true } };
+    }
+  }
+  // Дзеркало копіює силу суперника й виграє нічию
+  for (const p of [0, 1]) if (pw[p] === null) { pw[p] = pw[1 - p] ?? 5; X.winTie[p] = true; }
+  let cmp = pw[0] === pw[1] ? 0 : pw[0] > pw[1] ? 1 : -1;
+  if (X.lowWins) cmp = -cmp;
+  if (cmp === 0) {
+    if (X.winTie[0] !== X.winTie[1]) cmp = X.winTie[0] ? 1 : -1;
+    else if (X.loseTie[0] !== X.loseTie[1]) cmp = X.loseTie[0] ? -1 : 1;
+    else if (suit[0] && suit[1] && suit[0] !== suit[1]) {
+      const beats = { water: 'fire', fire: 'stone', stone: 'water' };
+      cmp = beats[suit[0]] === suit[1] ? 1 : beats[suit[1]] === suit[0] ? -1 : 0;
+    }
+  }
+  return { winner: cmp > 0 ? 0 : cmp < 0 ? 1 : null, detail: { cmp, reason: 'joker', pa: pw[0], pb: pw[1], lowWins: X.lowWins, joker: true } };
+}
+
+function jokerShowdown(s, ctx) {
+  const env = jokerEnv(s, ctx);
+  const X = resolveJokers(s, ctx, env);
+  for (const f of X.fired) {
+    s.lastJoker = f.as;
+    s.stats[f.p].jokers.push(f.joker);
+    if (JOKER_BY_ID[f.joker].rarity === 'legendary') s.stats[f.p].legendary += 1;
+  }
+  for (const n of X.notes) log(s, { t: 'joker', p: n.p, joker: n.joker, text: n.text });
+  const jokers = { notes: X.notes, fired: X.fired, cards: X.cards, duel: X.duel || null, coin: null, sum: X.sum };
+
+  if (X.cancel === 'void') {
+    s.jackpot = s.pot; // увесь банк — у джекпот
+    enterResult(s, ctx, null, 'void', { reason: 'void', joker: true });
+    s.result.jokers = jokers;
+    return;
+  }
+  if (X.cancel === 'replay') {
+    for (const p of [0, 1]) {
+      const a = Math.min(s.contrib[p], s.pot);
+      s.players[p].chips += a;
+      s.pot -= a;
+    }
+    s.jackpot = Math.min(s.jackpot, s.pot);
+    enterResult(s, ctx, null, 'replay', { reason: 'replay', joker: true });
+    s.result.replay = true;
+    s.result.jokers = jokers;
+    return;
+  }
+  let winner, detail;
+  if (X.forced !== undefined) { winner = X.forced; detail = { cmp: winner === 0 ? 1 : -1, reason: 'forced', joker: true }; }
+  else if (X.coin) { winner = ctx.rng() < 0.5 ? 0 : 1; jokers.coin = winner; detail = { cmp: winner === 0 ? 1 : -1, reason: 'coin', joker: true }; }
+  else if (X.sum) { winner = X.sum[0] === X.sum[1] ? null : X.sum[0] > X.sum[1] ? 0 : 1; detail = { cmp: winner === null ? 0 : winner === 0 ? 1 : -1, reason: 'duel', pa: X.sum[0], pb: X.sum[1], joker: true }; }
+  else ({ winner, detail } = jokerCompare(s, X));
+  const pot = s.pot;
+  enterResult(s, ctx, winner, 'showdown', detail, winner === null ? null : X.cards[winner]);
+  s.result.jokers = jokers;
+  const before = X.notes.length;
+  for (const fn of X.afters) fn({ winner, pot });
+  for (const n of X.notes.slice(before)) log(s, { t: 'joker', p: n.p, joker: n.joker, text: n.text });
 }
 
 function resolveDon(s, ctx, p, guess) {
@@ -546,6 +726,8 @@ function resolveDon(s, ctx, p, guess) {
     const want = Math.min(Math.floor(stakeBefore * (m - 1)), s.cfg.don.maxWin);
     const won = transfer(s, other(p), p, Math.max(1, want));
     d.stake += won;
+    d.wins = (d.wins || 0) + 1;
+    s.stats[p].donRoundMax = Math.max(s.stats[p].donRoundMax, d.wins);
     attempt.outcome = 'win';
     attempt.delta = won;
     s.stats[p].donWon += 1;
@@ -670,6 +852,7 @@ export function viewFor(s, p, now) {
       hand: me.hand,
       played: me.played,
       swapped: me.swapped,
+      jokerSet: s.jokerSets[p],
       scouted: me.scouted,
       scoutDecided: me.scoutDecided,
       scoutSeen: me.scoutSeen,
@@ -683,6 +866,7 @@ export function viewFor(s, p, now) {
       hasPlayed: !!op.played,
       played: playedVisible(s, p, other(p)) ? op.played : null,
       swapped: op.swapped,
+      jokerInHand: op.hand.some((c) => c.kind === 'joker'), // публічно: «джокер ще не зіграно»
       scouted: op.scouted,
       scoutDecided: op.scoutDecided,
       shown: op.shown,
@@ -692,7 +876,7 @@ export function viewFor(s, p, now) {
     result: r
       ? {
           winner: r.winner, reason: r.reason, won: r.won, penalty: r.penalty, revealed: r.revealed, carry: r.carry ?? 0,
-          don: r.don, detail: r.revealed ? r.detail : null,
+          don: r.don, detail: r.revealed ? r.detail : null, jokers: r.jokers || null, replay: !!r.replay,
         }
       : null,
     // Записи журналу публічні за побудовою: карти з'являються лише в showdown/tie/show/don.
