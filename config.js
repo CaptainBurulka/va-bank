@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '4.0.1'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '4.0.2'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 2,             // версія правил (для бота і симуляцій)
@@ -124,6 +124,20 @@ export const FEEL = Object.freeze({
   tensionMs: 1100,   // пауза-напруга перед розкриттям у гарячому раунді
   weakCard: 3,       // перемога картою з номіналом до цього — «слабкою картою!»
   bluffCard: 4,      // пас суперника на мою карту до цього номіналу — «блеф пройшов!»
+});
+
+// ───────── Скіни: мова рідкостей (лише вигляд, на гру не впливає) ─────────
+// Кольори дублюються в ui/skins/skins.css (--rar-*). Тривалості церемоній — мс; частинки — максимум на один предмет.
+export const SKINS = Object.freeze({
+  rarities: Object.freeze({
+    common: Object.freeze({ name: 'Звичайна', color: '#9aa4ad', material: 'друк, мат' }),
+    rare: Object.freeze({ name: 'Рідкісна', color: '#4aa8ff', material: 'метал, глянець' }),
+    epic: Object.freeze({ name: 'Епічна', color: '#b56cff', material: 'голографічна фольга' }),
+    legendary: Object.freeze({ name: 'Легендарна', color: '#ffc23d', material: 'жива голографія' }),
+  }),
+  ceremony: Object.freeze({ common: 900, rare: 1900, epic: 3400, legendary: 7200, legendaryDupe: 3600 }),
+  particles: Object.freeze({ epic: 8, legendary: 26, win: 40 }),
+  tiltMaxDeg: 16, // максимальний 3D-нахил карти
 });
 
 // ───────── Режими-модифікатори: лише пресети наявних налаштувань (для 2 і 3 гравців) ─────────

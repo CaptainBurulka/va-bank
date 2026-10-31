@@ -93,6 +93,9 @@ function chord(freqs, { delay = 0, step = 0.07, dur = 0.5, vol = 0.12 } = {}) {
   freqs.forEach((f, i) => tone({ freq: f, dur, vol, delay: delay + i * step, type: 'triangle', attack: 0.02, lp: 2400 }));
 }
 
+/** Синтез для звуків скінів (ui/skins/sound.js). */
+export const synth = { tone, noise, chord, clink, ready: () => !!ac && !muted };
+
 let accentId = null;
 /** Звуковий акцент із косметики («Звук»): null — класика. */
 export function setAccent(id) { accentId = id || null; }
