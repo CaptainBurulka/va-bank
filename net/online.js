@@ -6,6 +6,8 @@ import {
   parseGuestMessage, parseHostMessage, versionAdvice, compareVersions,
 } from './protocol.js';
 import { CONFIG, APP_VERSION } from '../config.js';
+import { sanitizeSet } from '../game/jokers.js';
+import { sanitizeLook } from '../meta/profile.js';
 
 export { ROOM_ALPHABET };
 
@@ -58,7 +60,8 @@ export async function createOnlineHost(o) {
   let retryT = null;
   let freshTries = 0;
 
-  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: { code, guestToken }, gameConfig: o.gameConfig || {} });
+  const me = o.profile || { set: [], look: null };
+  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: { code, guestToken }, gameConfig: o.gameConfig || {}, gameOpts: { jokerSets: [sanitizeSet(me.set), []] } });
   const status = () => o.onStatus({ started: !!host.state, oppConnected: host.connected[1], code });
 
   // Місце гостя
@@ -123,7 +126,10 @@ export async function createOnlineHost(o) {
             guestToken = randomToken(cryptoRng);
             host.extra = { code, guestToken };
           }
-          c.send(msg('welcome', { token: guestToken, seat: 1, app: APP_VERSION }));
+          c.send(msg('welcome', { token: guestToken, seat: 1, app: APP_VERSION, look: me.look }));
+          // Набір джокерів гостя фіксується на хості на початку партії; косметика — лише для показу
+          o.onOppLook?.(sanitizeLook(m.look));
+          if (!host.state) host.gameOpts = { ...host.gameOpts, jokerSets: [sanitizeSet(me.set), sanitizeSet(m.set)] };
           if (!host.state) host.start();
           host.setConnected(1, true);
           host.sendTo(1);
@@ -268,7 +274,7 @@ export function joinOnline(o) {
       c.on('open', () => {
         clearTimeout(openTimer);
         lastSeen = Date.now();
-        c.send(msg('hello', { token, app: APP_VERSION }));
+        c.send(msg('hello', { token, app: APP_VERSION, set: o.profile?.set || [], look: o.profile?.look || null }));
       });
       c.on('data', (raw) => {
         if (c !== conn) return;
@@ -279,6 +285,7 @@ export function joinOnline(o) {
         switch (m.type) {
           case 'welcome':
             token = m.token;
+            o.onOppLook?.(sanitizeLook(m.look));
             store.set(GUEST_KEY, { code, token });
             joined = true;
             hostConnected = true;

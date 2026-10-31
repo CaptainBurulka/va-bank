@@ -1,6 +1,6 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 /** Порівняння версій «2.0.1» → -1 / 0 / 1. */
 export function compareVersions(a, b) {
@@ -30,7 +30,9 @@ export const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 // і можуть чесно сказати, кому оновитися.
 export const PEER_PREFIX = 'vabank-ua-v1-';
 
-export const REACTIONS = ['😂', '😱', '😎', '🔥', '🤡', '👏'];
+import { COSMETICS } from '../meta/catalog.js';
+// Дозволені реакції — усі емодзі з усіх наборів косметики
+export const REACTIONS = [...new Set(COSMETICS.filter((c) => c.cat === 'emoji').flatMap((c) => c.set))];
 
 export function randomCode(rng) {
   let s = '';
@@ -65,7 +67,15 @@ export function parseGuestMessage(m) {
   switch (m.type) {
     case 'hello':
       if (m.token !== null && m.token !== undefined && (typeof m.token !== 'string' || m.token.length > 64)) return { ok: false, error: 'bad-token' };
-      return { ok: true, m: { type: 'hello', token: m.token || null, app } };
+      return {
+        ok: true,
+        m: {
+          type: 'hello', token: m.token || null, app,
+          // набір джокерів і косметика гостя (довіряємо, але обрізаємо форму; повна перевірка — на хості)
+          set: Array.isArray(m.set) ? m.set.filter((x) => typeof x === 'string' && x.length < 24).slice(0, 3) : [],
+          look: m.look && typeof m.look === 'object' && !Array.isArray(m.look) ? m.look : null,
+        },
+      };
     case 'action': {
       const a = m.action;
       if (!a || typeof a !== 'object' || !ACTION_TYPES.has(a.type)) return { ok: false, error: 'bad-action' };
