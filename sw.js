@@ -1,7 +1,7 @@
 // Service worker: офлайн-оболонка (бот і «передай телефон» працюють без мережі).
 // Стратегія stale-while-revalidate: миттєвий старт із кешу, оновлення — з наступного запуску.
 // Версія кешу = APP_VERSION із config.js (перевіряє тест). Змінюйте разом із кожним релізом.
-const CACHE = 'vabank-3.0.0';
+const CACHE = 'vabank-3.0.1';
 const FONTS = ['playfair-display-cyrillic-700', 'playfair-display-latin-700', 'playfair-display-cyrillic-900', 'playfair-display-latin-900',
   'manrope-cyrillic-500', 'manrope-latin-500', 'manrope-cyrillic-700', 'manrope-latin-700', 'manrope-cyrillic-800', 'manrope-latin-800']
   .map((f) => `fonts/${f}-normal.woff2`);

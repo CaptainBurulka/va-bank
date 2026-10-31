@@ -359,7 +359,8 @@ svg.ico { width: 22px; height: 22px; flex-shrink: 0; }
 .react-panel button:active { transform: scale(.9); }
 
 /* ───────── кінець ───────── */
-#scr-end { gap: var(--sp-4); justify-content: flex-start; overflow-y: auto; padding-top: var(--sp-6); touch-action: pan-y; }
+#scr-end { gap: var(--sp-4); justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-top: var(--sp-6); padding-bottom: 0; touch-action: pan-y; }
+#scr-end > * { flex-shrink: 0; }
 .end-hero { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
 .crown { width: 44px; height: 44px; color: var(--gold); }
 .end-title { font: 900 46px/1 var(--font-display); color: var(--gold-hi); text-align: center; }
@@ -373,7 +374,7 @@ svg.ico { width: 22px; height: 22px; flex-shrink: 0; }
 .stats td { padding: 9px var(--sp-2); border-top: 1px solid var(--line-soft); text-align: center; font-size: var(--fs-s); }
 .stats td:first-child { text-align: left; padding-left: var(--sp-4); color: var(--ink-2); }
 .stats td.best { color: var(--gold-hi); font-weight: 800; }
-.end-acts { display: flex; flex-direction: column; gap: var(--sp-3); }
+.end-acts { display: flex; flex-direction: column; gap: var(--sp-3); position: sticky; bottom: 0; z-index: 2; margin: 0 calc(-1 * var(--sp-5)); padding: var(--sp-3) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, transparent, var(--bg) 22%); }
 
 /* ───────── шторка, діалоги, тости ───────── */
 .curtain { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-5); padding: var(--sp-8); background: var(--lamp), var(--bg); animation: fadeIn var(--t-slow); }
@@ -568,3 +569,9 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 .code-box { width: 100%; margin-top: var(--sp-3); padding: var(--sp-3); border-radius: var(--r-m); border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); font: 600 13px/1.4 ui-monospace, Menlo, monospace; word-break: break-all; -webkit-user-select: text; user-select: text; resize: none; }
 .hand.five { gap: 5px; }
 .hand.five .card { --cw: min(17.4vw, 68px); }
+
+/* Екрани, що можуть не влізти на малий телефон: прокрутка, а коли влазять — по центру */
+#scr-menu, #scr-create, #scr-join { justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+#scr-menu > *, #scr-create > *, #scr-join > * { flex-shrink: 0; }
+#scr-menu > :first-child, #scr-create > :first-child, #scr-join > :first-child { margin-top: auto; }
+#scr-menu > :last-child, #scr-create > :last-child, #scr-join > :last-child { margin-bottom: auto; }

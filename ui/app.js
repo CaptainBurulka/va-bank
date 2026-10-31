@@ -92,7 +92,7 @@ document.addEventListener('click', unlock);
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 document.addEventListener('touchmove', (e) => {
-  if (!e.target.closest('.scrollable, .log-list, .meta-body, textarea')) e.preventDefault();
+  if (!e.target.closest('.scrollable, .log-list, .meta-body, #scr-end, #scr-menu, #scr-create, #scr-join, textarea')) e.preventDefault();
 }, { passive: false });
 
 const game = new GameScreen({
