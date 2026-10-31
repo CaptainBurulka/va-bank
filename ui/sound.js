@@ -38,7 +38,14 @@ export function setVolume(v) {
 }
 export const getVolume = () => volume;
 
-function tone({ freq = 440, to = null, type = 'sine', dur = 0.15, vol = 0.3, delay = 0, attack = 0.005 }) {
+// ───────── синтез ─────────
+function env(g, t, vol, attack, dur) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+}
+
+function tone({ freq = 440, to = null, type = 'sine', dur = 0.15, vol = 0.3, delay = 0, attack = 0.005, lp = 0 }) {
   if (!ac || muted) return;
   const t = ac.currentTime + delay;
   const o = ac.createOscillator();
@@ -46,25 +53,25 @@ function tone({ freq = 440, to = null, type = 'sine', dur = 0.15, vol = 0.3, del
   o.type = type;
   o.frequency.setValueAtTime(freq, t);
   if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vol, t + attack);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(master);
+  env(g, t, vol, attack, dur);
+  let node = o.connect(g);
+  if (lp) { const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; g.connect(f); node = f; }
+  node.connect(master);
   o.start(t);
-  o.stop(t + dur + 0.02);
+  o.stop(t + dur + 0.05);
 }
 
-function noise({ dur = 0.08, vol = 0.2, delay = 0, freq = 3000, q = 1 }) {
+function noise({ dur = 0.08, vol = 0.2, delay = 0, freq = 3000, q = 1, type = 'bandpass' }) {
   if (!ac || muted) return;
   const t = ac.currentTime + delay;
-  const len = Math.floor(ac.sampleRate * dur);
+  const len = Math.max(1, Math.floor(ac.sampleRate * dur));
   const buf = ac.createBuffer(1, len, ac.sampleRate);
   const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
   const src = ac.createBufferSource();
   src.buffer = buf;
   const f = ac.createBiquadFilter();
-  f.type = 'bandpass';
+  f.type = type;
   f.frequency.value = freq;
   f.Q.value = q;
   const g = ac.createGain();
@@ -73,19 +80,39 @@ function noise({ dur = 0.08, vol = 0.2, delay = 0, freq = 3000, q = 1 }) {
   src.start(t);
 }
 
+/** Керамічна фішка: короткий дзвінкий удар із двома обертонами. */
+function clink(delay = 0, pitch = 1) {
+  const f = (2600 + Math.random() * 500) * pitch;
+  tone({ freq: f, dur: 0.06, vol: 0.08, delay, type: 'sine' });
+  tone({ freq: f * 1.52, dur: 0.04, vol: 0.04, delay, type: 'sine' });
+  noise({ dur: 0.025, vol: 0.12, delay, freq: 5000, q: 2 });
+}
+
+/** Теплий мідний акорд (тріангл через фільтр). */
+function chord(freqs, { delay = 0, step = 0.07, dur = 0.5, vol = 0.12 } = {}) {
+  freqs.forEach((f, i) => tone({ freq: f, dur, vol, delay: delay + i * step, type: 'triangle', attack: 0.02, lp: 2400 }));
+}
+
 export const sfx = {
-  tap: () => tone({ freq: 660, dur: 0.05, vol: 0.12, type: 'triangle' }),
-  deal: (i = 0) => noise({ dur: 0.07, vol: 0.25, delay: i * 0.08, freq: 2500, q: 0.8 }),
-  place: () => { noise({ dur: 0.06, vol: 0.3, freq: 1200 }); tone({ freq: 180, dur: 0.08, vol: 0.15 }); },
-  flip: () => { noise({ dur: 0.1, vol: 0.25, freq: 3500, q: 0.6 }); tone({ freq: 500, to: 900, dur: 0.12, vol: 0.08, type: 'triangle' }); },
-  chip: (n = 3) => { for (let i = 0; i < Math.min(n, 6); i++) tone({ freq: 2200 + Math.random() * 900, dur: 0.05, vol: 0.12, delay: i * 0.055, type: 'square' }); },
-  win: () => [523, 659, 784, 1046].forEach((f, i) => tone({ freq: f, dur: 0.22, vol: 0.18, delay: i * 0.09, type: 'triangle' })),
-  lose: () => [392, 330, 262].forEach((f, i) => tone({ freq: f, dur: 0.3, vol: 0.16, delay: i * 0.12, type: 'sawtooth' })),
-  tie: () => { tone({ freq: 440, dur: 0.2, vol: 0.14, type: 'triangle' }); tone({ freq: 440, dur: 0.2, vol: 0.14, delay: 0.18, type: 'triangle' }); },
-  tick: () => tone({ freq: 1200, dur: 0.03, vol: 0.08, type: 'square' }),
-  turn: () => { tone({ freq: 880, dur: 0.1, vol: 0.12, type: 'sine' }); tone({ freq: 1320, dur: 0.14, vol: 0.1, delay: 0.08 }); },
-  scout: () => tone({ freq: 300, to: 1400, dur: 0.35, vol: 0.12, type: 'sine' }),
-  allin: () => { tone({ freq: 110, to: 55, dur: 0.6, vol: 0.3, type: 'sawtooth' }); noise({ dur: 0.4, vol: 0.2, freq: 400 }); },
-  pop: () => tone({ freq: 400, to: 1200, dur: 0.12, vol: 0.15, type: 'sine' }),
-  fanfare: () => [523, 659, 784, 659, 784, 1046].forEach((f, i) => tone({ freq: f, dur: 0.25, vol: 0.18, delay: i * 0.12, type: 'triangle' })),
+  tap: () => noise({ dur: 0.03, vol: 0.12, freq: 1800, q: 3 }),
+  deal: (i = 0) => noise({ dur: 0.09, vol: 0.22, delay: i * 0.07, freq: 1400, q: 0.7 }),
+  place: () => { noise({ dur: 0.08, vol: 0.32, freq: 380, q: 0.8, type: 'lowpass' }); tone({ freq: 120, dur: 0.1, vol: 0.12 }); },
+  flip: () => { noise({ dur: 0.07, vol: 0.2, freq: 2600, q: 0.8 }); noise({ dur: 0.05, vol: 0.18, delay: 0.06, freq: 900, q: 1 }); },
+  chip: (n = 3) => { for (let i = 0; i < Math.min(n, 6); i++) clink(i * 0.06); },
+  chips: (n = 4) => { for (let i = 0; i < Math.min(n + 2, 9); i++) clink(i * 0.045, 0.9 + Math.random() * 0.2); },
+  win: () => chord([392, 494, 587, 784], { step: 0.08, dur: 0.6 }),
+  lose: () => chord([330, 277, 220], { step: 0.12, dur: 0.55, vol: 0.1 }),
+  tie: () => chord([440, 440 * 1.25], { step: 0.14, dur: 0.35, vol: 0.09 }),
+  tick: () => tone({ freq: 900, dur: 0.035, vol: 0.06, type: 'triangle', lp: 1800 }),
+  turn: () => chord([587, 880], { step: 0.09, dur: 0.25, vol: 0.08 }),
+  scout: () => tone({ freq: 300, to: 900, dur: 0.3, vol: 0.08, type: 'triangle', lp: 2000 }),
+  allin: () => { tone({ freq: 98, to: 65, dur: 0.7, vol: 0.25, type: 'sawtooth', lp: 500 }); sfx.chips(6); },
+  pop: () => tone({ freq: 520, to: 1040, dur: 0.12, vol: 0.1, type: 'sine' }),
+  fanfare: () => { chord([392, 494, 587], { dur: 0.4 }); chord([523, 659, 784, 1046], { delay: 0.35, step: 0.06, dur: 0.9 }); },
+  /** Напруга перед відкриттям карти в «Подвої»: низький гул і серцебиття, що прискорюється. */
+  tension: () => {
+    if (!ac || muted) return;
+    tone({ freq: 73, to: 98, dur: 0.75, vol: 0.14, type: 'sawtooth', attack: 0.15, lp: 420 });
+    [0, 0.28, 0.5, 0.66].forEach((d) => tone({ freq: 62, dur: 0.12, vol: 0.22, delay: d, type: 'sine' }));
+  },
 };

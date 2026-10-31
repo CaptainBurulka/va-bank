@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Ва-банк</title>
-  <meta name="description" content="Карткова дуель для двох у нічному підпільному казино. Лише віртуальні фішки.">
-  <meta name="theme-color" content="#07060d">
+  <meta name="description" content="Карткова дуель для двох у підпільному клубі. Лише віртуальні фішки.">
+  <meta name="theme-color" content="#0b1410">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,131 +14,196 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- Splash для iPhone 15 Pro / 14 Pro / 15 / 16 (393×852 @3x) -->
+  <link rel="apple-touch-startup-image" href="icons/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="apple-touch-startup-image" href="icons/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+  <link rel="preload" href="fonts/manrope-cyrillic-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/playfair-display-cyrillic-900-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="ui/tokens.css">
   <link rel="stylesheet" href="styles.css">
   <script src="vendor/peerjs.min.js" defer></script>
   <script type="module" src="ui/app.js"></script>
 </head>
 <body>
+  <!-- Іконки: масті відрізняються і кольором, і ФОРМОЮ -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-water" viewBox="0 0 24 24"><path d="M12 2.5C8.2 7.6 5.5 11.3 5.5 14.6a6.5 6.5 0 0 0 13 0c0-3.3-2.7-7-6.5-12.1Z" fill="currentColor"/><path d="M9 15.2a3 3 0 0 0 3 3" stroke="#fff" stroke-opacity=".55" stroke-width="1.6" fill="none" stroke-linecap="round"/></symbol>
+    <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12.6 2c.5 3.1-1.2 4.9-2.8 6.6C8.2 10.3 6.5 12 6.5 15a5.5 5.5 0 0 0 11 0c0-2.2-1-3.9-2.1-5.2.1 1.6-.5 2.8-1.6 3.3.6-3.9-.6-8.3-1.2-11.1Z" fill="currentColor"/><path d="M12 21a2.8 2.8 0 0 1-2.8-2.8c0-1.6 1.3-2.5 2.3-3.7.3 1.2 1 1.6 1.7 2 .9.5 1.6 1.2 1.6 2.1A2.8 2.8 0 0 1 12 21Z" fill="#fff" fill-opacity=".45"/></symbol>
+    <symbol id="i-stone" viewBox="0 0 24 24"><path d="M7.5 4h9l4.5 7.5-4.5 8.5h-9L3 11.5 7.5 4Z" fill="currentColor"/><path d="M7.5 4 10 11.5 3 11.5M16.5 4 14 11.5h7M10 11.5h4l-2.4 8.5" stroke="#000" stroke-opacity=".28" stroke-width="1.2" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="i-knife" viewBox="0 0 24 24"><path d="M20.5 2.5c-4.5 1.2-9.3 5.4-12.2 9.6l3.6 3.6c4.2-2.9 8.2-7.6 8.6-13.2Z" fill="currentColor"/><path d="m8.3 12.1-1.6 1.6 3.6 3.6 1.6-1.6" fill="currentColor" opacity=".7"/><path d="M7.4 15.1 3 19.5 4.5 21l4.4-4.4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-mirror" viewBox="0 0 24 24"><ellipse cx="12" cy="9.5" rx="6.3" ry="7.5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M9.2 7.4 12.3 4.3M9.2 10.7l5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><path d="M12 17v4.5M8.5 21.5h7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-double" viewBox="0 0 24 24"><path d="M5 5l6 7-6 7M12 5l6 7-6 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="1.6"/><path d="M12 2v3.3M12 18.7V22M2 12h3.3M18.7 12H22M4.9 4.9l2.3 2.3M16.8 16.8l2.3 2.3M4.9 19.1l2.3-2.3M16.8 7.2l2.3-2.3" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 4 4 14h5v6h6v-6h5Z" fill="currentColor"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 20 4 10h5V4h6v6h5Z" fill="currentColor"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M6 11H5v9.5h14V11h-1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/></symbol>
+    <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5-2.7M14.5 10.4A10 10 0 0 1 19 13M2 9.5a15 15 0 0 1 5-3M11 5.6a15 15 0 0 1 11 3.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-deck" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 6.5v12A2.5 2.5 0 0 0 6 21h9" fill="none" stroke="currentColor" stroke-width="2" opacity=".6"/></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5L3 8Z" fill="currentColor"/></symbol>
+  </svg>
+
   <div id="app">
+    <!-- Заставка -->
+    <div class="splash" id="splash"><div class="logo">Ва-банк</div><div class="logo-sub">підпільний клуб</div></div>
+
     <!-- Головне меню -->
-    <section class="screen" id="scr-menu">
+    <section class="screen hidden" id="scr-menu">
       <div class="brand">
-        <div class="logo">ВА-БАНК</div>
-        <div class="tagline">підпільна карткова дуель</div>
+        <div class="brand-card" aria-hidden="true"><span>ВБ</span></div>
+        <h1 class="logo">Ва-банк</h1>
+        <div class="logo-sub">карткова дуель для двох</div>
       </div>
-      <div class="menu-buttons">
-        <button class="btn neon-pink big" data-go="create">Створити кімнату</button>
-        <button class="btn neon-cyan big" data-go="join">Приєднатися за кодом</button>
-        <button class="btn ghost" data-go="bot">Гра проти бота</button>
-        <button class="btn ghost" data-go="hotseat">Передай телефон</button>
-        <button class="btn ghost hidden" id="btn-resume">Продовжити партію</button>
-        <div class="menu-row">
-          <button class="btn link" data-go="rules">Правила</button>
-          <button class="btn link" data-go="settings">Налаштування</button>
+      <div class="menu-main">
+        <button class="btn primary big" data-go="friend">Грати з другом</button>
+        <button class="btn secondary hidden" id="btn-resume">Продовжити партію</button>
+        <div class="menu-pair">
+          <button class="btn secondary" data-go="bot">Проти бота</button>
+          <button class="btn secondary" data-go="hotseat">На одному телефоні</button>
         </div>
       </div>
-      <div class="foot-note">Лише віртуальні фішки. Без реальних грошей, покупок і реклами.<br><span id="app-version"></span></div>
+      <nav class="menu-links">
+        <button class="btn tertiary" data-go="tutorial">Навчання</button>
+        <button class="btn tertiary" data-go="rules">Правила</button>
+        <button class="btn tertiary" data-go="settings">Налаштування</button>
+      </nav>
+      <div class="foot-note">Лише віртуальні фішки — без грошей, покупок і реклами · <span id="app-version"></span></div>
     </section>
 
-    <!-- Створення кімнати -->
+    <!-- Лобі хоста -->
     <section class="screen hidden" id="scr-create">
-      <h2>Твоя кімната</h2>
-      <div class="room-code" id="room-code">····</div>
-      <p class="muted" id="create-status">Підключаюся до сервера…</p>
-      <div class="field-label">Довжина партії</div>
-      <div class="seg" id="create-rounds"></div>
-      <button class="btn ghost" id="btn-share">Поділитися кодом</button>
-      <button class="btn link" data-go="menu">Скасувати</button>
+      <div class="screen-head"><button class="btn tertiary back" data-go="menu">← Скасувати</button></div>
+      <div class="lobby">
+        <div class="eyebrow">Код кімнати</div>
+        <div class="room-code" id="room-code">····</div>
+        <div class="wait-line" id="create-status"><span class="dots"><i></i><i></i><i></i></span><span>Підключаюся…</span></div>
+        <button class="btn primary big" id="btn-share"><svg class="ico"><use href="#i-share"/></svg>Поділитися запрошенням</button>
+        <div class="field">
+          <div class="field-label">Довжина партії</div>
+          <div class="seg" id="create-rounds"></div>
+        </div>
+        <p class="hint-text">Друг відкриває посилання — і одразу потрапляє в кімнату. Або вводить код у «Грати з другом → Приєднатися».</p>
+      </div>
     </section>
 
     <!-- Приєднання -->
     <section class="screen hidden" id="scr-join">
-      <h2>Введи код кімнати</h2>
-      <input id="join-code" class="code-input" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="ABCD">
-      <p class="muted" id="join-status">&nbsp;</p>
-      <button class="btn neon-cyan big" id="btn-join">Підключитися</button>
-      <button class="btn link" data-go="menu">Назад</button>
+      <div class="screen-head"><button class="btn tertiary back" data-go="menu">← Назад</button></div>
+      <div class="lobby">
+        <div class="eyebrow">Введи код від друга</div>
+        <input id="join-code" class="code-input" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="ABCD" aria-label="Код кімнати">
+        <div class="wait-line" id="join-status">&nbsp;</div>
+        <button class="btn primary big" id="btn-join">Приєднатися</button>
+      </div>
     </section>
 
     <!-- Правила -->
     <section class="screen hidden scrollable" id="scr-rules">
-      <div class="rules" id="rules-body"></div>
-      <button class="btn neon-cyan" data-go="menu">Зрозуміло</button>
+      <div class="screen-head sticky"><button class="btn tertiary back" id="rules-back">← Назад</button></div>
+      <article class="rules" id="rules-body"></article>
     </section>
 
     <!-- Гра -->
     <section class="screen hidden" id="scr-game">
-      <header class="hud hud-opp">
-        <div class="who"><span class="avatar" id="opp-avatar">🎭</span><span id="opp-name">Суперник</span></div>
-        <div class="badges" id="opp-badges"></div>
-        <div class="chips"><span class="chip-ico"></span><b id="opp-chips">100</b></div>
+      <div class="phase wait" id="phase" role="status" aria-live="polite">
+        <div class="phase-txt"><b id="phase-title">&nbsp;</b><span id="phase-sub"></span></div>
+        <div class="ring hidden" id="phase-ring"><svg viewBox="0 0 36 36"><circle class="trk" cx="18" cy="18" r="15"/><circle class="val" cx="18" cy="18" r="15"/></svg><span id="phase-sec"></span></div>
+      </div>
+
+      <header class="player opp" id="opp">
+        <div class="ava" id="opp-ava"><svg class="tring" viewBox="0 0 56 56"><circle class="trk" cx="28" cy="28" r="25.5"/><circle class="val" cx="28" cy="28" r="25.5"/></svg><span id="opp-initial">С</span></div>
+        <div class="who"><b id="opp-name">Суперник</b><span class="status" id="opp-status"></span></div>
+        <div class="minis" id="opp-hand" aria-label="Карти суперника"></div>
+        <div class="stack"><svg class="chip"><use href="#i-chip"/></svg><b id="opp-chips">100</b></div>
       </header>
-      <div class="opp-hand" id="opp-hand"></div>
 
-      <div class="table" id="table">
-        <div class="round-tag" id="round-tag">Раунд 1/12</div>
-        <div class="trump hidden" id="trump"></div>
-        <div class="deck-info" id="deck-info"></div>
-        <button class="menu-btn" id="btn-menu" aria-label="Меню">☰</button>
-        <div class="slot" id="slot-opp"></div>
-        <div class="pot-wrap">
-          <div class="pot" id="pot"><small>БАНК</small><b id="pot-val">0</b></div>
-          <div class="carry hidden" id="carry"></div>
-          <div class="don-card" id="don-card"></div>
+      <main class="table" id="table">
+        <div class="tbar">
+          <span class="trump" id="trump"></span>
+          <span class="round" id="round-tag"></span>
         </div>
-        <div class="slot" id="slot-me"></div>
-      </div>
+        <div class="arena">
+          <div class="seat"><div class="slot" id="slot-opp"></div><span class="seat-info" id="info-opp"></span></div>
+          <div class="pot" id="pot">
+            <span class="lbl">Банк</span>
+            <b class="num" id="pot-val">0</b>
+            <span class="jack hidden" id="jackpot"></span>
+            <span class="deck" id="deck-info"></span>
+          </div>
+          <div class="seat"><div class="slot" id="slot-me"></div><span class="seat-info" id="info-me"></span></div>
+        </div>
+        <div class="verdict hidden" id="verdict" role="status"></div>
+      </main>
 
-      <div class="turn" id="turn">
-        <div class="turn-text" id="turn-text">&nbsp;</div>
-        <div class="timer"><div class="timer-bar" id="timer-bar"></div><span id="timer-num"></span></div>
-      </div>
-      <div class="log" id="log"></div>
-      <div class="tip hidden" id="tip"></div>
       <div class="hand" id="hand"></div>
-      <div class="actions" id="actions"></div>
+      <div class="acts" id="actions"></div>
 
-      <footer class="hud hud-me">
-        <div class="who"><span class="avatar">😼</span><span id="me-name">Ти</span></div>
-        <div class="badges" id="me-badges"></div>
-        <button class="react-btn" id="btn-react" aria-label="Реакції">😎</button>
-        <div class="chips"><span class="chip-ico"></span><b id="me-chips">100</b></div>
+      <footer class="player me" id="me">
+        <div class="ava me-ava"><span>Т</span></div>
+        <div class="who"><b id="me-name">Ти</b><span class="status" id="me-status"></span></div>
+        <button class="icon-btn" id="btn-react" aria-label="Реакції">😎</button>
+        <button class="icon-btn" id="btn-menu" aria-label="Меню"><svg><use href="#i-menu"/></svg></button>
+        <div class="stack"><svg class="chip"><use href="#i-chip"/></svg><b id="me-chips">100</b></div>
       </footer>
 
+      <!-- «Подвій або нічого» -->
+      <div class="don hidden" id="don">
+        <h2>Подвій або нічого</h2>
+        <p class="don-sub" id="don-sub"></p>
+        <div class="don-cards">
+          <div class="don-slot"><span class="bl">База</span><div id="don-base"></div></div>
+          <div class="don-slot next"><span class="bl">Наступна</span><div id="don-next"></div></div>
+        </div>
+        <div class="don-result hidden" id="don-result"></div>
+        <div class="choices" id="don-choices"></div>
+        <p class="don-eq" id="don-eq"></p>
+        <p class="don-watch" id="don-watch"></p>
+      </div>
+
+      <div class="coach hidden" id="coach" role="note"></div>
       <div class="react-panel hidden" id="react-panel"></div>
-      <div class="banner hidden" id="banner"></div>
-      <div class="offline hidden" id="offline">Суперник не на зв'язку…</div>
       <div class="fx-layer" id="fx"></div>
     </section>
 
     <!-- Кінець партії -->
     <section class="screen hidden" id="scr-end">
-      <div class="end-title" id="end-title">Перемога!</div>
-      <div class="end-sub" id="end-sub"></div>
+      <div class="end-hero">
+        <svg class="crown" id="end-crown"><use href="#i-crown"/></svg>
+        <div class="end-title" id="end-title">Перемога</div>
+        <div class="end-score" id="end-score"></div>
+        <div class="end-sub" id="end-sub"></div>
+      </div>
       <table class="stats" id="end-stats"></table>
-      <p class="muted" id="rematch-status">&nbsp;</p>
-      <button class="btn neon-pink big" id="btn-rematch">Реванш</button>
-      <button class="btn link" id="btn-end-menu">У меню</button>
+      <div class="end-acts">
+        <div class="wait-line" id="rematch-status">&nbsp;</div>
+        <button class="btn primary big" id="btn-rematch">Реванш</button>
+        <button class="btn secondary" id="btn-end-menu">У меню</button>
+      </div>
     </section>
 
-    <!-- Шторка «передай телефон» -->
+    <!-- Шторка «на одному телефоні» -->
     <div class="curtain hidden" id="curtain">
-      <div class="curtain-ico">📱</div>
+      <div class="brand-card" aria-hidden="true"><span>ВБ</span></div>
       <div class="curtain-text" id="curtain-text">Передай телефон</div>
-      <button class="btn neon-pink big" id="curtain-btn">Показати мої карти</button>
+      <p class="hint-text">Інший гравець не повинен бачити твої карти</p>
+      <button class="btn primary big" id="curtain-btn">Показати мої карти</button>
     </div>
 
-    <!-- Діалог -->
+    <!-- Діалог / аркуш -->
     <div class="modal hidden" id="modal">
       <div class="modal-box">
         <div id="modal-text"></div>
         <div class="modal-btns" id="modal-btns"></div>
       </div>
     </div>
-    <div class="toast hidden" id="toast"></div>
+    <div class="toast hidden" id="toast" role="alert"></div>
     <div class="update-bar hidden" id="update-bar">
       <span>Доступна нова версія</span>
-      <button class="btn neon-cyan" id="btn-update">Оновити</button>
+      <button class="btn primary" id="btn-update">Оновити</button>
     </div>
     <div class="rotate-hint">Поверни телефон вертикально</div>
   </div>

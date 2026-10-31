@@ -16,7 +16,8 @@ export class GameHost {
    * @param {string|null} [o.persistKey] ключ localStorage для відновлення після перезавантаження
    * @param {object} [o.extra] додаткові дані для збереження (код кімнати, токен гостя)
    */
-  constructor({ timers = true, persistKey = null, extra = {}, gameConfig = {} } = {}) {
+  constructor({ timers = true, persistKey = null, extra = {}, gameConfig = {}, gameOpts = {} } = {}) {
+    this.gameOpts = gameOpts; // напр. складена колода для навчання: { deck, trumps, firstToAct }
     this.timers = timers;
     this.gameConfig = gameConfig; // напр. { maxRounds: 16 }
     this.persistKey = persistKey;
@@ -40,7 +41,7 @@ export class GameHost {
   }
 
   start() {
-    this.state = createGame({ timers: this.timers, config: this.gameConfig }, this.ctx());
+    this.state = createGame({ timers: this.timers, config: this.gameConfig, ...this.gameOpts }, this.ctx());
     this.rematch = [false, false];
     this.refresh();
   }

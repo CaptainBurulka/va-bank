@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../ui/tokens.css">
+<style>
+html,body{margin:0;background:transparent}
+.icon{width:1024px;height:1024px;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 38%,#24774f 0%,#145236 48%,#0a2f1f 100%)}
+.icon::before{content:"";position:absolute;inset:36px;border-radius:120px;box-shadow:inset 0 0 0 10px #8a6a2c,inset 0 0 0 16px rgba(226,183,90,.5),inset 0 30px 80px rgba(0,0,0,.45)}
+.icon.mask::before{display:none}
+.cardb{position:absolute;left:50%;top:47%;width:430px;height:610px;transform:translate(-50%,-50%) rotate(-7deg);border-radius:46px;
+  background:repeating-linear-gradient(45deg,transparent 0 26px,rgba(226,183,90,.2) 26px 30px),repeating-linear-gradient(-45deg,transparent 0 26px,rgba(226,183,90,.2) 26px 30px),linear-gradient(160deg,#8a2433,#4a0f19);
+  box-shadow:0 30px 60px rgba(0,0,0,.5),inset 0 0 0 9px #e2b75a;display:grid;place-items:center}
+.cardb::after{content:"";position:absolute;inset:34px;border:4px solid rgba(240,210,140,.6);border-radius:26px}
+.cardb span{font:italic 900 210px/1 var(--font-display);color:#f3cf78;text-shadow:0 6px 0 rgba(0,0,0,.45)}
+.chip{position:absolute;left:62%;top:66%;width:250px;height:250px;color:#e2b75a;filter:drop-shadow(0 16px 24px rgba(0,0,0,.5))}
+.mask .cardb{width:360px;height:510px}.mask .cardb span{font-size:176px}.mask .chip{width:200px;height:200px;left:60%;top:63%}
+.splash{position:relative;overflow:hidden;background:radial-gradient(120% 60% at 50% 0%,rgba(255,196,110,.18),transparent 60%),#0b1410;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:56px}
+.splash .cardb{position:relative;left:auto;top:auto;transform:rotate(-6deg);width:300px;height:426px;border-radius:30px}
+.splash .cardb span{font-size:140px}
+.splash h1{margin:0;font:900 190px/1 var(--font-display);color:#f3cf78;text-shadow:0 6px 0 rgba(0,0,0,.5)}
+.splash p{margin:-20px 0 0;font:700 46px/1 var(--font-ui);letter-spacing:.2em;color:#d6ccb6;text-transform:uppercase}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><symbol id="i-chip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor"/><circle cx="12" cy="12" r="6.6" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="1.6"/><path d="M12 2v3.3M12 18.7V22M2 12h3.3M18.7 12H22M4.9 4.9l2.3 2.3M16.8 16.8l2.3 2.3M4.9 19.1l2.3-2.3M16.8 7.2l2.3-2.3" stroke="#fff" stroke-opacity=".7" stroke-width="2"/></symbol></svg>
+<div id="stage"></div>
+<script>
+const p=new URLSearchParams(location.search);
+const kind=p.get('kind');
+const st=document.getElementById('stage');
+const card='<div class="cardb"><span>ВБ</span></div>';
+if(kind==='splash'){const w=+p.get('w'),h=+p.get('h');st.innerHTML=`<div class="splash" style="width:${w}px;height:${h}px">${card}<h1>Ва-банк</h1><p>підпільний клуб</p></div>`;}
+else st.innerHTML=`<div class="icon ${kind==='mask'?'mask':''}">${card}<svg class="chip"><use href="#i-chip"/></svg></div>`;
+</script></body></html>

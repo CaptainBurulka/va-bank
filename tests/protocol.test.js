@@ -70,5 +70,5 @@ test('протокол: нові дії обмін і подвоєння, пом
 test('кеш service worker змінюється разом із версією застосунку', () => {
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.ok(sw.includes(`'vabank-${APP_VERSION}'`), `sw.js має містити CACHE = 'vabank-${APP_VERSION}'`);
-  for (const f of ['ui/settings.js', 'game/engine.js', 'net/protocol.js']) assert.ok(sw.includes(`'${f}'`), f);
+  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'net/protocol.js']) assert.ok(sw.includes(`'${f}'`), f);
 });

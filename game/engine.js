@@ -665,6 +665,7 @@ export function viewFor(s, p, now) {
     deck: deckStats(s.deck, s.cfg),
     firstToAct: s.firstToAct,
     me: {
+      inPot: s.contrib[p], // внесок у банк цього раунду (публічна інформація)
       chips: me.chips,
       hand: me.hand,
       played: me.played,
@@ -676,6 +677,7 @@ export function viewFor(s, p, now) {
       ready: me.ready,
     },
     opp: {
+      inPot: s.contrib[other(p)],
       chips: op.chips,
       handCount: op.hand.length,
       hasPlayed: !!op.played,
