@@ -448,3 +448,22 @@
 @keyframes dkBeam { 0% { transform: rotate(var(--r)) scaleY(0); opacity: 0; } 25% { transform: rotate(var(--r)) scaleY(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: rotate(calc(var(--r) * 1.4)) scaleY(1); opacity: 0; } }
 .skwin .dkr { position: absolute; top: -20%; width: 4px; height: 26px; background: var(--c); border-radius: 2px; box-shadow: 0 0 6px rgba(229, 176, 74, .6); animation: dkRibbon 2.4s cubic-bezier(.4, .1, .7, 1) both; }
 @keyframes dkRibbon { 0% { transform: translateY(0) rotate(var(--rot)) skewY(0); } 50% { transform: translateY(70vh) rotate(calc(var(--rot) * -1)) skewY(20deg); } 100% { transform: translateY(130vh) rotate(var(--rot)) skewY(-20deg); } }
+
+/* ═════════ Набір «Безодня» ═════════ */
+.sk-abyss .sk-tilt { background: #03263c; }
+/* легендарна: медузи пульсують і дрейфують, планктон мерехтить, світло цифр дихає, бульбашки піднімаються */
+.sk-abyss .abj { transform-box: fill-box; transform-origin: 50% 0; animation: abJelly 3.4s ease-in-out infinite; }
+@keyframes abJelly { 0%, 100% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-3px) scale(1.08, .86); } 60% { transform: translateY(-6px) scale(.96, 1.06); } }
+.sk-abyss .abpl { animation: abPl 2.8s ease-in-out infinite; }
+@keyframes abPl { 50% { opacity: .1; } }
+.sk-abyss .abglow { animation: abGlow 3.4s ease-in-out infinite; }
+@keyframes abGlow { 50% { opacity: .62; } }
+.sk-abyss .abping { transform-box: fill-box; transform-origin: center; animation: abPing 3s ease-out infinite; }
+@keyframes abPing { from { transform: scale(.4); opacity: .9; } to { transform: scale(5.5); opacity: 0; } }
+.sk-abyss .abb { position: absolute; width: calc(var(--w) * .03); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(200, 245, 255, .75); background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, .8) 0 18%, transparent 30%); opacity: 0; animation: abRise var(--d) linear var(--delay) infinite; }
+@keyframes abRise { 0% { transform: translate(0, 0) scale(var(--s)); opacity: 0; } 10% { opacity: .9; } 50% { transform: translate(6px, calc(var(--w) * -.7)) scale(var(--s)); } 100% { transform: translate(-4px, calc(var(--w) * -1.5)) scale(var(--s)); opacity: 0; } }
+.skwin .abring { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px; border-radius: 50%; border: 2px solid #7fe6ff; box-shadow: 0 0 18px #3ff7ff, inset 0 0 12px #3ff7ff; animation: abRing 1.8s ease-out both; }
+.skwin.r-legendary .abring:nth-child(even) { border-color: #ff5fd2; box-shadow: 0 0 18px #ff5fd2, inset 0 0 12px #ff5fd2; }
+@keyframes abRing { from { transform: scale(.2); opacity: 1; } to { transform: scale(12); opacity: 0; } }
+.skwin .abw { position: absolute; bottom: -20px; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid rgba(200, 245, 255, .9); background: radial-gradient(circle at 30% 30%, #fff 0 15%, transparent 30%); animation: abWinRise 2s ease-in both; transform: scale(var(--s)); }
+@keyframes abWinRise { to { transform: translate(var(--dx), -110vh) scale(var(--s)); } }

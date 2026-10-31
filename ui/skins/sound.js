@@ -13,6 +13,8 @@ const MOTIF = {
   bandura: (t, v) => [220, 262, 330, 415, 440, 523].forEach((fq, i) => { const d = i * .1; t({ freq: fq, dur: .9, vol: .09 * v, delay: d, type: 'triangle', attack: .002, lp: 2600 }); t({ freq: fq * 1.003, dur: .7, vol: .04 * v, delay: d + .004, type: 'sawtooth', lp: 1400 }); }),
   // джазове фортепіано: Cmaj9 арпеджіо + «щітка» по малому барабану
   jazz: (t, v, n) => { [262, 330, 392, 494, 587].forEach((fq, i) => { const d = i * .07; t({ freq: fq, dur: 1.2, vol: .08 * v, delay: d, type: 'triangle', attack: .004, lp: 2200 }); t({ freq: fq * 2, dur: .4, vol: .02 * v, delay: d }); }); n?.({ dur: .35, vol: .08, freq: 6000, q: .4, delay: .05 }); },
+  // сонар: «пінг» із відлунням у глибині та низький гул
+  sonar: (t, v) => { [0, .42, .84].forEach((d, i) => t({ freq: 1320, dur: .9, vol: (.11 / (i + 1)) * v, delay: d, attack: .002 })); t({ freq: 98, to: 82, dur: 1.6, vol: .07 * v, lp: 300 }); },
   synth: (t, v) => [220, 277, 330, 440, 554, 660].forEach((fq, i) => t({ freq: fq, dur: .16, vol: .06 * v, delay: i * .06, type: 'sawtooth', lp: 1900 })),
 };
 

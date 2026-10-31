@@ -7,6 +7,7 @@ import './sets/cyber.js';
 import './sets/samurai.js';
 import './sets/cossack.js';
 import './sets/deco.js';
+import './sets/abyss.js';
 
 export { SETS };
 export const ITEM_KINDS = {
