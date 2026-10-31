@@ -48,13 +48,13 @@ export function simulateJokers(gamesPer = 400) {
   const per = {};
   const games = { on: [], off: [] };
   const gameWin = {};
-  let seed = 1;
   for (const j of JOKERS) { per[j.id] = { n: 0, sum: 0, sn: 0, ssum: 0, ch: 0 }; gameWin[j.id] = { n: 0, w: 0 }; }
   for (const j of JOKERS) {
     if (process.env.ONLY && !process.env.ONLY.split(",").includes(j.id)) continue;
     for (let g = 0; g < gamesPer; g++) {
       const other = JOKERS[(g * 7 + 3) % JOKERS.length].id;
-      const { s, plays } = playGame(seed++, [[j.id], [other]]);
+      // зерно залежить від номера джокера — тож запуск з ONLY дає ті самі партії, що й повний
+      const { s, plays } = playGame(1 + JOKERS.indexOf(j) * gamesPer + g, [[j.id], [other]]);
       games.on.push(s.round);
       for (const x of plays) { per[x.joker].n++; per[x.joker].sum += x.score; if (x.revealed) { per[x.joker].sn++; per[x.joker].ssum += x.score; if (x.changed) per[x.joker].ch++; } }
       if (s.stats[0].jokers.includes(j.id) && s.winner !== 'draw') { gameWin[j.id].n++; if (s.winner === 0) gameWin[j.id].w++; }

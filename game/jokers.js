@@ -218,11 +218,12 @@ const build = (T) => [
     d3: `Сила ${T.quake.power}. Після розкриття руки всіх перемішуються і роздаються наново.`,
     apply: (api) => api.after(() => { api.quake(); api.note('Землетрус перемішав руки'); }) },
   { id: 'castling', name: 'Рокіровка', rarity: 'epic', icon: '♜', power: T.castling.power, stage: 'replace',
-    desc: `Ви міняєтеся зіграними картами (суперникові дістається Рокіровка із силою ${T.castling.power}).`,
-    d3: `Міняєшся зіграними картами з лідером (йому дістається Рокіровка із силою ${T.castling.power}).`,
+    desc: `Міняєтеся зіграними картами (йому — Рокіровка сили ${T.castling.power})${T.castling.myTie ? ', нічия — твоя' : ''}.`,
+    d3: `Міняєшся зіграними картами з лідером (йому — Рокіровка сили ${T.castling.power})${T.castling.myTie ? ', нічия — твоя' : ''}.`,
     apply: (api) => {
       const a = api.me, b = api.opp, X = api.X;
       [X.cards[a], X.cards[b]] = [X.cards[b], X.cards[a]]; [X.pow[a], X.pow[b]] = [X.pow[b], X.pow[a]];
+      if (T.castling.myTie) X.winTie[a] = true; // нічию виграє той, хто зіграв Рокіровку
       api.note('Рокіровка: карти помінялись');
     } },
   { id: 'frenzy', name: 'Ажіотаж', rarity: 'epic', icon: '🔥', power: T.frenzy.power, stage: 'replace',

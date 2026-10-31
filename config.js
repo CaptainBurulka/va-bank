@@ -64,7 +64,7 @@ export const JOKER_TUNING = Object.freeze({
   magnet: { power: 7 },
   temptation: { power: 4, step: 10, max: 12 },
   shadow: { power: 6, scouted: 10 },
-  trap: { power: 2 },
+  trap: { power: 0 },
   swap: { oppBonus: 0 },
   pocket: { tries: 1 },
   highroller: { power: 6 },
@@ -78,7 +78,7 @@ export const JOKER_TUNING = Object.freeze({
   echo: { power: 6 },
   storm: { oppBonus: 0 },
   redeal: { oppBonus: 0 },
-  castling: { power: 6 },
+  castling: { power: 6, myTie: true },
 });
 
 // Гра втрьох: ті самі ідеї джокерів, інші числа (треба побити двох суперників). Решта — як для двох.
@@ -100,7 +100,7 @@ export const JOKER_TUNING_3 = Object.freeze({
   thief: { power: 7 },
   trap: { power: 3 },
   swap: { oppBonus: 1 },
-  castling: { power: 8 },
+  castling: { power: 8, myTie: false },
   mirrorworld: { power: 6 },
   highroller: { power: 8 },
   pocket: { tries: 2 },
