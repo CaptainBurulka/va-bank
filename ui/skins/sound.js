@@ -11,6 +11,8 @@ const MOTIF = {
   koto: (t, v) => [587, 622, 784, 880, 932, 1175].forEach((fq, i) => { const d = i * .13; t({ freq: fq, dur: 1.1, vol: .1 * v, delay: d, type: 'triangle', attack: .002, lp: 3200 }); t({ freq: fq * 2, dur: .25, vol: .03 * v, delay: d, attack: .001 }); }),
   // бандура: перебір гармонічного мінору з легким «дзвоном» струни
   bandura: (t, v) => [220, 262, 330, 415, 440, 523].forEach((fq, i) => { const d = i * .1; t({ freq: fq, dur: .9, vol: .09 * v, delay: d, type: 'triangle', attack: .002, lp: 2600 }); t({ freq: fq * 1.003, dur: .7, vol: .04 * v, delay: d + .004, type: 'sawtooth', lp: 1400 }); }),
+  // джазове фортепіано: Cmaj9 арпеджіо + «щітка» по малому барабану
+  jazz: (t, v, n) => { [262, 330, 392, 494, 587].forEach((fq, i) => { const d = i * .07; t({ freq: fq, dur: 1.2, vol: .08 * v, delay: d, type: 'triangle', attack: .004, lp: 2200 }); t({ freq: fq * 2, dur: .4, vol: .02 * v, delay: d }); }); n?.({ dur: .35, vol: .08, freq: 6000, q: .4, delay: .05 }); },
   synth: (t, v) => [220, 277, 330, 440, 554, 660].forEach((fq, i) => t({ freq: fq, dur: .16, vol: .06 * v, delay: i * .06, type: 'sawtooth', lp: 1900 })),
 };
 
@@ -20,7 +22,7 @@ export function playAccent(accent, rarity) {
   const { tone, noise, chord } = synth;
   const r = rarIndex(rarity);
   const v = 1 + r * .15;
-  MOTIF[accent]?.(tone, v);
+  MOTIF[accent]?.(tone, v, noise);
   if (r >= 1) tone({ freq: 2093, dur: .5, vol: .05, delay: .05, type: 'sine' }); // блиск металу
   if (r >= 2) MOTIF[accent]?.((o) => tone({ ...o, delay: (o.delay || 0) + .28, vol: (o.vol || .1) * .35 }), 1); // відлуння
   if (r >= 3) {
