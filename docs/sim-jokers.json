@@ -6,10 +6,10 @@
       "rarity": "common",
       "plays": 892,
       "showdowns": 726,
-      "showdownWinPct": 48.4,
-      "roundWinPct": 45,
-      "gameWinPct": 52.7,
-      "changedPct": 64.3
+      "showdownWinPct": 47.2,
+      "roundWinPct": 44.1,
+      "gameWinPct": 52.4,
+      "changedPct": 66.3
     },
     {
       "id": "roulette",
@@ -17,10 +17,10 @@
       "rarity": "common",
       "plays": 909,
       "showdowns": 717,
-      "showdownWinPct": 53.5,
-      "roundWinPct": 45.6,
+      "showdownWinPct": 53.6,
+      "roundWinPct": 45.7,
       "gameWinPct": 47.9,
-      "changedPct": 65.1
+      "changedPct": 65
     },
     {
       "id": "thief",
@@ -31,7 +31,7 @@
       "showdownWinPct": 49,
       "roundWinPct": 40.3,
       "gameWinPct": 49,
-      "changedPct": 42.1
+      "changedPct": 42.2
     },
     {
       "id": "fist",
@@ -52,8 +52,8 @@
       "showdowns": 735,
       "showdownWinPct": 48.4,
       "roundWinPct": 42.7,
-      "gameWinPct": 47.7,
-      "changedPct": 50.9
+      "gameWinPct": 47.5,
+      "changedPct": 49.7
     },
     {
       "id": "twin",
@@ -63,8 +63,8 @@
       "showdowns": 694,
       "showdownWinPct": 53.5,
       "roundWinPct": 46.6,
-      "gameWinPct": 53,
-      "changedPct": 61.4
+      "gameWinPct": 52.8,
+      "changedPct": 61.1
     },
     {
       "id": "chameleon",
@@ -94,10 +94,10 @@
       "rarity": "common",
       "plays": 889,
       "showdowns": 728,
-      "showdownWinPct": 46.5,
-      "roundWinPct": 44.9,
-      "gameWinPct": 49.3,
-      "changedPct": 28.4
+      "showdownWinPct": 45.5,
+      "roundWinPct": 44.1,
+      "gameWinPct": 49.1,
+      "changedPct": 30.2
     },
     {
       "id": "dice",
@@ -105,10 +105,10 @@
       "rarity": "common",
       "plays": 921,
       "showdowns": 766,
-      "showdownWinPct": 53.7,
-      "roundWinPct": 49.7,
+      "showdownWinPct": 54,
+      "roundWinPct": 50,
       "gameWinPct": 51.4,
-      "changedPct": 59.3
+      "changedPct": 58.9
     },
     {
       "id": "counter",
@@ -140,7 +140,7 @@
       "showdowns": 807,
       "showdownWinPct": 53.8,
       "roundWinPct": 53.7,
-      "gameWinPct": 50.6,
+      "gameWinPct": 50.5,
       "changedPct": 44
     },
     {
@@ -162,7 +162,7 @@
       "showdowns": 696,
       "showdownWinPct": 45.6,
       "roundWinPct": 38.7,
-      "gameWinPct": 48.3,
+      "gameWinPct": 48,
       "changedPct": 72.3
     },
     {
@@ -171,10 +171,10 @@
       "rarity": "rare",
       "plays": 923,
       "showdowns": 757,
-      "showdownWinPct": 48.8,
-      "roundWinPct": 46.7,
-      "gameWinPct": 50.3,
-      "changedPct": 79.9
+      "showdownWinPct": 48.7,
+      "roundWinPct": 46.6,
+      "gameWinPct": 50.4,
+      "changedPct": 80.1
     },
     {
       "id": "shadow",
@@ -182,10 +182,10 @@
       "rarity": "rare",
       "plays": 906,
       "showdowns": 601,
-      "showdownWinPct": 50.5,
-      "roundWinPct": 53.3,
-      "gameWinPct": 47.8,
-      "changedPct": 33.1
+      "showdownWinPct": 49.3,
+      "roundWinPct": 52.4,
+      "gameWinPct": 47.9,
+      "changedPct": 35.6
     },
     {
       "id": "trap",
@@ -193,10 +193,10 @@
       "rarity": "rare",
       "plays": 902,
       "showdowns": 849,
-      "showdownWinPct": 57.5,
-      "roundWinPct": 60,
-      "gameWinPct": 59.5,
-      "changedPct": 58.4
+      "showdownWinPct": 55,
+      "roundWinPct": 57.6,
+      "gameWinPct": 59,
+      "changedPct": 56.2
     },
     {
       "id": "highroller",
@@ -204,10 +204,10 @@
       "rarity": "rare",
       "plays": 912,
       "showdowns": 742,
-      "showdownWinPct": 52,
-      "roundWinPct": 49.1,
+      "showdownWinPct": 50.7,
+      "roundWinPct": 48,
       "gameWinPct": 49.2,
-      "changedPct": 25.1
+      "changedPct": 27.2
     },
     {
       "id": "pocket",
@@ -215,10 +215,10 @@
       "rarity": "rare",
       "plays": 894,
       "showdowns": 695,
-      "showdownWinPct": 52.4,
-      "roundWinPct": 46,
+      "showdownWinPct": 52.3,
+      "roundWinPct": 45.9,
       "gameWinPct": 52.9,
-      "changedPct": 61.9
+      "changedPct": 61.7
     },
     {
       "id": "sharper",
@@ -237,10 +237,10 @@
       "rarity": "rare",
       "plays": 922,
       "showdowns": 760,
-      "showdownWinPct": 45.7,
-      "roundWinPct": 41.2,
-      "gameWinPct": 46.4,
-      "changedPct": 65.4
+      "showdownWinPct": 46.9,
+      "roundWinPct": 42.1,
+      "gameWinPct": 46.6,
+      "changedPct": 64.3
     },
     {
       "id": "brave",
@@ -259,10 +259,10 @@
       "rarity": "rare",
       "plays": 903,
       "showdowns": 757,
-      "showdownWinPct": 46,
-      "roundWinPct": 47.3,
-      "gameWinPct": 50.3,
-      "changedPct": 31.6
+      "showdownWinPct": 45.2,
+      "roundWinPct": 46.6,
+      "gameWinPct": 49.9,
+      "changedPct": 33.4
     },
     {
       "id": "boom",
@@ -272,7 +272,7 @@
       "showdowns": 746,
       "showdownWinPct": 53,
       "roundWinPct": 46.6,
-      "gameWinPct": 50.3,
+      "gameWinPct": 50.1,
       "changedPct": 100
     },
     {
@@ -283,7 +283,7 @@
       "showdowns": 709,
       "showdownWinPct": 47.1,
       "roundWinPct": 40.7,
-      "gameWinPct": 50.4,
+      "gameWinPct": 50.5,
       "changedPct": 72.1
     },
     {
@@ -292,10 +292,10 @@
       "rarity": "epic",
       "plays": 922,
       "showdowns": 685,
-      "showdownWinPct": 51.7,
-      "roundWinPct": 43,
+      "showdownWinPct": 51.5,
+      "roundWinPct": 42.8,
       "gameWinPct": 49.1,
-      "changedPct": 73.6
+      "changedPct": 73.4
     },
     {
       "id": "echo",
@@ -314,10 +314,10 @@
       "rarity": "epic",
       "plays": 915,
       "showdowns": 764,
-      "showdownWinPct": 50.3,
-      "roundWinPct": 47,
+      "showdownWinPct": 49.9,
+      "roundWinPct": 46.7,
       "gameWinPct": 49.1,
-      "changedPct": 27.2
+      "changedPct": 28.7
     },
     {
       "id": "castling",
@@ -325,10 +325,10 @@
       "rarity": "epic",
       "plays": 920,
       "showdowns": 739,
-      "showdownWinPct": 39.6,
-      "roundWinPct": 38.2,
-      "gameWinPct": 50.2,
-      "changedPct": 75.1
+      "showdownWinPct": 47.7,
+      "roundWinPct": 44.7,
+      "gameWinPct": 51.4,
+      "changedPct": 89.9
     },
     {
       "id": "frenzy",
@@ -336,10 +336,10 @@
       "rarity": "epic",
       "plays": 923,
       "showdowns": 771,
-      "showdownWinPct": 49.5,
-      "roundWinPct": 46.8,
-      "gameWinPct": 45.9,
-      "changedPct": 25.4
+      "showdownWinPct": 48.1,
+      "roundWinPct": 45.6,
+      "gameWinPct": 45.3,
+      "changedPct": 27.8
     },
     {
       "id": "apocalypse",
@@ -369,10 +369,10 @@
       "rarity": "legendary",
       "plays": 896,
       "showdowns": 738,
-      "showdownWinPct": 45.9,
-      "roundWinPct": 41,
-      "gameWinPct": 46,
-      "changedPct": 60.4
+      "showdownWinPct": 46.3,
+      "roundWinPct": 41.3,
+      "gameWinPct": 46.3,
+      "changedPct": 61.5
     },
     {
       "id": "duel",
@@ -382,7 +382,7 @@
       "showdowns": 683,
       "showdownWinPct": 51.3,
       "roundWinPct": 44.2,
-      "gameWinPct": 49.9,
+      "gameWinPct": 49.8,
       "changedPct": 72.9
     },
     {
@@ -398,10 +398,10 @@
     }
   ],
   "rarity": {
-    "common": 51,
-    "rare": 49.5,
-    "epic": 48.9,
-    "legendary": 49.9
+    "common": 50.9,
+    "rare": 49,
+    "epic": 49.7,
+    "legendary": 50
   },
   "medianRoundsWith": 11,
   "medianRoundsWithout": 11
