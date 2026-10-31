@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '4.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '4.0.1'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 2,             // версія правил (для бота і симуляцій)

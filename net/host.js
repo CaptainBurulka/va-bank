@@ -1,6 +1,6 @@
 // Хост-авторитетна сесія: тримає стан, таймери, валідує дії і розсилає кожному
 // гравцю лише його view. Однаково працює для бота, «передай телефон» і онлайну.
-import { createGame, reduce, viewFor } from '../game/engine.js';
+import { createGame, reduce, viewFor, upgradeState } from '../game/engine.js';
 import { botDecide } from '../game/bot.js';
 
 export function cryptoRng() {
@@ -52,8 +52,15 @@ export class GameHost {
     this.refresh();
   }
 
-  /** Відновлення зі збереження. Таймер стартує на паузі, доки обидва не на зв'язку. */
+  /**
+   * Відновлення зі збереження. Таймер стартує на паузі, доки обидва не на зв'язку.
+   * Збереження старішої версії мігрує; якщо його не прочитати — повертає false (почни нову партію).
+   */
   restore(saved) {
+    const st = upgradeState(saved?.state);
+    if (!st) return false;
+    try { viewFor(st, 0, Date.now()); } catch { return false; } // перевірка, що стан справний
+    saved = { ...saved, state: st };
     this.state = saved.state;
     if (saved.state?.cfg?.maxRounds) this.gameConfig = { ...this.gameConfig, maxRounds: saved.state.cfg.maxRounds };
     if (saved.state?.jokerSets) this.gameOpts = { ...this.gameOpts, jokerSets: saved.state.jokerSets };
@@ -69,6 +76,7 @@ export class GameHost {
       this.state.timer = { ...this.state.timer, paused: true, deadline: null, remaining: left };
     }
     this.refresh();
+    return true;
   }
 
   static load(key) {
