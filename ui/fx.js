@@ -1,12 +1,13 @@
 // Анімації: лічильники, що накручуються, рух фішок, емодзі.
+import { ms, reducedMotion } from './motion.js';
 const counters = new WeakMap();
 
 /** Плавно «накручує» число в елементі. */
-export function animateNumber(el, to, dur = 650) {
+export function animateNumber(el, to, dur = 600) {
   const from = counters.get(el)?.value ?? (Number(el.textContent) || 0);
   const prev = counters.get(el);
   if (prev) cancelAnimationFrame(prev.raf);
-  if (from === to) { el.textContent = to; counters.set(el, { value: to }); return; }
+  if (from === to || dur < 20) { el.textContent = to; counters.set(el, { value: to }); return; }
   const start = performance.now();
   const rec = { value: from, raf: 0 };
   counters.set(el, rec);
@@ -34,24 +35,24 @@ function center(el, layer) {
   return { x: r.left + r.width / 2 - l.left, y: r.top + r.height / 2 - l.top };
 }
 
-/** Політ фішок від елемента до елемента. */
+/** Політ фішок від елемента до елемента (лише transform і opacity). */
 export function flyChips(layer, fromEl, toEl, count = 4) {
-  if (!fromEl || !toEl) return;
+  if (!fromEl || !toEl || reducedMotion()) return;
   const a = center(fromEl, layer);
   const b = center(toEl, layer);
-  const n = Math.max(1, Math.min(8, count));
+  const n = Math.max(1, Math.min(7, count));
+  const dur = ms('--t-chip');
   for (let i = 0; i < n; i++) {
-    const c = document.createElement('div');
-    c.className = 'chip-token';
-    const jx = (Math.random() - 0.5) * 24;
-    const jy = (Math.random() - 0.5) * 24;
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    c.setAttribute('class', 'chip-token');
+    c.innerHTML = '<use href="#i-chip"/>';
+    const jx = (Math.random() - 0.5) * 22;
+    const jy = (Math.random() - 0.5) * 22;
     c.style.transform = `translate(${a.x - 11 + jx}px, ${a.y - 11 + jy}px)`;
     layer.append(c);
-    setTimeout(() => {
-      c.style.transform = `translate(${b.x - 11 + jx / 2}px, ${b.y - 11 + jy / 2}px)`;
-    }, 20 + i * 60);
-    setTimeout(() => { c.style.opacity = '0'; }, 720 + i * 60);
-    setTimeout(() => c.remove(), 1100 + i * 60);
+    setTimeout(() => { c.style.transform = `translate(${b.x - 11 + jx / 2}px, ${b.y - 11 + jy / 2}px)`; }, 20 + i * 45);
+    setTimeout(() => { c.style.opacity = '0'; }, dur + i * 45);
+    setTimeout(() => c.remove(), dur + 300 + i * 45);
   }
 }
 

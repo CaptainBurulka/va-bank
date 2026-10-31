@@ -9,11 +9,12 @@ const fs = require('fs');
   const A = await ctx.newPage(), B = await ctx.newPage();
   const errs=[]; for (const [n,p] of [['A',A],['B',B]]) p.on('pageerror', e => errs.push(n+': '+e.message));
   await A.goto('http://localhost:8080/'); await B.goto('http://localhost:8080/');
-  await A.click('[data-go="create"]'); await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
+  for (const P of [A, B]) await P.evaluate(() => localStorage.setItem('vabank-tutorial', 'done'));
+  await A.click('[data-go="friend"]'); await A.click('#modal-btns .btn.primary'); await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-rounds button:last-child'); // 16 раундів — щоб партія не скінчилась посеред тесту
   const code = (await A.textContent('#room-code')).trim();
   console.log('code', code);
-  await B.click('[data-go="join"]'); await B.fill('#join-code', code); await B.click('#btn-join');
+  await B.click('[data-go="friend"]'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code); await B.click('#btn-join');
   await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }); await A.waitForTimeout(500);
   console.log('A screen game:', await A.isVisible('#scr-game'), 'B:', await B.isVisible('#scr-game'));
   // Перевірка: B не має карт A у DOM
@@ -23,9 +24,9 @@ const fs = require('fs');
   const step = async (p) => {
     if (await p.isVisible('#scr-end')) return;
     const btns = await p.$$('#actions button:not([disabled])');
-    for (const want of ['Чек','Колл','Без розвідки','Далі','Забрати','Не ризикувати']) for (const b of btns) if ((await b.textContent()).includes(want)) { await b.click().catch(()=>{}); return; }
+    for (const want of ['Чек','Колл','Далі без розвідки','Далі','Забрати']) for (const b of btns) if ((await b.textContent()).includes(want)) { await b.click().catch(()=>{}); return; }
     const cards = await p.$$('#hand .card'); const hint = await p.textContent('#actions');
-    if (cards.length && hint.includes('Торкнись')) { await cards[0].click(); await cards[0].click(); }
+    if (cards.length && hint.includes('спершу торкнись')) { await cards[0].click(); await p.click('#actions .btn.primary').catch(()=>{}); }
   };
   for (let i=0;i<30;i++){ await step(A); await step(B); await A.waitForTimeout(150); }
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
@@ -35,10 +36,10 @@ const fs = require('fs');
   // Обрив зв'язку
   await B.evaluate(() => window.__mockKill());
   await A.waitForTimeout(1500);
-  console.log('A offline shown:', await A.isVisible('#offline'), await A.textContent('#timer-num'));
+  console.log('A offline shown:', await A.textContent('#phase-title'));
   await A.screenshot({path: require('path').join(require('os').tmpdir(), 'onA-off.png')});
   await A.waitForTimeout(9000);
-  console.log('after reconnect A offline:', await A.isVisible('#offline'), 'B offline:', await B.isVisible('#offline'));
+  console.log('after reconnect A:', await A.textContent('#phase-title'), '| B:', await B.textContent('#phase-title'));
   for (let i=0;i<8;i++){ await step(A); await step(B); await A.waitForTimeout(150); }
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   // Перезавантаження гостя (iOS вивантажила сторінку)
@@ -50,7 +51,7 @@ const fs = require('fs');
   await A.reload(); await A.waitForTimeout(500);
   console.log('A resume btn:', await A.textContent('#btn-resume'));
   await A.click('#btn-resume'); await A.waitForTimeout(12000);
-  console.log('A in game:', await A.isVisible('#scr-game'), await A.textContent('#round-tag'), 'offline', await A.isVisible('#offline'), 'B offline', await B.isVisible('#offline'));
+  console.log('A in game:', await A.isVisible('#scr-game'), await A.textContent('#round-tag'), 'A:', await A.textContent('#phase-title'), 'B:', await B.textContent('#phase-title'));
   for (let i=0;i<40;i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   await A.click('#btn-rematch'); await B.waitForTimeout(500);

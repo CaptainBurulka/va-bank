@@ -1,39 +1,50 @@
-// Створення DOM-елементів карт.
+// DOM-елементи карт. Масті — SVG-іконки різної форми (крапля / полум'я / гранований камінь).
 import { SUIT, SPECIAL } from './text.js';
+
+const ico = (id, cls = '') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
 /**
  * @param {object|null} card — null означає сорочку
- * @param {object} [o] { faceDown: boolean }
+ * @param {object} [o] { faceDown, trump: масть-козир, bonus: +сила козиря }
  */
 export function cardEl(card, o = {}) {
   const el = document.createElement('div');
   el.className = 'card';
-  const inner = document.createElement('div');
-  inner.className = 'inner';
-  const face = document.createElement('div');
-  face.className = 'face';
-  const back = document.createElement('div');
-  back.className = 'back';
-  inner.append(face, back);
-  el.append(inner);
-  if (card) fillFace(el, card);
+  el.innerHTML = '<div class="inner"><div class="face"></div><div class="back"><span>ВБ</span></div></div>';
+  if (card) fillFace(el, card, o);
   if (!card || o.faceDown) el.classList.add('back-up');
   return el;
 }
 
-export function fillFace(el, card) {
+export function fillFace(el, card, o = {}) {
   const face = el.querySelector('.face');
   el.dataset.id = card.id;
-  el.classList.remove('water', 'fire', 'stone', 'special');
+  el.classList.remove('water', 'fire', 'stone', 'special', 'trumped');
+  el.querySelector('.tb')?.remove();
   if (card.kind === 'num') {
     const s = SUIT[card.suit];
     el.classList.add(card.suit);
-    face.innerHTML = `<div class="corner">${card.value}<i>${s.ico}</i></div><div class="val">${card.value}</div><div class="suit-big">${s.ico}</div>`;
-    el.setAttribute('aria-label', `${card.value} ${s.name}`);
+    face.innerHTML = `<div class="cor">${card.value}${ico(card.suit)}</div><div class="big">${card.value}</div>${ico(card.suit, 'pip')}`;
+    el.setAttribute('aria-label', `${card.value} ${s.gen}`);
+    if (o.trump && card.suit === o.trump) {
+      el.classList.add('trumped');
+      if (o.showBoost) {
+        const tb = document.createElement('span');
+        tb.className = 'tb';
+        tb.textContent = `${card.value} → ${card.value + (o.bonus || 1)}`;
+        el.append(tb);
+      }
+      el.setAttribute('aria-label', `${card.value} ${s.gen}, козир: сила ${card.value + (o.bonus || 1)}`);
+    }
   } else {
     const sp = SPECIAL[card.kind];
     el.classList.add('special');
-    face.innerHTML = `<div class="sp-sub">${sp.sub}</div><div class="sp-ico">${sp.ico}</div><div class="sp-name">${sp.name}</div>`;
-    el.setAttribute('aria-label', sp.name);
+    face.innerHTML = `${o.small ? '' : `<div class="sp-sub">${sp.sub}</div>`}${ico(card.kind, 'sp-ico')}<div class="sp-name">${sp.name}</div>`;
+    el.setAttribute('aria-label', `${sp.name}: ${sp.sub}`);
   }
+}
+
+/** Маленька іконка масті для тексту. */
+export function suitIcon(suit) {
+  return `<svg class="ico" style="color:var(--${suit}-ui)" aria-hidden="true"><use href="#i-${suit}"/></svg>`;
 }
