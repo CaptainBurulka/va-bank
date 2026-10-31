@@ -57,6 +57,7 @@ export class GameHost {
     this.state = saved.state;
     if (saved.state?.cfg?.maxRounds) this.gameConfig = { ...this.gameConfig, maxRounds: saved.state.cfg.maxRounds };
     if (saved.state?.jokerSets) this.gameOpts = { ...this.gameOpts, jokerSets: saved.state.jokerSets };
+    if (saved.state?.cfg?.mode) this.gameOpts = { ...this.gameOpts, mode: saved.state.cfg.mode };
     if (saved.names) this.names = saved.names;
     if (saved.looks) this.looks = saved.looks;
     if (saved.pids) this.pids = saved.pids;

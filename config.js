@@ -117,6 +117,17 @@ export const JOKER_TUNING_3 = Object.freeze({
 // Коли роздаються джокери: один і той самий випадковий раунд для обох
 export const JOKER_DEAL = Object.freeze({ fromRound: 3, toRound: 7, setSize: 3 });
 
+// ───────── Режими-модифікатори: лише пресети наявних налаштувань (для 2 і 3 гравців) ─────────
+// preset(n, cfg) повертає зміни налаштувань поверх звичайних (cfg — уже з урахуванням гри втрьох).
+export const MODES = Object.freeze({
+  classic: Object.freeze({ name: 'Класика', icon: '♠️', desc: 'Звичайні правила', preset: () => ({}) }),
+  chaos: Object.freeze({ name: 'Ніч хаосу', icon: '🌪️', desc: 'Джокери з 1-го раунду, по 2 на гравця', preset: () => ({ jokerFrom: 1, jokerTo: 1, jokersPerPlayer: 2 }) }),
+  blitz: Object.freeze({ name: 'Бліц', icon: '⚡', desc: '8 раундів, анте росте вдвічі швидше', preset: (n, c) => ({ maxRounds: 8, anteEvery: Math.max(1, Math.round(c.anteEvery / 2)) }) }),
+  blind: Object.freeze({ name: 'Сліпа гра', icon: '🙈', desc: 'Без розвідки', preset: (n, c) => ({ features: { ...c.features, scout: false } }) }),
+  highstakes: Object.freeze({ name: 'Великі ставки', icon: '💎', desc: 'Старт 50 фішок, програний «подвій» кидає в джекпот удвічі більше', preset: () => ({ startChips: 50, jackpotMult: 2 }) }),
+});
+export const MODE_IDS = Object.freeze(Object.keys(MODES));
+
 // ───────── Суперництво: титули, рахунок зустрічей, «момент партії» ─────────
 export const RIVALS = Object.freeze({
   keep: 50, // скільки суперників пам'ятати (найдавніші відпадають)
@@ -140,7 +151,8 @@ export const META = Object.freeze({
   // Бали за партію: участь + бонус за перемогу (слабший гравець теж прогресує)
   points: Object.freeze({ play: 40, win: 40, firstWinOfDay: 60, mult: Object.freeze({ online: 1, bot: 0.3, hotseat: 0.3 }),
     // гра втрьох: бонус за місце (1-ше, 2-ге, 3-тє) замість бонусу за перемогу
-    place3: Object.freeze([40, 15, 0]) }),
+    place3: Object.freeze([40, 15, 0]),
+    modeOfDay: 30 }), // бонус за партію в режимі дня (× множник режиму гри)
   // Ціни в магазині. Джокер: звичайний ≈ 2 партії, рідкісний ≈ 4, епічний ≈ 8 (у середньому ~60 балів за партію з другом)
   prices: Object.freeze({
     joker: Object.freeze({ common: 120, rare: 240, epic: 480 }),

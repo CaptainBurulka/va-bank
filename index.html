@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Ва-банк</title>
-  <meta name="description" content="Карткова дуель для двох у підпільному клубі. Лише віртуальні фішки.">
+  <meta name="description" content="Карткова гра на двох або трьох у підпільному клубі. Лише віртуальні фішки.">
   <meta name="theme-color" content="#0b1410">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -57,12 +57,13 @@
       <div class="brand">
         <div class="brand-card" aria-hidden="true"><span>ВБ</span></div>
         <h1 class="logo">Ва-банк</h1>
-        <div class="logo-sub">карткова дуель для двох</div>
+        <div class="logo-sub">карткова гра на двох або трьох</div>
       </div>
       <div class="install-hint hidden" id="install-hint">Щоб прогрес не загубився — встанови гру: «Поділитися» → «На початковий екран». У вкладці Safari прогрес зберігається окремо.</div>
       <div class="menu-main">
         <button class="btn primary big" data-go="friend">Грати з другом</button>
         <button class="btn secondary hidden" id="btn-resume">Продовжити партію</button>
+        <button class="day-mode" id="day-mode" data-go="daymode"></button>
         <div class="menu-pair">
           <button class="btn secondary" data-go="bot">Проти бота</button>
           <button class="btn secondary" data-go="hotseat">На одному телефоні</button>
@@ -96,6 +97,11 @@
         </div>
         <ul class="seat-list hidden" id="seat-list" aria-label="Місця за столом"></ul>
         <button class="btn secondary hidden" id="btn-add-bot">🤖 Посадити бота на вільне місце</button>
+        <div class="field" id="create-mode-field">
+          <div class="field-label">Режим</div>
+          <div class="seg modes" id="create-mode"></div>
+          <p class="hint-text" id="create-mode-desc"></p>
+        </div>
         <div class="field" id="create-rounds-field">
           <div class="field-label">Довжина партії</div>
           <div class="seg" id="create-rounds"></div>

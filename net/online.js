@@ -66,7 +66,7 @@ export async function createOnlineHost(o) {
 
   const me = o.profile || { set: [], look: null, name: null };
   const extra = () => ({ code, players: n, guestToken: slots[1]?.token || null, tokens: slots.map((x) => x.token), bots: botSeats.slice() });
-  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: extra(), gameConfig: o.gameConfig || {}, gameOpts: { players: n, jokerSets: Array.from({ length: n }, (_, q) => (q === 0 ? sanitizeSet(me.set) : [])) } });
+  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: extra(), gameConfig: o.gameConfig || {}, gameOpts: { players: n, mode: o.mode || 'classic', jokerSets: Array.from({ length: n }, (_, q) => (q === 0 ? sanitizeSet(me.set) : [])) } });
   host.names[0] = me.name || 'Господар';
   host.looks[0] = me.look || null;
   host.pids[0] = me.pid || null;

@@ -2,6 +2,7 @@
 // Використовує ту саму логіку, що й гра (game/engine.js) — без UI і мережі.
 import { createGame, reduce, viewFor } from '../game/engine.js';
 import { botDecide, BOT_STYLES } from '../game/bot.js';
+import { JOKERS } from '../game/jokers.js';
 
 export function seededRng(seed) {
   let x = seed >>> 0 || 1;
@@ -11,7 +12,7 @@ export function seededRng(seed) {
 const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? (s[(s.length - 1) >> 1] + s[s.length >> 1]) / 2 : 0; };
 const pct = (n, d) => (d ? Math.round((1000 * n) / d) / 10 : 0);
 
-export function runSimulation({ games = 3000, rounds = 12, seed = 1, configOverride = {} } = {}) {
+export function runSimulation({ games = 3000, rounds = 12, seed = 1, configOverride = {}, mode = 'classic', jokers = false } = {}) {
   const res = { games, rounds, durations: [], early: 0, seatWins: [0, 0], draws: 0, firstWins: 0, decided: 0, bankrupt: 0,
     usage: {}, roundsTotal: 0, dipped: 0, comeback: 0, styleWins: {}, styleGames: {}, actions: [] };
   const bump = (k, n = 1) => (res.usage[k] = (res.usage[k] || 0) + n);
@@ -19,7 +20,9 @@ export function runSimulation({ games = 3000, rounds = 12, seed = 1, configOverr
     const rng = seededRng(seed * 100003 + g * 7919 + 13);
     const ctx = { rng, now: 0 };
     const styles = [BOT_STYLES[g % 3], BOT_STYLES[Math.floor(g / 3) % 3]];
-    let s = createGame({ timers: false, config: { maxRounds: rounds, logSize: 1e6, ...configOverride } }, ctx);
+    const ids = jokers ? JOKERS.map((j) => j.id) : null;
+    const sets = ids ? [0, 1].map((p) => [0, 1, 2].map((k) => ids[(g * 5 + p * 13 + k * 7) % ids.length])) : undefined;
+    let s = createGame({ timers: false, mode, jokerSets: sets, config: { maxRounds: rounds, logSize: 1e6, ...configOverride } }, ctx);
     const first = s.firstToAct;
     const dipped = [false, false];
     let lastRound = 1, steps = 0, actions = 0;

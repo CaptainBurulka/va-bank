@@ -5,7 +5,7 @@ import { cardEl } from './cardview.js';
 import { unlockAudio, sfx, isMuted, setMuted, getVolume, setVolume } from './sound.js';
 import { RULES_HTML, TUTORIAL } from './text.js';
 import { tutorial } from './settings.js';
-import { CONFIG, APP_VERSION } from '../config.js';
+import { CONFIG, APP_VERSION, MODES, MODE_IDS, META } from '../config.js';
 import { BOT_STYLES } from '../game/bot.js';
 import { buildDeck } from '../game/cards.js';
 import { createOnlineHost, joinOnline, ROOM_ALPHABET, loadGuestSave, clearGuestSave, loadHostSave, clearHostSave } from '../net/online.js';
@@ -14,7 +14,7 @@ import { titleOf, pickMoment, scoreLine, isPid } from '../meta/rivals.js';
 import { cardName } from './text.js';
 import { loadProfile, saveProfile } from './profile-store.js';
 import { applyOppLook, emojiSet } from './cosmetics.js';
-import { exportCode, importCode, publicLook } from '../meta/profile.js';
+import { exportCode, importCode, publicLook, modeOfDay } from '../meta/profile.js';
 import { JOKERS, JOKER_BY_ID } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, DEFAULT_EQUIPPED } from '../meta/catalog.js';
 
@@ -30,7 +30,7 @@ function show(name) {
   if (current === name && !$(`scr-${name}`).classList.contains('hidden')) return;
   current = name;
   for (const s of SCREENS) $(`scr-${s}`).classList.toggle('hidden', s !== name);
-  if (name === 'menu') renderWallet();
+  if (name === 'menu') { renderWallet(); renderDayMode(); }
 }
 
 /** Перед партією: мій набір джокерів і косметика на столі. */
@@ -145,6 +145,19 @@ function segmented(container, options, value, onChange) {
   }
 }
 
+let prefMode = 'classic';
+try { prefMode = MODES[localStorage.getItem('vabank-mode')] ? localStorage.getItem('vabank-mode') : 'classic'; } catch {}
+/** Перемикач режимів: іконка, назва, позначка режиму дня. */
+function modeOptions() {
+  const day = modeOfDay();
+  return MODE_IDS.map((m) => ({ value: m, label: `${MODES[m].icon} ${MODES[m].name}`, sub: m === day ? `режим дня +${META.points.modeOfDay}★` : '' }));
+}
+function renderDayMode() {
+  const m = modeOfDay();
+  const el = $('day-mode');
+  if (el) el.innerHTML = `Режим дня: <b>${MODES[m].icon} ${MODES[m].name}</b> · +${META.points.modeOfDay} ★ за партію`;
+}
+
 let prefPlayers = 2;
 try { prefPlayers = localStorage.getItem('vabank-players') || 2; } catch {}
 prefPlayers = prefPlayers === '2b' ? '2b' : Number(prefPlayers) === 3 ? 3 : 2;
@@ -157,16 +170,19 @@ const roundOptions = () => CONFIG.roundOptions.map((r) => ({ value: r, label: `$
 let prefRounds = CONFIG.maxRounds;
 let prefStyle = 'aggressive';
 try { prefRounds = Number(localStorage.getItem('vabank-rounds')) || prefRounds; prefStyle = localStorage.getItem('vabank-style') || prefStyle; } catch {}
-const rememberPrefs = () => { try { localStorage.setItem('vabank-rounds', prefRounds); localStorage.setItem('vabank-style', prefStyle); localStorage.setItem('vabank-players', prefPlayers); } catch {} };
+const rememberPrefs = () => { try { localStorage.setItem('vabank-rounds', prefRounds); localStorage.setItem('vabank-style', prefStyle); localStorage.setItem('vabank-players', prefPlayers); localStorage.setItem('vabank-mode', prefMode); } catch {} };
 
 function gameSetupModal({ withStyle, title, onStart, players = null }) {
   const opts = players ? PLAYER_OPTS[players] : null;
   let pl = opts?.some((o) => o.value === prefPlayers) ? prefPlayers : 2;
-  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg" id="m-style"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>`, [
-    { label: 'Почати', cls: 'primary', onClick: () => { prefPlayers = pl; rememberPrefs(); onStart({ maxRounds: prefRounds, style: prefStyle, players: pl }); } },
+  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg" id="m-style"></div></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>`, [
+    { label: 'Почати', cls: 'primary', onClick: () => { prefPlayers = pl; rememberPrefs(); onStart({ maxRounds: prefRounds, style: prefStyle, players: pl, mode: prefMode }); } },
     { label: 'Скасувати', cls: 'tertiary' },
   ]);
   if (opts) segmented($('m-players'), opts, pl, (v) => (pl = v));
+  const blitzRounds = () => $('m-rounds-field').classList.toggle('hidden', prefMode === 'blitz'); // у бліці завжди 8
+  segmented($('m-mode'), modeOptions(), prefMode, (v) => { prefMode = v; $('m-mode-desc').textContent = MODES[v].desc; blitzRounds(); });
+  blitzRounds();
   if (withStyle) segmented($('m-style'), BOT_STYLES.map((k) => ({ value: k, label: STYLE_INFO[k].name, sub: STYLE_INFO[k].sub })), prefStyle, (v) => (prefStyle = v));
   segmented($('m-rounds'), roundOptions(), prefRounds, (v) => (prefRounds = v));
 }
@@ -449,7 +465,7 @@ function startBot(resume = false, opts = {}) {
   // Збереження старої версії тримало одного бота як об'єкт
   const savedLoad = saved?.botLoadout ? [].concat(saved.botLoadout) : null;
   const loads = savedLoad && savedLoad.length === players - 1 ? savedLoad : Array.from({ length: players - 1 }, () => botLoadout());
-  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style, botLoadout: players === 2 ? loads[0] : loads }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, jokerSets: [prof.set, ...loads.map((l) => l.set)] } });
+  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style, botLoadout: players === 2 ? loads[0] : loads }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, mode: (saved?.state?.cfg?.mode) || opts.mode || 'classic', jokerSets: [prof.set, ...loads.map((l) => l.set)] } });
   const names = players === 2 ? ['Ти', `Бот · ${STYLE_INFO[style].name}`] : ['Ти', ...BOT3_NAMES];
   const bots = loads.map((_, i) => new BotSeat(host, i + 1, Math.random, i === 0 ? style : BOT3_STYLES[style]));
   host.names = names.slice();
@@ -567,7 +583,7 @@ function startHotseat(opts = {}) {
   const prof = prepareLooks(null);
   const withBot = opts.players === '2b';
   const players = opts.players === 3 || withBot ? 3 : 2;
-  const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, jokerSets: Array(players).fill(prof.set) } });
+  const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, mode: opts.mode || 'classic', jokerSets: Array(players).fill(prof.set) } });
   const names = players === 2 ? ['Гравець 1', 'Гравець 2'] : withBot ? ['Гравець 1', 'Гравець 2', BOT3_NAMES[0]] : ['Гравець 1', 'Гравець 2', 'Гравець 3'];
   const humans = Array.from({ length: players }, (_, q) => q).filter((q) => !(withBot && q === 2));
   const bot = withBot ? new BotSeat(host, 2, Math.random, 'aggressive') : null;
@@ -673,6 +689,15 @@ async function startCreate(resumeSave = null) {
   segmented($('create-rounds'), roundOptions(), prefRounds, (v) => { gameConfig.maxRounds = v; prefRounds = v; rememberPrefs(); });
   $('create-rounds-field').classList.toggle('hidden', !!resumeSave);
   $('create-players-field').classList.toggle('hidden', !!resumeSave);
+  $('create-mode-field').classList.toggle('hidden', !!resumeSave);
+  let mode = prefMode;
+  segmented($('create-mode'), modeOptions(), mode, (v) => {
+    mode = v; prefMode = v; rememberPrefs();
+    $('create-mode-desc').textContent = MODES[v].desc;
+    // режим можна змінити, доки партія не почалась
+    if (session?.host && !session.host.state) session.host.gameOpts = { ...session.host.gameOpts, mode: v };
+  });
+  $('create-mode-desc').textContent = MODES[mode].desc;
   game.reset();
   game.setNames(...names);
   lastLooksKey = '';
@@ -690,6 +715,7 @@ async function startCreate(resumeSave = null) {
       opening = createOnlineHost({
         resume: resumeSave,
         players,
+        mode,
         gameConfig,
         profile: { set: prof.set, look: publicLook(prof), name: prof.nick || null, pid: prof.pid, title: titleOf(prof) },
         botSet: () => botLoadout().set,
@@ -808,6 +834,7 @@ document.addEventListener('click', (e) => {
   else if (go === 'tutorial') startTutorial();
   else if (go === 'collection') openCollection();
   else if (go === 'rivals') openRivals();
+  else if (go === 'daymode') { prefMode = modeOfDay(); rememberPrefs(); toast(`${MODES[prefMode].icon} ${MODES[prefMode].name}: ${MODES[prefMode].desc}. Обрано для наступної партії`, 3200); }
   else if (go === 'shop') openShop();
   else if (go === 'slot') openSlot();
   else if (go === 'friend') openFriend();
@@ -837,6 +864,7 @@ window.addEventListener('pageshow', () => session?.onVisibility?.(false));
 // Запрошення ?room=ABCD (і старе #join=ABCD) — одразу приєднуємось
 function boot() {
   initMeta({ show, modal, toast });
+  renderDayMode();
   refreshResume();
   const q = new URLSearchParams(location.search).get('room') || (location.hash.match(/join=([A-Z]{4})/i) || [])[1];
   const code = q && q.toUpperCase();

@@ -1,7 +1,7 @@
 // Стан партії, правила та reducer дій. Чиста логіка без DOM і мережі.
 // Усі випадкові рішення беруться з ctx.rng(), час — з ctx.now.
 
-import { CONFIG, JOKER_DEAL } from '../config.js';
+import { CONFIG, JOKER_DEAL, MODES } from '../config.js';
 import { buildDeck, shuffle, compareDetail, scoutClass, donOdds, SUITS } from './cards.js';
 import { resolveJokers, jokerCard, sanitizeSet, JOKER_BY_ID } from './jokers.js';
 
@@ -72,9 +72,12 @@ export function anteFor(round, cfg) {
 export function createGame(opts = {}, ctx) {
   const n = opts.players === 3 ? 3 : 2;
   // Режим на трьох має власні числа (стартові фішки, анте…) — режим на двох їх не бачить
-  const cfg = { ...CONFIG, ...(n === 3 ? CONFIG.three || {} : {}), ...(opts.config || {}) };
+  let cfg = { ...CONFIG, ...(n === 3 ? CONFIG.three || {} : {}), ...(opts.config || {}) };
   cfg.players = n;
   cfg.features = { trump: true, swap: true, ...(CONFIG.features || {}), ...(opts.config?.features || {}) };
+  // Режим — лише пресет наявних налаштувань поверх звичайних
+  const mode = MODES[opts.mode] ? opts.mode : 'classic';
+  cfg = { ...cfg, ...MODES[mode].preset(n, cfg), mode };
   const deck = opts.deck ? clone(opts.deck) : shuffle(buildDeck(), ctx.rng);
   const s = {
     v: STATE_VERSION,
@@ -931,8 +934,8 @@ function resolveDon(s, ctx, p, guess) {
     addMoment(s, { kind: 'don', p, amount: d.stake - (d.attempts.length ? d.attempts[0].stakeBefore : stakeBefore), wins: d.wins });
     updateBiggest(s, p, r.won + (d.stake - stakeBefore));
   } else {
-    // Програна ставка йде в банк наступного раунду як джекпот
-    const lost = Math.min(stakeBefore, s.players[p].chips);
+    // Програна ставка йде в банк наступного раунду як джекпот («Великі ставки» — удвічі більше, якщо вистачає фішок)
+    const lost = Math.min(stakeBefore * (s.cfg.jackpotMult || 1), s.players[p].chips);
     s.players[p].chips -= lost;
     s.pot += lost;
     s.jackpot += lost;
@@ -1050,6 +1053,7 @@ export function viewFor(s, p, now) {
     cfg: {
       scoutCost: s.cfg.scoutCost, swapCost: s.cfg.swapCost, raiseSizes: s.cfg.raiseSizes, maxRaises: s.cfg.maxRaises,
       startChips: s.cfg.startChips, trumpBonus: s.cfg.trumpBonus, scoutHighFrom: s.cfg.scoutHighFrom, mode: s.cfg.mode || 'classic',
+      jackpotMult: s.cfg.jackpotMult || 1, allinFreeFromRound: s.cfg.allinFreeFromRound,
       donMaxWin: s.cfg.don.maxWin, donSecondFromRound: s.cfg.don.secondFromRound, features: s.cfg.features,
       knifeBeats: s.cfg.knifeBeats, doublePower: s.cfg.doublePower, knifePower: s.cfg.knifePower,
     },

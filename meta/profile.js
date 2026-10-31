@@ -2,7 +2,7 @@
 // Чиста логіка без DOM — тестується в node. Збереження в localStorage — у ui/ (тут лише дані).
 // Жодних реальних грошей: бали й уламки — віртуальні, заробляються лише грою.
 
-import { META } from '../config.js';
+import { META, MODE_IDS } from '../config.js';
 import { JOKERS, JOKER_BY_ID, RARITIES, sanitizeSet } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID } from './catalog.js';
 import { newPid, isPid, cleanNick, normalizeLife, normalizeRivals, cleanTitle, emptyLife } from './rivals.js';
@@ -241,6 +241,13 @@ const dayKey = (d) => d.toISOString().slice(0, 10);
  * Підсумок партії → бали і досягнення.
  * summary: { won, draw, mode: 'online'|'bot'|'hotseat', endReason, me: stats, jokersPlayed: [ids] }
  */
+/** Режим дня: щодня інший (крім класики), однаковий для всіх гравців у той самий день. */
+export function modeOfDay(now = new Date()) {
+  const special = MODE_IDS.filter((m) => m !== 'classic');
+  const days = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  return special[days % special.length];
+}
+
 export function awardGame(p, summary, now = new Date()) {
   let q = clone(p);
   const mult = META.points.mult[summary.mode] ?? 0;
@@ -249,6 +256,7 @@ export function awardGame(p, summary, now = new Date()) {
   add('За участь', META.points.play * mult);
   if (summary.players === 3 && summary.place) add(`Бонус за ${summary.place}-ге місце`, (META.points.place3[summary.place - 1] || 0) * mult);
   else if (summary.won) add('Бонус за перемогу', META.points.win * mult);
+  if (summary.gameMode && summary.gameMode === modeOfDay(now)) add('Режим дня', META.points.modeOfDay * mult);
   const today = dayKey(now);
   if (q.daily.day !== today) q.daily = { day: today, won: false };
   if (summary.won && !q.daily.won && mult > 0) { q.daily.won = true; add('Перша перемога дня', META.points.firstWinOfDay); }

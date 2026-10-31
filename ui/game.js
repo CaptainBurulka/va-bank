@@ -8,6 +8,7 @@ import { ms, reducedMotion } from './motion.js';
 import { JOKER_BY_ID, RARITIES, RARITY_NAME, jokerDesc } from '../game/jokers.js';
 import { playWin } from './cosmetics.js';
 import { PHRASES, isPhrase } from '../meta/rivals.js';
+import { MODES } from '../config.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -420,7 +421,9 @@ export class GameScreen {
   // ───────── стіл ─────────
   renderTable(prev, v) {
     const e = this.el;
-    e.roundTag.textContent = `Раунд ${v.round}/${v.maxRounds} · анте ${v.ante}`;
+    const md = v.cfg.mode && v.cfg.mode !== 'classic' ? MODES[v.cfg.mode] : null;
+    e.roundTag.textContent = `${md ? `${md.icon} ` : ''}Раунд ${v.round}/${v.maxRounds} · анте ${v.ante}`;
+    e.roundTag.title = md ? `${md.name}: ${md.desc}` : '';
     if (v.trump) {
       e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b>&nbsp;+${v.cfg.trumpBonus}`;
       e.trump.classList.remove('hidden');

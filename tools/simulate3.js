@@ -10,11 +10,11 @@ const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.leng
 const pct = (n, d) => (d ? Math.round((1000 * n) / d) / 10 : 0);
 
 /** Одна партія на трьох. sets — набори джокерів; jokerPlay — імовірність зіграти джокером для кожного місця. */
-export function playGame3({ seed, rounds = 12, configOverride = {}, sets, jokerPlay, onRound }) {
+export function playGame3({ seed, rounds = 12, configOverride = {}, sets, jokerPlay, onRound, mode = 'classic' }) {
   const rng = seededRng(seed);
   const ctx = { rng, now: 0 };
   const styles = [0, 1, 2].map(() => BOT_STYLES[Math.floor(rng() * 3)]);
-  let s = createGame({ players: 3, timers: false, firstToAct: 0, jokerSets: sets, config: { maxRounds: rounds, logSize: 1e6, ...configOverride } }, ctx);
+  let s = createGame({ players: 3, timers: false, firstToAct: 0, mode, jokerSets: sets, config: { maxRounds: rounds, logSize: 1e6, ...configOverride } }, ctx);
   let prevPhase = s.phase;
   for (let steps = 0; s.phase !== 'over' && steps < 12000; steps++) {
     let acted = false;
@@ -36,16 +36,16 @@ export function playGame3({ seed, rounds = 12, configOverride = {}, sets, jokerP
   return s;
 }
 
-export function runSim3({ games = 3000, rounds = 12, seed = 1, configOverride = {}, jokers = false } = {}) {
+export function runSim3({ games = 3000, rounds = 12, seed = 1, configOverride = {}, jokers = false, mode = 'classic' } = {}) {
   const res = { games, rounds, seatWins: [0, 0, 0], draws: 0, durations: [], firstOut: [], firstOutFrac: [], bustGames: 0, pots: [] };
   const ids = JOKERS.map((j) => j.id);
   for (let g = 0; g < games; g++) {
-    const sets = jokers ? [0, 1, 2].map((p) => [ids[(g * 3 + p * 11) % ids.length]]) : undefined;
-    const s = playGame3({ seed: seed * 100003 + g * 7919 + 13, rounds, configOverride, sets });
+    const sets = jokers ? [0, 1, 2].map((p) => [0, 1, 2].map((k) => ids[(g * 3 + p * 11 + k * 7) % ids.length])) : undefined;
+    const s = playGame3({ seed: seed * 100003 + g * 7919 + 13, rounds, configOverride, sets, mode });
     res.durations.push(s.round);
     if (s.winner === 'draw') res.draws++; else res.seatWins[s.winner]++;
     const outs = s.stats.map((x) => x.outRound).filter((x) => x != null);
-    if (outs.length) { res.bustGames++; res.firstOut.push(Math.min(...outs)); res.firstOutFrac.push(Math.min(...outs) / rounds); }
+    if (outs.length) { res.bustGames++; res.firstOut.push(Math.min(...outs)); res.firstOutFrac.push(Math.min(...outs) / s.cfg.maxRounds); }
   }
   return {
     games, rounds,
