@@ -16,8 +16,9 @@ export class GameHost {
    * @param {string|null} [o.persistKey] ключ localStorage для відновлення після перезавантаження
    * @param {object} [o.extra] додаткові дані для збереження (код кімнати, токен гостя)
    */
-  constructor({ timers = true, persistKey = null, extra = {} } = {}) {
+  constructor({ timers = true, persistKey = null, extra = {}, gameConfig = {} } = {}) {
     this.timers = timers;
+    this.gameConfig = gameConfig; // напр. { maxRounds: 16 }
     this.persistKey = persistKey;
     this.extra = extra;
     this.seats = [null, null];
@@ -39,7 +40,7 @@ export class GameHost {
   }
 
   start() {
-    this.state = createGame({ timers: this.timers }, this.ctx());
+    this.state = createGame({ timers: this.timers, config: this.gameConfig }, this.ctx());
     this.rematch = [false, false];
     this.refresh();
   }
@@ -47,6 +48,7 @@ export class GameHost {
   /** Відновлення зі збереження. Таймер стартує на паузі, доки обидва не на зв'язку. */
   restore(saved) {
     this.state = saved.state;
+    if (saved.state?.cfg?.maxRounds) this.gameConfig = { ...this.gameConfig, maxRounds: saved.state.cfg.maxRounds };
     this.rematch = saved.rematch || [false, false];
     if (this.state.timer && !this.state.timer.paused) {
       // Після перезавантаження час, що минув, не рахуємо — відновлюємо з паузи.
@@ -180,9 +182,10 @@ export class GameHost {
 
 /** Місце для бота: отримує view і через паузу відповідає діями. */
 export class BotSeat {
-  constructor(host, p, rng = Math.random) {
+  constructor(host, p, rng = Math.random, style = 'aggressive') {
     this.host = host;
     this.p = p;
+    this.style = style;
     this.rng = rng;
     this._t = null;
     this._lastRound = 0;
@@ -195,9 +198,11 @@ export class BotSeat {
       return;
     }
     if (meta.paused && view.timer) return;
-    const action = botDecide(view, this.rng);
+    const action = botDecide(view, this.rng, this.style);
     if (!action) return;
-    const delay = view.phase === 'play' ? 700 + this.rng() * 1600 : view.phase === 'result' ? 1400 + this.rng() * 1200 : 600 + this.rng() * 1400;
+    const delay = view.phase === 'play' ? 700 + this.rng() * 1600
+      : view.phase === 'result' ? (view.result?.don?.pending ? 1800 : 1400) + this.rng() * 1200
+      : 600 + this.rng() * 1400;
     const seq = view.seq;
     this._t = setTimeout(() => {
       if (this.host.state?.seq !== seq) return;

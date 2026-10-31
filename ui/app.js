@@ -1,8 +1,11 @@
 // Точка входу: екрани, режими гри, зв'язування хоста/мережі з UI.
 import { GameHost, BotSeat } from '../net/host.js';
 import { GameScreen } from './game.js';
-import { unlockAudio, sfx, isMuted, setMuted } from './sound.js';
+import { unlockAudio, sfx, isMuted, setMuted, getVolume, setVolume } from './sound.js';
 import { RULES_HTML } from './text.js';
+import { hints } from './settings.js';
+import { CONFIG, APP_VERSION } from '../config.js';
+import { BOT_STYLES } from '../game/bot.js';
 import { createOnlineHost, joinOnline, ROOM_ALPHABET, loadGuestSave, clearGuestSave, loadHostSave, clearHostSave } from '../net/online.js';
 
 const $ = (id) => document.getElementById(id);
@@ -62,9 +65,80 @@ const game = new GameScreen({
   onMenu: () => openGameMenu(),
 });
 
+// ───────── вибір параметрів партії ─────────
+const STYLE_INFO = {
+  cautious: { name: 'Обережний', sub: 'рідко блефує' },
+  aggressive: { name: 'Агресивний', sub: 'тисне ставками' },
+  bluffer: { name: 'Блефер', sub: 'легкий, хитрий' },
+};
+
+/** Сегментований перемикач. options: [{value, label, sub}] */
+function segmented(container, options, value, onChange) {
+  container.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = `${o.label}${o.sub ? `<small>${o.sub}</small>` : ''}`;
+    b.classList.toggle('on', o.value === value);
+    b.addEventListener('click', () => {
+      sfx.tap();
+      for (const x of container.children) x.classList.remove('on');
+      b.classList.add('on');
+      onChange(o.value);
+    });
+    container.append(b);
+  }
+}
+
+const roundOptions = () => CONFIG.roundOptions.map((r) => ({ value: r, label: `${r}`, sub: r === 8 ? 'швидка' : r === 16 ? 'довга' : 'звичайна' }));
+let prefRounds = CONFIG.maxRounds;
+let prefStyle = 'aggressive';
+try { prefRounds = Number(localStorage.getItem('vabank-rounds')) || prefRounds; prefStyle = localStorage.getItem('vabank-style') || prefStyle; } catch {}
+const rememberPrefs = () => { try { localStorage.setItem('vabank-rounds', prefRounds); localStorage.setItem('vabank-style', prefStyle); } catch {} };
+
+function gameSetupModal({ withStyle, onStart }) {
+  $('modal-text').innerHTML = `${withStyle ? '<div class="field-label">Суперник</div><div class="seg" id="m-style"></div>' : ''}<div class="field-label">Довжина партії (раундів)</div><div class="seg" id="m-rounds"></div>`;
+  if (withStyle) segmented($('m-style'), BOT_STYLES.map((k) => ({ value: k, label: STYLE_INFO[k].name, sub: STYLE_INFO[k].sub })), prefStyle, (v) => (prefStyle = v));
+  segmented($('m-rounds'), roundOptions(), prefRounds, (v) => (prefRounds = v));
+  const box = $('modal-btns');
+  box.innerHTML = '';
+  const go = document.createElement('button');
+  go.className = 'btn neon-pink big';
+  go.textContent = 'Почати';
+  go.addEventListener('click', () => { sfx.tap(); rememberPrefs(); $('modal').classList.add('hidden'); onStart({ maxRounds: prefRounds, style: prefStyle }); });
+  const cancel = document.createElement('button');
+  cancel.className = 'btn ghost';
+  cancel.textContent = 'Скасувати';
+  cancel.addEventListener('click', () => $('modal').classList.add('hidden'));
+  box.append(go, cancel);
+  $('modal').classList.remove('hidden');
+}
+
+// ───────── налаштування ─────────
+function openSettings(back = null) {
+  $('modal-text').innerHTML = `
+    <b>Налаштування</b>
+    <label class="row">Звук <input type="checkbox" id="set-sound" ${isMuted() ? '' : 'checked'}></label>
+    <label class="row" style="flex-direction:column;align-items:stretch">Гучність <input type="range" id="set-vol" min="0" max="100" value="${Math.round(getVolume() * 100)}"></label>
+    <label class="row">Підказки для новачка <input type="checkbox" id="set-hints" ${hints.enabled() ? 'checked' : ''}></label>
+    <small class="muted">Версія ${APP_VERSION}</small>`;
+  $('set-sound').addEventListener('change', (e) => { setMuted(!e.target.checked); sfx.tap(); });
+  $('set-vol').addEventListener('input', (e) => setVolume(e.target.value / 100));
+  $('set-vol').addEventListener('change', () => sfx.chip(3));
+  $('set-hints').addEventListener('change', (e) => hints.setEnabled(e.target.checked));
+  const box = $('modal-btns');
+  box.innerHTML = '';
+  const ok = document.createElement('button');
+  ok.className = 'btn neon-cyan';
+  ok.textContent = 'Готово';
+  ok.addEventListener('click', () => { sfx.tap(); $('modal').classList.add('hidden'); back?.(); });
+  box.append(ok);
+  $('modal').classList.remove('hidden');
+}
+
 function openGameMenu() {
   modal('<b>Пауза</b>', [
-    { label: isMuted() ? '🔇 Звук вимкнено' : '🔊 Звук увімкнено', keep: true, onClick: (el) => { setMuted(!isMuted()); el.textContent = isMuted() ? '🔇 Звук вимкнено' : '🔊 Звук увімкнено'; } },
+    { label: 'Налаштування', onClick: () => openSettings(openGameMenu) },
     { label: 'Правила', onClick: () => { session?.hideGame?.(); showRules(true); } },
     { label: 'Вийти в меню', cls: 'danger', onClick: () => confirmLeave() },
     { label: 'Повернутися до гри', cls: 'neon-cyan' },
@@ -120,6 +194,7 @@ function deliverToUi(msg, opts = {}) {
 }
 
 function renderEnd({ view, meta }, names) {
+  hints.gameFinished();
   const me = view.you;
   const st = view.stats;
   const draw = view.winner === 'draw';
@@ -156,9 +231,11 @@ $('btn-rematch').addEventListener('click', () => { sfx.tap(); session?.rematch()
 $('btn-end-menu').addEventListener('click', () => leave(true));
 
 // ───────── режим проти бота ─────────
-function startBot(resume = false) {
-  const host = new GameHost({ timers: true, persistKey: BOT_KEY });
-  const names = ['Ти', 'Бот'];
+function startBot(resume = false, opts = {}) {
+  const saved = resume && GameHost.load(BOT_KEY);
+  const style = (saved && saved.style) || opts.style || 'aggressive';
+  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds } });
+  const names = ['Ти', `Бот · ${STYLE_INFO[style].name}`];
   const s = {
     mode: 'bot',
     host,
@@ -176,18 +253,17 @@ function startBot(resume = false) {
   game.setNames(names[0], names[1]);
   $('opp-avatar').textContent = '🤖';
   $('btn-react').classList.remove('hidden');
-  const bot = new BotSeat(host, 1);
+  const bot = new BotSeat(host, 1, Math.random, style);
   host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e) => game.showReaction(e, false) });
   host.attach(1, bot);
-  const saved = resume && GameHost.load(BOT_KEY);
   if (saved && saved.state?.phase !== 'over') host.restore(saved);
   else host.start();
   host.setHidden(document.hidden);
 }
 
 // ───────── режим «передай телефон» ─────────
-function startHotseat() {
-  const host = new GameHost({ timers: false });
+function startHotseat(opts = {}) {
+  const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds } });
   const names = ['Гравець 1', 'Гравець 2'];
   const msgs = [null, null];
   let shown = null;
@@ -269,6 +345,11 @@ async function startCreate(resumeSave = null) {
   $('room-code').textContent = resumeSave?.code || '····';
   $('create-status').textContent = 'Підключаюся до сервера…';
   const names = ['Ти', 'Суперник'];
+  // Довжину партії хост обирає, поки чекає на суперника
+  const gameConfig = { maxRounds: prefRounds };
+  segmented($('create-rounds'), roundOptions(), prefRounds, (v) => { gameConfig.maxRounds = v; prefRounds = v; rememberPrefs(); });
+  $('create-rounds').classList.toggle('hidden', !!resumeSave);
+  document.querySelector('#scr-create .field-label').classList.toggle('hidden', !!resumeSave);
   game.reset();
   game.setNames(...names);
   $('opp-avatar').textContent = '🎭';
@@ -276,9 +357,11 @@ async function startCreate(resumeSave = null) {
   try {
     session = await createOnlineHost({
       resume: resumeSave,
+      gameConfig,
       onCode: (code) => { $('room-code').textContent = code; $('create-status').textContent = 'Чекаємо на суперника… Передай йому код.'; },
       onStatus: (st) => {
         if (st.error) $('create-status').textContent = st.error;
+        if (st.versionMismatch) { toast(st.versionMismatch, 6000); $('create-status').textContent = st.versionMismatch; }
         if (st.left) toast('Суперник вийшов з кімнати', 3500);
         game.setOffline(st.started && !st.oppConnected);
         if (st.started && !st.oppConnected && current === 'create') show('game');
@@ -309,7 +392,7 @@ async function startJoin(code, resumeSave = null) {
       },
       onMessage: (m) => deliverToUi(m, { names }),
       onReaction: (e) => game.showReaction(e, false),
-      onFatal: (text) => { toast(text, 4000); leave(true); },
+      onFatal: (text) => { toast(text, 8000); leave(true); },
     });
   } catch (e) {
     $('join-status').textContent = e.message;
@@ -348,14 +431,16 @@ document.addEventListener('click', (e) => {
   sfx.tap();
   if (go === 'menu') { if (current === 'create') leave(true); else show('menu'); }
   else if (go === 'rules') showRules();
+  else if (go === 'settings') openSettings();
   else if (go === 'bot') {
+    const fresh = () => gameSetupModal({ withStyle: true, onStart: (o) => { GameHost.clear(BOT_KEY); startBot(false, o); } });
     if (GameHost.load(BOT_KEY)?.state?.phase && GameHost.load(BOT_KEY).state.phase !== 'over') {
       modal('Є незавершена партія з ботом.', [
         { label: 'Продовжити', cls: 'neon-cyan', onClick: () => startBot(true) },
-        { label: 'Нова партія', onClick: () => { GameHost.clear(BOT_KEY); startBot(false); } },
+        { label: 'Нова партія', onClick: () => setTimeout(fresh, 0) },
       ]);
-    } else startBot(false);
-  } else if (go === 'hotseat') startHotseat();
+    } else fresh();
+  } else if (go === 'hotseat') gameSetupModal({ withStyle: false, onStart: (o) => startHotseat(o) });
   else if (go === 'create') { clearHostSave(); clearGuestSave(); startCreate(); }
   else if (go === 'join') { show('join'); setTimeout(() => joinInput.focus(), 300); }
 });
@@ -391,6 +476,32 @@ function boot() {
 }
 boot();
 
+$('app-version').textContent = `версія ${APP_VERSION}`;
+
+// ───────── оновлення: новий service worker → банер «Оновити» ─────────
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    const offer = (worker) => {
+      if (!worker || !navigator.serviceWorker.controller) return; // перше встановлення — без банера
+      $('update-bar').classList.remove('hidden');
+      $('btn-update').onclick = () => {
+        // Не перезавантажуємо посеред онлайн-партії хоста без попередження: стан збережено, гість перепідключиться.
+        $('btn-update').disabled = true;
+        worker.postMessage({ type: 'skipWaiting' });
+      };
+    };
+    if (reg.waiting) offer(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w?.addEventListener('statechange', () => { if (w.state === 'installed') offer(w); });
+    });
+    // Перевіряти оновлення, коли застосунок повертається на екран
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+  }).catch(() => {});
 }

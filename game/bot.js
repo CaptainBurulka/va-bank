@@ -1,82 +1,127 @@
-// Простий бот. Працює ЛИШЕ з view (тим, що бачить гравець), тож не підглядає.
+// Бот із трьома стилями. Працює ЛИШЕ з view (тим, що бачить гравець), тож не підглядає.
+// Підтримує і старі правила (rules 1), і нові (rules 2) — це потрібно для симуляцій «до/після».
 import { CONFIG } from '../config.js';
-import { cardValue } from './cards.js';
+
+export const BOT_STYLES = ['cautious', 'aggressive', 'bluffer'];
 
 const SUIT_BEATS = { water: 'fire', fire: 'stone', stone: 'water' };
 
-/** Оцінка сили карти 0..1 */
-function strength(card, scoutSeen) {
-  let s;
-  if (card.kind === 'num') s = (card.value - 0.5) / 10;
-  else if (card.kind === 'knife') s = 0.25; // інколи вбиває десятку
-  else if (card.kind === 'mirror') s = 0.5; // завжди нічия
-  else s = 0.5; // подвоєння: сила 5, але болючий штраф
-  if (scoutSeen && card.kind === 'num') {
-    if (scoutSeen === 'special') s -= 0.05;
-    else if (SUIT_BEATS[card.suit] === scoutSeen) s += 0.05;
-    else if (SUIT_BEATS[scoutSeen] === card.suit) s -= 0.05;
+/** Ефективна сила моєї карти (з урахуванням козиря) і грубий шанс виграти 0..1. */
+function estimate(view) {
+  const card = view.me.played;
+  const v2 = (view.rules || 1) >= 2;
+  const trump = view.trump;
+  let power;
+  if (card.kind === 'num') power = card.value + (v2 && trump === card.suit ? 1 : 0);
+  else if (card.kind === 'knife') power = 0;
+  else if (card.kind === 'double') power = 5;
+  else power = v2 ? 10.5 : 5; // Дзеркало: у нових правилах виграє все, крім Ножа
+
+  // Базова ймовірність: чим сильніша, тим краще (сила суперника ~ рівномірна 0..11)
+  let win = Math.min(1, Math.max(0, (power + 0.3) / 11));
+  if (card.kind === 'knife') win = 0.15;
+  if (!v2 && card.kind === 'mirror') win = 0.5;
+
+  const seen = view.me.scoutSeen;
+  if (seen) {
+    if (v2) {
+      if (seen === 'high') win = card.kind === 'knife' ? 0.3 : card.kind === 'mirror' ? 0.95 : Math.max(0, Math.min(1, (power - 5.5) / 5.5));
+      if (seen === 'low') win = card.kind === 'mirror' ? 0.95 : card.kind === 'knife' ? 0.05 : Math.max(0, Math.min(1, (power + 0.5) / 6.5));
+    } else if (card.kind === 'num' && seen !== 'special') {
+      if (SUIT_BEATS[card.suit] === seen) win += 0.05;
+      if (SUIT_BEATS[seen] === card.suit) win -= 0.05;
+    }
   }
-  return Math.max(0, Math.min(1, s));
+  return { power, win: Math.max(0, Math.min(1, win)) };
+}
+
+function handPower(card, view) {
+  const v2 = (view.rules || 1) >= 2;
+  if (card.kind === 'num') return card.value + (v2 && view.trump === card.suit ? 1 : 0);
+  if (card.kind === 'mirror') return v2 ? 11 : 5;
+  if (card.kind === 'knife') return 2;
+  return 5;
 }
 
 /**
  * Повертає дію для бота або null, якщо зараз не його черга.
  * @param {object} view — viewFor(state, botSeat)
  * @param {() => number} rng
+ * @param {string} style — 'cautious' | 'aggressive' | 'bluffer'
  */
-export function botDecide(view, rng = Math.random) {
+export function botDecide(view, rng = Math.random, style = 'aggressive') {
+  const P = CONFIG.botStyles[style] || CONFIG.botStyles.aggressive;
   const legal = view.legal;
   if (!legal.length) return null;
   const has = (t) => legal.find((a) => a.type === t);
 
   switch (view.phase) {
     case 'play': {
-      const hand = view.me.hand.slice().sort((a, b) => strength(a) - strength(b));
-      // Іноді сильна карта, іноді слабка (для блефу), частіше середня.
+      const hand = view.me.hand.slice().sort((a, b) => handPower(a, view) - handPower(b, view));
+      // Обмін найслабшої карти
+      if (has('swap')) {
+        const worst = hand[0];
+        if (handPower(worst, view) <= P.swapMax && rng() < P.swapProb) return { type: 'swap', cardId: worst.id };
+      }
+      // Сильну карту — коли банк великий, слабку — для блефу.
       const r = rng();
-      const idx = r < 0.35 ? hand.length - 1 : r < 0.55 ? 0 : Math.floor(rng() * hand.length);
+      let idx;
+      if (r < P.playStrong) idx = hand.length - 1;
+      else if (r < P.playStrong + P.playWeak) idx = 0;
+      else idx = Math.floor(rng() * hand.length);
       return { type: 'play', cardId: hand[idx].id };
     }
     case 'scout': {
-      if (has('scout') && view.me.chips > 40 && rng() < 0.25) return { type: 'scout' };
+      if (has('scout') && view.me.chips > 25 && rng() < P.scoutProb) return { type: 'scout' };
       return { type: 'skipScout' };
     }
     case 'bet': {
-      const s = strength(view.me.played, view.me.scoutSeen) + (rng() - 0.5) * 0.2;
+      const { win } = estimate(view);
+      const s = win + (rng() - 0.5) * 0.15;
       const raises = legal.filter((a) => a.type === 'raise');
-      const bluff = rng() < 0.12;
+      const bluff = rng() < P.bluff;
       const pickRaise = () => {
         if (!raises.length) return null;
-        if (s > 0.9 && rng() < 0.3) return raises.find((a) => a.amount === 'allin');
-        if (s > 0.75) return raises.find((a) => a.amount === 10) || raises[raises.length - 1];
+        const allin = raises.find((a) => a.amount === 'allin');
+        if (s > P.allinAt && allin) return allin;
+        if (s > P.raiseAt + 0.12 || (bluff && rng() < 0.5)) return raises.find((a) => a.amount === 10) || raises[raises.length - 1];
         return raises[0];
       };
+      const strip = (a) => (a ? { type: a.type, amount: a.amount } : null);
       if (has('check')) {
-        if ((s > 0.65 || bluff) && raises.length) return strip(pickRaise());
+        if ((s > P.raiseAt || bluff) && raises.length) return strip(pickRaise());
         return { type: 'check' };
       }
-      // Треба відповідати на підняття
       const toCall = view.bet.toCall;
       const potOdds = toCall / (view.pot + toCall);
-      if (s > 0.85 && raises.length && rng() < 0.5) return strip(pickRaise());
-      if (s > 0.35 + potOdds * 0.6 || (bluff && s > 0.25)) return { type: 'call' };
+      if (s > P.reraiseAt && raises.length && rng() < 0.6) return strip(pickRaise());
+      if (s > potOdds + P.callSlack || (bluff && s > 0.2)) return { type: 'call' };
       return { type: 'fold' };
     }
     case 'result': {
-      if (has('don')) {
-        const ref = cardValue(view.me.played, view.opp.played, CONFIG);
-        if (ref <= 3 && rng() < 0.85) return { type: 'don', guess: 'higher' };
-        if (ref >= 8 && rng() < 0.85) return { type: 'don', guess: 'lower' };
-        if (ref <= 4 && rng() < 0.4) return { type: 'don', guess: 'higher' };
-        if (ref >= 7 && rng() < 0.4) return { type: 'don', guess: 'lower' };
+      const r = view.result;
+      // Нові правила: спершу відкривається база, потім вибір із шансами
+      if (r?.don?.pending) {
+        const o = r.don.pending.odds;
+        const opts = legal.filter((a) => a.type === 'don');
+        if (!opts.length) return { type: 'ready' };
+        // Обираємо варіант із більшим шансом; обережний відмовляється, якщо шанс малий
+        const best = opts.reduce((x, y) => (o[y.guess].p > o[x.guess].p ? y : x));
+        if (o[best.guess].p < P.donMinP - 0.1) return { type: 'ready' };
+        return { type: 'don', guess: best.guess };
       }
-      if (has('show') && view.result.winner === view.you && rng() < 0.3) return { type: 'show' };
+      if (has('donStart')) {
+        if (rng() < P.donStart) return { type: 'donStart' };
+      } else if (has('don')) {
+        // Старі правила: вгадування відносно власної карти
+        const ref = view.me.played.kind === 'num' ? view.me.played.value : view.me.played.kind === 'knife' ? 0 : 5;
+        const pHigher = (10 - ref) / 10;
+        const pLower = (ref - 1) / 10;
+        if (Math.max(pHigher, pLower) >= P.donMinP) return { type: 'don', guess: pHigher >= pLower ? 'higher' : 'lower' };
+      }
+      if (has('show') && r.winner === view.you && rng() < P.showProb) return { type: 'show' };
       return { type: 'ready' };
     }
   }
   return null;
-}
-
-function strip(a) {
-  return a ? { type: a.type, amount: a.amount } : { type: 'check' };
 }

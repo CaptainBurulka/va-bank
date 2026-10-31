@@ -3,8 +3,9 @@
 import { GameHost, cryptoRng } from './host.js';
 import {
   ROOM_ALPHABET, PROTOCOL_VERSION, msg, randomCode, randomToken, peerIdFor,
-  parseGuestMessage, parseHostMessage,
+  parseGuestMessage, parseHostMessage, versionAdvice, compareVersions,
 } from './protocol.js';
+import { CONFIG, APP_VERSION } from '../config.js';
 
 export { ROOM_ALPHABET };
 
@@ -29,7 +30,10 @@ function needPeer() {
   return window.Peer;
 }
 
-const PEER_OPTS = { debug: 0, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }] } };
+// STUN — безкоштовні публічні; TURN (ретранслятор для «важких» мобільних мереж) — з config.js, якщо вказано.
+const ICE = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }];
+if (CONFIG.turn && CONFIG.turn.urls) ICE.push({ ...CONFIG.turn });
+const PEER_OPTS = { debug: 0, config: { iceServers: ICE } };
 
 const ERR_TEXT = {
   'room-full': 'У кімнаті вже грають двоє',
@@ -54,7 +58,7 @@ export async function createOnlineHost(o) {
   let retryT = null;
   let freshTries = 0;
 
-  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: { code, guestToken } });
+  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: { code, guestToken }, gameConfig: o.gameConfig || {} });
   const status = () => o.onStatus({ started: !!host.state, oppConnected: host.connected[1], code });
 
   // Місце гостя
@@ -90,12 +94,22 @@ export async function createOnlineHost(o) {
       c.on('data', (raw) => {
         const p = parseGuestMessage(raw);
         if (!p.ok) {
-          if (p.error === 'version') { try { c.send(msg('error', { code: 'version', need: PROTOCOL_VERSION })); } catch {} }
+          if (p.error === 'version') {
+            try { c.send(msg('error', { code: 'version', app: APP_VERSION, protocol: PROTOCOL_VERSION })); } catch {}
+            o.onStatus({ started: !!host.state, oppConnected: host.connected[1], code, versionMismatch: versionAdvice(APP_VERSION, p.app) });
+          }
           return;
         }
         const m = p.m;
         if (!greeted) {
           if (m.type !== 'hello') return;
+          // Однаковий протокол, але різні версії застосунку — теж просимо оновитися (правила могли змінитися)
+          if (m.app && compareVersions(m.app, APP_VERSION) !== 0) {
+            try { c.send(msg('error', { code: 'version', app: APP_VERSION, protocol: PROTOCOL_VERSION })); } catch {}
+            o.onStatus({ started: !!host.state, oppConnected: host.connected[1], code, versionMismatch: versionAdvice(APP_VERSION, m.app) });
+            setTimeout(() => c.close(), 500);
+            return;
+          }
           if (host.state && guestToken && m.token !== guestToken) {
             try { c.send(msg('error', { code: 'room-full' })); } catch {}
             setTimeout(() => c.close(), 300);
@@ -109,7 +123,7 @@ export async function createOnlineHost(o) {
             guestToken = randomToken(cryptoRng);
             host.extra = { code, guestToken };
           }
-          c.send(msg('welcome', { token: guestToken, seat: 1 }));
+          c.send(msg('welcome', { token: guestToken, seat: 1, app: APP_VERSION }));
           if (!host.state) host.start();
           host.setConnected(1, true);
           host.sendTo(1);
@@ -254,12 +268,12 @@ export function joinOnline(o) {
       c.on('open', () => {
         clearTimeout(openTimer);
         lastSeen = Date.now();
-        c.send(msg('hello', { token }));
+        c.send(msg('hello', { token, app: APP_VERSION }));
       });
       c.on('data', (raw) => {
         if (c !== conn) return;
         const p = parseHostMessage(raw);
-        if (!p.ok) { if (p.error === 'version') { closed = true; o.onFatal?.(ERR_TEXT.version); } return; }
+        if (!p.ok) { if (p.error === 'version') { closed = true; o.onFatal?.(versionAdvice(APP_VERSION, p.app)); } return; }
         const m = p.m;
         lastSeen = Date.now();
         switch (m.type) {
@@ -282,10 +296,11 @@ export function joinOnline(o) {
           case 'ping': send(msg('pong')); break;
           case 'error':
             if (m.code === 'room-full' || m.code === 'version') {
+              const text = m.code === 'version' ? versionAdvice(APP_VERSION, m.app) : ERR_TEXT[m.code];
               closed = true;
               clearGuestSave();
-              if (!settled) fail(ERR_TEXT[m.code]);
-              else o.onFatal?.(ERR_TEXT[m.code]);
+              if (!settled) fail(text);
+              else o.onFatal?.(text);
               cleanup();
             }
             break;
