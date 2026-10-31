@@ -2,10 +2,10 @@
 // Рідкість впливає лише на вигляд: рідкісна — блиск, епічна — світіння і градієнт, легендарна — анімація.
 
 export const COSMETIC_CATS = {
-  deck: 'Колода', back: 'Сорочка', felt: 'Сукно', chips: 'Фішки', win: 'Перемога', emoji: 'Емодзі', frame: 'Рамка',
+  deck: 'Колода', back: 'Сорочка', felt: 'Сукно', chips: 'Фішки', win: 'Перемога', sound: 'Звук', emoji: 'Емодзі', frame: 'Рамка',
 };
 
-// source: start — є одразу; shop — магазин і автомат; slot — лише автомат; ach — лише за досягнення
+// source: start — є одразу; shop — магазин і автомат; slot — лише автомат; ach — лише за досягнення; set — за повний набір
 export const COSMETICS = [
   // Колода (лице карт)
   { id: 'deck_classic', cat: 'deck', name: 'Класика', rarity: 'common', source: 'start', vars: {} },
@@ -51,7 +51,56 @@ export const COSMETICS = [
   { id: 'frame_fire', cat: 'frame', name: 'Полум\'я', rarity: 'epic', source: 'shop', vars: { '--frame': '#ff7a3d' } },
   { id: 'frame_cosmic', cat: 'frame', name: 'Космос', rarity: 'legendary', source: 'slot', vars: { '--frame': '#b48cff' }, anim: 'spin' },
   { id: 'frame_legend', cat: 'frame', name: 'Легенда', rarity: 'legendary', source: 'ach', vars: { '--frame': '#f3cf78' }, anim: 'spin' },
+  // Звуковий акцент (на перемогу і великі моменти)
+  { id: 'sound_classic', cat: 'sound', name: 'Класика', rarity: 'common', source: 'start', accent: null },
+
+  // ───── Тематичні набори: колода (з власними мастями) + сорочка + сукно + фішки + перемога + звук. Повний набір — рамка. ─────
+  // Нічний Київ: нічний Дніпро, ліхтарі, каштани
+  { id: 'deck_kyiv', set: 'kyiv', cat: 'deck', name: 'Нічний Київ', rarity: 'legendary', source: 'slot', suits: 'kyiv', anim: 'kyiv',
+    vars: { '--card-face': 'linear-gradient(170deg,#fff7e6,#f3dfb6)', '--card-edge': '#c88a2c', '--card-ink': '#14213d', '--water': '#2f6fbf', '--fire': '#e58a12', '--stone': '#7a4a24' } },
+  { id: 'back_kyiv', set: 'kyiv', cat: 'back', name: 'Ліхтарі над Дніпром', rarity: 'rare', source: 'shop', vars: { '--card-back-1': '#1d2f57', '--card-back-2': '#0a1226', '--back-line': 'rgba(255,190,90,.42)' } },
+  { id: 'felt_kyiv', set: 'kyiv', cat: 'felt', name: 'Вогні лівого берега', rarity: 'epic', source: 'shop', vars: { '--felt-1': '#22406e', '--felt-2': '#142a4d', '--felt-3': '#070f20', '--brass': '#c88a2c' }, anim: 'city' },
+  { id: 'chips_kyiv', set: 'kyiv', cat: 'chips', name: 'Бурштин', rarity: 'common', source: 'shop', vars: { '--chip': '#ffb547' } },
+  { id: 'win_kyiv', set: 'kyiv', cat: 'win', name: 'Каштановий салют', rarity: 'epic', source: 'shop', fx: 'kyiv' },
+  { id: 'sound_kyiv', set: 'kyiv', cat: 'sound', name: 'Дзвони', rarity: 'common', source: 'shop', accent: 'bells' },
+  { id: 'frame_kyiv', set: 'kyiv', cat: 'frame', name: 'Нічний Київ', rarity: 'legendary', source: 'set', vars: { '--frame': '#ffb547' }, anim: 'spin' },
+  // Самурай: рисовий папір, туш, червоний лак
+  { id: 'deck_samurai', set: 'samurai', cat: 'deck', name: 'Самурай', rarity: 'legendary', source: 'slot', suits: 'samurai', anim: 'samurai',
+    vars: { '--card-face': 'radial-gradient(circle at 70% 18%,#fffaf0,#efe3c8 80%)', '--card-edge': '#b3261e', '--card-ink': '#111', '--water': '#1f4e79', '--fire': '#c62828', '--stone': '#3d3d3d' } },
+  { id: 'back_samurai', set: 'samurai', cat: 'back', name: 'Чорний лак', rarity: 'rare', source: 'shop', vars: { '--card-back-1': '#2b0d0d', '--card-back-2': '#070303', '--back-line': 'rgba(220,48,48,.42)' } },
+  { id: 'felt_samurai', set: 'samurai', cat: 'felt', name: 'Сад сакури', rarity: 'epic', source: 'shop', vars: { '--felt-1': '#5c6b3a', '--felt-2': '#3c4a24', '--felt-3': '#1c2410', '--brass': '#8b1f1f' }, anim: 'sakura' },
+  { id: 'chips_samurai', set: 'samurai', cat: 'chips', name: 'Червона печатка', rarity: 'common', source: 'shop', vars: { '--chip': '#e23b3b' } },
+  { id: 'win_samurai', set: 'samurai', cat: 'win', name: 'Пелюстки', rarity: 'epic', source: 'shop', fx: 'sakura' },
+  { id: 'sound_samurai', set: 'samurai', cat: 'sound', name: 'Кото', rarity: 'common', source: 'shop', accent: 'koto' },
+  { id: 'frame_samurai', set: 'samurai', cat: 'frame', name: 'Самурай', rarity: 'legendary', source: 'set', vars: { '--frame': '#e23b3b' }, anim: 'spin' },
+  // Кіберпанк: неон на темному
+  { id: 'deck_cyber', set: 'cyber', cat: 'deck', name: 'Кіберпанк', rarity: 'legendary', source: 'slot', suits: 'cyber', anim: 'cyber',
+    vars: { '--card-face': 'linear-gradient(160deg,#1a1c2e,#0b0c16)', '--card-edge': '#2ff3ff', '--card-ink': '#f2fbff', '--water': '#2ff3ff', '--fire': '#ff3fb4', '--stone': '#ffe14d', '--card-face-special': 'linear-gradient(160deg,#241a3a,#0d0816)' } },
+  { id: 'back_cyber', set: 'cyber', cat: 'back', name: 'Неонова сітка', rarity: 'rare', source: 'shop', vars: { '--card-back-1': '#1d0b33', '--card-back-2': '#050210', '--back-line': 'rgba(47,243,255,.45)' } },
+  { id: 'felt_cyber', set: 'cyber', cat: 'felt', name: 'Нічний мегаполіс', rarity: 'epic', source: 'shop', vars: { '--felt-1': '#2c1046', '--felt-2': '#121a3f', '--felt-3': '#04050e', '--brass': '#ff3fb4' }, anim: 'grid' },
+  { id: 'chips_cyber', set: 'cyber', cat: 'chips', name: 'Неон', rarity: 'common', source: 'shop', vars: { '--chip': '#2ff3ff' } },
+  { id: 'win_cyber', set: 'cyber', cat: 'win', name: 'Глітч', rarity: 'epic', source: 'shop', fx: 'glitch' },
+  { id: 'sound_cyber', set: 'cyber', cat: 'sound', name: 'Синтвейв', rarity: 'common', source: 'shop', accent: 'synth' },
+  { id: 'frame_cyber', set: 'cyber', cat: 'frame', name: 'Кіберпанк', rarity: 'legendary', source: 'set', vars: { '--frame': '#2ff3ff' }, anim: 'spin' },
+  // Козацький: вишивка, степ, булава
+  { id: 'deck_cossack', set: 'cossack', cat: 'deck', name: 'Козацька', rarity: 'legendary', source: 'slot', suits: 'cossack', anim: 'cossack',
+    vars: { '--card-face': 'linear-gradient(170deg,#fffaf0,#f1e4c6)', '--card-edge': '#a3191c', '--card-ink': '#2a0b0b', '--water': '#1f5fa8', '--fire': '#c4161c', '--stone': '#5b4636' } },
+  { id: 'back_cossack', set: 'cossack', cat: 'back', name: 'Вишиванка', rarity: 'rare', source: 'shop', vars: { '--card-back-1': '#9b1c1c', '--card-back-2': '#2a0505', '--back-line': 'rgba(0,0,0,.55)' } },
+  { id: 'felt_cossack', set: 'cossack', cat: 'felt', name: 'Степ на світанку', rarity: 'epic', source: 'shop', vars: { '--felt-1': '#7a6a22', '--felt-2': '#4f5a1c', '--felt-3': '#232c0a', '--brass': '#d9a441' }, anim: 'steppe' },
+  { id: 'chips_cossack', set: 'cossack', cat: 'chips', name: 'Червоне з чорним', rarity: 'common', source: 'shop', vars: { '--chip': '#d32f2f' } },
+  { id: 'win_cossack', set: 'cossack', cat: 'win', name: 'Соняшники', rarity: 'epic', source: 'shop', fx: 'cossack' },
+  { id: 'sound_cossack', set: 'cossack', cat: 'sound', name: 'Бандура', rarity: 'common', source: 'shop', accent: 'bandura' },
+  { id: 'frame_cossack', set: 'cossack', cat: 'frame', name: 'Козацька', rarity: 'legendary', source: 'set', vars: { '--frame': '#d32f2f' }, anim: 'spin' },
 ];
+
+/** Тематичні набори: предмети (без рамки) і рамка за повний набір. */
+export const SETS = ['kyiv', 'samurai', 'cyber', 'cossack'].map((id) => ({
+  id,
+  name: { kyiv: 'Нічний Київ', samurai: 'Самурай', cyber: 'Кіберпанк', cossack: 'Козацький' }[id],
+  icon: { kyiv: '🌃', samurai: '⛩️', cyber: '🌆', cossack: '🌻' }[id],
+  items: COSMETICS.filter((c) => c.set === id && c.source !== 'set').map((c) => c.id),
+  frame: `frame_${id}`,
+}));
 export const COSMETIC_BY_ID = Object.fromEntries(COSMETICS.map((c) => [c.id, c]));
 export const DEFAULT_EQUIPPED = Object.fromEntries(Object.keys(COSMETIC_CATS).map((cat) => [cat, COSMETICS.find((c) => c.cat === cat && c.source === 'start').id]));
 

@@ -17,8 +17,16 @@ export function cardEl(card, o = {}) {
   return el;
 }
 
+/** Тема мастей (тематична колода): явна, від найближчої зони суперника або моя (на <html>). */
+function suitTheme(el, o) {
+  if (o.suits !== undefined) return o.suits || '';
+  return el.closest?.('[data-suits]')?.dataset.suits ?? document.documentElement.dataset.suits ?? '';
+}
+
 export function fillFace(el, card, o = {}) {
   const face = el.querySelector('.face');
+  const theme = suitTheme(el, o);
+  const sico = (suit, cls = '') => ico(theme ? `${theme}-${suit}` : suit, cls);
   el.dataset.id = card.id;
   el.classList.remove('water', 'fire', 'stone', 'special', 'trumped', 'joker', 'r-common', 'r-rare', 'r-epic', 'r-legendary');
   if (card.kind === 'joker') {
@@ -33,7 +41,7 @@ export function fillFace(el, card, o = {}) {
   if (card.kind === 'num') {
     const s = SUIT[card.suit];
     el.classList.add(card.suit);
-    face.innerHTML = `<div class="cor">${card.value}${ico(card.suit)}</div><div class="big">${card.value}</div>${ico(card.suit, 'pip')}`;
+    face.innerHTML = `<div class="cor">${card.value}${sico(card.suit)}</div><div class="big">${card.value}</div>${sico(card.suit, 'pip')}`;
     el.setAttribute('aria-label', `${card.value} ${s.gen}`);
     if (o.trump && card.suit === o.trump) {
       el.classList.add('trumped');

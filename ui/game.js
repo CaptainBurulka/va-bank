@@ -8,7 +8,7 @@ import { ms, reducedMotion } from './motion.js';
 import { JOKER_BY_ID, RARITIES, RARITY_NAME, jokerDesc } from '../game/jokers.js';
 import { playWin } from './cosmetics.js';
 import { PHRASES, isPhrase } from '../meta/rivals.js';
-import { MODES } from '../config.js';
+import { MODES, FEEL } from '../config.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -91,6 +91,8 @@ export class GameScreen {
     this.el.donChoices.addEventListener('click', onBtn);
     // Будь-яку довгу анімацію можна пропустити тапом
     this.el.verdict.addEventListener('click', () => this.hideVerdict());
+    // пауза-напруга і штампи пропускаються тапом по столу
+    this.el.table.addEventListener('click', () => { if (this.st.tense) this.endTense(true); document.querySelectorAll('.stamp').forEach((x) => x.remove()); });
     this.el.don.addEventListener('click', (ev) => { if (!ev.target.closest('button')) this.skipDon(); });
     this.el.coach.addEventListener('click', (ev) => { if (ev.target.closest('[data-skip]')) this.onCoachSkip?.(); });
 
@@ -119,7 +121,10 @@ export class GameScreen {
     this.hideVerdict();
     document.querySelectorAll('.jk-reveal').forEach((x) => x.remove());
     for (const t of Object.values(this.st.timers || {})) clearTimeout(t);
-    this.st = { opp: null, me: null, slots: {}, don: 0, donBase: null, timers: {} };
+    this.st = { opp: null, me: null, slots: {}, don: 0, donBase: null, timers: {}, tense: false, pendingFlips: [] };
+    this.el.table.classList.remove('tense', 'quake');
+    document.getElementById('scr-game').classList.remove('hot');
+    document.querySelectorAll('.stamp').forEach((x) => x.remove());
   }
 
   setNames(me, opp) {
@@ -236,6 +241,7 @@ export class GameScreen {
     });
 
     this.renderNumbers(prev, view);
+    this.renderFeel(prev, view);
     this.renderPhase(view, prev);
     this.renderPlayers(view);
     this.renderTable(prev, view);
@@ -246,6 +252,87 @@ export class GameScreen {
     this.renderDon(prev, view);
     this.renderCoach();
     if (prev && this.myTurn(view) && !this.myTurn(prev) && view.phase !== 'result') sfx.turn();
+  }
+
+  // ───────── відчуття гри: гарячий раунд, пауза-напруга, штампи ─────────
+  /** Записи журналу поточного раунду. */
+  roundLog(v) {
+    const out = [];
+    for (let i = v.log.length - 1; i >= 0; i--) { if (v.log[i].t === 'round') break; out.push(v.log[i]); }
+    return out;
+  }
+
+  isHot(v) {
+    if (!v || v.phase === 'over') return false;
+    const total = (v.players || []).reduce((a, x) => a + x.chips, 0) + v.pot;
+    return v.pot >= Math.max(FEEL.hotPot, total * FEEL.hotShare) || this.roundLog(v).some((e) => e.t === 'raise' && e.allin);
+  }
+
+  renderFeel(prev, v) {
+    const scr = document.getElementById('scr-game');
+    const hot = this.isHot(v);
+    const wasHot = scr.classList.contains('hot');
+    scr.classList.toggle('hot', hot);
+    if (hot && !wasHot && prev) {
+      sfx.bigPot();
+      if (!reducedMotion()) {
+        const t = this.el.table;
+        t.classList.remove('quake'); void t.offsetWidth; t.classList.add('quake');
+        clearTimeout(this.st.timers.quake);
+        this.st.timers.quake = setTimeout(() => t.classList.remove('quake'), 700);
+      }
+    }
+    // Пауза-напруга перед розкриттям у важливому раунді (не в режимі зменшеного руху)
+    const reveal = prev && prev.phase !== 'result' && v.phase === 'result' && v.result?.revealed && (hot || wasHot);
+    if (reveal && !reducedMotion()) {
+      this.st.tense = true;
+      this.st.pendingFlips = [];
+      this.el.table.classList.add('tense');
+      sfx.drumroll(FEEL.tensionMs / 1000);
+      clearTimeout(this.st.timers.tense);
+      this.st.timers.tense = setTimeout(() => this.endTense(false), FEEL.tensionMs);
+    }
+    // «Тебе розвели!»: переможець показав слабку карту, на яку я спасував
+    if (prev && v.phase === 'result' && v.result?.reason === 'fold' && v.result.winner !== v.you) {
+      const q = v.result.winner;
+      const now = this.seat(v, q), before = this.seat(prev, q);
+      if (now?.shown && !before?.shown && this.weak(now.played, FEEL.bluffCard)) this.stamp('Тебе розвели! 🤡', 'lose');
+    }
+  }
+
+  /** Слабка карта: число до n включно або Ніж. */
+  weak(c, n) { return !!c && ((c.kind === 'num' && c.value <= n) || c.kind === 'knife'); }
+
+  flipFace(c, withSound) {
+    const go = () => { c.classList.remove('back-up'); if (withSound) sfx.flip(); };
+    if (this.st.tense) { this.st.pendingFlips.push(go); return; }
+    requestAnimationFrame(() => requestAnimationFrame(go));
+  }
+
+  endTense(skipped) {
+    if (!this.st.tense) return;
+    this.st.tense = false;
+    clearTimeout(this.st.timers.tense);
+    this.el.table.classList.remove('tense');
+    for (const f of this.st.pendingFlips || []) f();
+    this.st.pendingFlips = [];
+    if (skipped && this.st.showVerdict) {
+      clearTimeout(this.st.timers.verdict);
+      this.st.timers.verdict = setTimeout(() => this.st.showVerdict?.(), ms('--t-flip'));
+    }
+  }
+
+  /** Великий штамп поверх столу. Тап — прибрати. */
+  stamp(text, kind = 'win') {
+    document.querySelectorAll('.stamp').forEach((x) => x.remove());
+    const el = document.createElement('div');
+    el.className = `stamp ${kind}`;
+    el.textContent = text;
+    el.addEventListener('click', () => el.remove());
+    this.el.table.append(el);
+    sfx.stamp();
+    clearTimeout(this.st.timers.stamp);
+    this.st.timers.stamp = setTimeout(() => el.remove(), 2000);
   }
 
   myTurn(v) {
@@ -493,8 +580,7 @@ export class GameScreen {
         let c = slot.querySelector('.card');
         if (!c) { c = cardEl(null); slot.innerHTML = ''; slot.append(c); }
         fillFace(c, v.opp.played, opt);
-        requestAnimationFrame(() => requestAnimationFrame(() => c.classList.remove('back-up')));
-        if (prev) sfx.flip();
+        this.flipFace(c, !!prev);
       }
       st.opp = oppKey;
     }
@@ -541,8 +627,7 @@ export class GameScreen {
       let c = slot.querySelector('.card');
       if (!c) { c = cardEl(null); slot.innerHTML = ''; slot.append(c); }
       fillFace(c, played, opt);
-      requestAnimationFrame(() => requestAnimationFrame(() => c.classList.remove('back-up')));
-      if (prev) sfx.flip();
+      this.flipFace(c, !!prev);
     }
   }
 
@@ -738,11 +823,18 @@ export class GameScreen {
     else { cls = 'lose'; title = r.reason === 'fold' ? 'Пас' : 'Програно'; amt = `банк ${r.won} — супернику`; }
     const jk = r.jokers;
     const jkDelay = jk ? this.showJokerReveal(v, jk) : 0;
-    const delay = (r.revealed ? ms('--t-flip') : 0) + jkDelay;
+    const delay = (r.revealed ? ms('--t-flip') : 0) + jkDelay + (this.st.tense ? FEEL.tensionMs : 0);
     clearTimeout(this.st.timers.verdict);
     const showV = () => {
       this.st.showVerdict = null;
-      if (r.winner === null) sfx.tie(); else if (r.winner === v.you) sfx.win(); else sfx.lose();
+      if (r.winner === null) sfx.tie(); else if (r.winner === v.you) { sfx.win(); sfx.accent(this.isHot(prev) || r.won >= FEEL.hotPot); } else sfx.lose();
+      // особлива реакція: перемога слабкою картою і вдалий блеф
+      if (r.winner !== null && r.reason === 'showdown') {
+        const wc = r.jokers?.cards?.[r.winner] || this.playedOf(v, r.winner);
+        if (this.weak(wc, FEEL.weakCard)) setTimeout(() => this.stamp(r.winner === v.you ? 'Слабкою картою! 🪶' : `${this.nameOf(r.winner)}: слабкою картою!`, r.winner === v.you ? 'win' : 'lose'), 350);
+      } else if (r.reason === 'fold' && r.winner === v.you && this.weak(v.me.played, FEEL.bluffCard)) {
+        setTimeout(() => this.stamp('Блеф пройшов! 😎', 'win'), 350);
+      }
       if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion());
       const el = this.el.verdict;
       el.className = `verdict ${cls}`;

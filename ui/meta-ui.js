@@ -1,14 +1,14 @@
 // Екрани клубу: гаманець, колекція, магазин, ігровий автомат, нагороди після партії.
 import { JOKERS, JOKER_BY_ID, RARITY_NAME, RARITIES } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID } from '../meta/catalog.js';
+import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID, SETS } from '../meta/catalog.js';
 import {
-  buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL,
+  buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL, setProgress, completeSets,
 } from '../meta/profile.js';
 import { META } from '../config.js';
 import { loadProfile, saveProfile, needsInstallHint } from './profile-store.js';
 import { applyMyLook, playWin } from './cosmetics.js';
 import { cryptoRng } from '../net/host.js';
-import { sfx } from './sound.js';
+import { sfx, setAccent } from './sound.js';
 import { reducedMotion } from './motion.js';
 import { TITLES, TITLE_BY_ID, titlesOf, titleOf, cleanNick, addLife, recordGame } from '../meta/rivals.js';
 
@@ -17,7 +17,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 let ui = null; // { show, modal, toast }
 
 export const SYMBOL_GLYPH = { cherry: '🍒', bell: '🔔', seven: '7', star: '⭐', clover: '🍀', diamond: '💎', crown: '👑' };
-const WIN_GLYPH = { chips: '🪙', confetti: '🎉', hearts: '❤️', fireworks: '🎆', goldrain: '🌟' };
+const WIN_GLYPH = { chips: '🪙', confetti: '🎉', hearts: '❤️', fireworks: '🎆', goldrain: '🌟', kyiv: '🌰', sakura: '🌸', glitch: '👾', cossack: '🌻' };
 const ERR = {
   'no-points': 'Не вистачає балів — зіграй ще кілька партій',
   'no-shards': 'Не вистачає уламків — вони з\'являються з дублікатів в автоматі',
@@ -42,6 +42,12 @@ export function initMeta(api) {
 }
 
 function update(p) {
+  // Повний тематичний набір → рамка (на випадок, якщо предмет прийшов не через grant, напр. з імпорту)
+  const before = loadProfile();
+  const q = { ...p, cosmetics: { ...p.cosmetics } };
+  completeSets(q);
+  p = q;
+  for (const st of SETS) if (p.cosmetics[st.frame] && !before.cosmetics[st.frame]) setTimeout(() => ui?.toast(`${st.icon} Повний набір «${st.name}»! Рамка профілю — твоя`, 4200), 400);
   saveProfile(p);
   applyMyLook(p.equipped);
   renderWallet();
@@ -59,7 +65,8 @@ export function renderWallet() {
 function swatch(c) {
   const v = c.vars || {};
   switch (c.cat) {
-    case 'deck': return `<div class="sw" style="background:${v['--card-face'] || 'var(--card-face)'};box-shadow:inset 0 0 0 2px ${v['--card-edge'] || 'var(--card-edge)'};display:grid;place-items:center;color:#1d1a14;font:800 26px/1 var(--font-ui)">7</div>`;
+    case 'deck': return `<div class="sw" style="background:${v['--card-face'] || 'var(--card-face)'};box-shadow:inset 0 0 0 2px ${v['--card-edge'] || 'var(--card-edge)'};display:grid;place-items:center;color:${v['--card-ink'] || '#1d1a14'};font:800 26px/1 var(--font-ui);position:relative">7${c.suits ? `<svg style="position:absolute;right:6px;bottom:6px;width:18px;height:18px;color:${v['--fire'] || 'var(--fire)'}"><use href="#i-${c.suits}-fire"/></svg>` : ''}</div>`;
+    case 'sound': return `<div class="big">${{ bells: '🔔', koto: '🎋', synth: '🎹', bandura: '🪕' }[c.accent] || '🔈'}</div>`;
     case 'back': return `<div class="sw" style="background:repeating-linear-gradient(45deg,transparent 0 5px,${v['--back-line'] || 'rgba(226,183,90,.25)'} 5px 6px),linear-gradient(160deg,${v['--card-back-1'] || '#7a1f2b'},${v['--card-back-2'] || '#4a0f19'});box-shadow:inset 0 0 0 2px #e2b75a"></div>`;
     case 'felt': return `<div class="sw" style="background:radial-gradient(circle,${v['--felt-1'] || '#1f6b47'},${v['--felt-3'] || '#0c3a26'});box-shadow:inset 0 0 0 3px ${v['--brass'] || '#6b5426'}"></div>`;
     case 'chips': return `<svg class="sw" style="color:${v['--chip'] || '#e2b75a'};box-shadow:none"><use href="#i-chip"/></svg>`;
@@ -74,7 +81,7 @@ const jokerTile = (j, { locked, inSet, extra = '' } = {}) =>
 const cosTile = (c, { locked, equipped } = {}) =>
   `<button class="tile r-${c.rarity} ${locked ? 'locked' : ''} ${equipped ? 'equipped' : ''}" data-cos="${c.id}">${swatch(c)}<span>${esc(c.name)}</span><span class="rr">${RARITY_NAME[c.rarity]}</span></button>`;
 
-const sourceText = (c) => ({ start: 'є з початку', shop: 'магазин або автомат', slot: 'лише автомат', ach: `досягнення «${Object.values(ACH_BY_ID).find((a) => a.reward.cosmetic === c.id)?.name || ''}»` }[c.source]);
+const sourceText = (c) => ({ start: 'є з початку', shop: 'магазин або автомат', slot: 'лише автомат', set: 'зібрати весь набір', ach: `досягнення «${Object.values(ACH_BY_ID).find((a) => a.reward.cosmetic === c.id)?.name || ''}»` }[c.source]);
 
 // ───────── колекція ─────────
 export function openCollection(tab = 'jokers') {
@@ -101,7 +108,9 @@ function renderCollection(tab) {
     body.innerHTML = html;
     body.onclick = (e) => { const t = e.target.closest('[data-joker]'); if (t) jokerSheet(t.dataset.joker); };
   } else {
-    let html = '';
+    // Тематичні набори: прогрес і рамка за повний набір
+    let html = `<div class="sec-title"><span>Набори</span><span>повний набір — рамка профілю</span></div><div class="sets">${setProgress(p).map((st) => `
+      <div class="set-card ${st.done ? 'done' : ''}"><b>${st.icon} ${esc(st.name)}</b><span class="meter"><i style="width:${Math.round((st.have / st.total) * 100)}%"></i></span><span>${st.done ? '✓ рамка отримана' : `${st.have} / ${st.total}`}</span></div>`).join('')}</div>`;
     for (const [cat, name] of Object.entries(COSMETIC_CATS)) {
       const items = COSMETICS.filter((c) => c.cat === cat);
       html += `<div class="sec-title"><span>${name}</span><span>${items.filter((c) => p.cosmetics[c.id]).length} / ${items.length}</span></div><div class="grid-tiles">${items.map((c) => cosTile(c, { locked: !p.cosmetics[c.id], equipped: p.equipped[cat] === c.id })).join('')}</div>`;
@@ -112,8 +121,11 @@ function renderCollection(tab) {
       if (!t) return;
       const c = COSMETIC_BY_ID[t.dataset.cos];
       const q = loadProfile();
-      if (q.cosmetics[c.id]) { sfx.tap(); update(equip(q, c.cat, c.id)); renderCollection('cosmetics'); }
-      else ui.modal(`<h3>${esc(c.name)}</h3><p>${RARITY_NAME[c.rarity]} · ${COSMETIC_CATS[c.cat]}</p><p>Як отримати: ${sourceText(c)}.</p>`, [{ label: 'Зрозуміло', cls: 'primary' }]);
+      if (q.cosmetics[c.id]) {
+        sfx.tap(); update(equip(q, c.cat, c.id)); renderCollection('cosmetics');
+        if (c.cat === 'sound') { setAccent(c.accent); sfx.accent(); } // послухати
+      }
+      else ui.modal(`<h3>${esc(c.name)}</h3><p>${RARITY_NAME[c.rarity]} · ${COSMETIC_CATS[c.cat]}${c.set ? ` · набір «${esc(SETS.find((x) => x.id === c.set).name)}»` : ''}</p><p>Як отримати: ${sourceText(c)}.</p>${c.suits ? '<p>Власні іконки мастей; на великому банку карти світяться.</p>' : ''}`, [{ label: 'Зрозуміло', cls: 'primary' }]);
     };
   }
 }

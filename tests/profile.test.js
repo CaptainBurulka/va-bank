@@ -17,7 +17,7 @@ test('старт: базова косметика + 3 звичайні джок�
   assert.equal(Object.keys(p.jokers).length, 3);
   for (const id of Object.keys(p.jokers)) assert.equal(JOKERS.find((j) => j.id === id).rarity, 'common');
   assert.deepEqual(p.set, META.startJokers);
-  assert.equal(Object.keys(p.cosmetics).length, 7);
+  assert.equal(Object.keys(p.cosmetics).length, 8); // по одному стартовому в кожній із 8 категорій
 });
 
 test('бали: участь + бонус за перемогу, проти бота ×0.3, перша перемога дня', () => {
@@ -154,12 +154,12 @@ test('чужа косметика валідується', () => {
   assert.equal(look.felt, 'felt_wine');
   assert.equal(look.back, 'back_burgundy', 'id не тієї категорії відкидається');
   assert.equal(look.frame, 'frame_basic');
-  assert.equal(Object.keys(look).length, 7);
+  assert.equal(Object.keys(look).length, 8);
 });
 
-test('каталог: ~30 предметів косметики у 7 категоріях', () => {
-  assert.ok(COSMETICS.length >= 30);
-  assert.equal(new Set(COSMETICS.map((c) => c.cat)).size, 7);
+test('каталог: ~30 базових предметів + 4 набори у 8 категоріях (із «Звуком»)', () => {
+  assert.ok(COSMETICS.length >= 60);
+  assert.equal(new Set(COSMETICS.map((c) => c.cat)).size, 8);
 });
 
 test('загальні досягнення перевіряються й без партії (напр. після спіну)', () => {
@@ -167,4 +167,33 @@ test('загальні досягнення перевіряються й без
   const r = checkAchievements(p, null);
   assert.ok(r.unlocked.includes('lucky_spin'));
   assert.ok(r.profile.cosmetics.felt_goldrush);
+});
+
+import { SETS } from '../meta/catalog.js';
+import { setProgress, priceOf as priceOf2 } from '../meta/profile.js';
+
+test('набори: 4 теми по 6 предметів (колода, сорочка, сукно, фішки, перемога, звук) + рамка за повний набір', () => {
+  assert.equal(SETS.length, 4);
+  for (const st of SETS) {
+    const cats = st.items.map((id) => COSMETICS.find((c) => c.id === id).cat).sort();
+    assert.deepEqual(cats, ['back', 'chips', 'deck', 'felt', 'sound', 'win']);
+    const deck = COSMETICS.find((c) => c.id === `deck_${st.id}`);
+    assert.equal(deck.rarity, 'legendary');
+    assert.equal(deck.source, 'slot', 'легендарна колода — лише з автомата');
+    assert.equal(deck.suits, st.id, 'власні іконки мастей');
+    assert.equal(priceOf2('cosmetic', st.frame), null, 'рамку не купити — лише за повний набір');
+  }
+});
+
+test('набори: останній предмет набору додає рамку, повторно — не дублює', () => {
+  const st = SETS[0];
+  let p = defaultProfile();
+  for (const id of st.items.slice(0, -1)) p = grant(p, 'cosmetic', id).profile;
+  assert.ok(!p.cosmetics[st.frame]);
+  const r = grant(p, 'cosmetic', st.items.at(-1));
+  assert.deepEqual(r.completed, [st.id]);
+  assert.ok(r.profile.cosmetics[st.frame]);
+  assert.equal(setProgress(r.profile).find((x) => x.id === st.id).done, true);
+  const again = grant(r.profile, 'cosmetic', st.items[0]);
+  assert.ok(again.duplicate);
 });

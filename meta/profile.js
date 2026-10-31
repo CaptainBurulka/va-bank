@@ -4,7 +4,7 @@
 
 import { META, MODE_IDS } from '../config.js';
 import { JOKERS, JOKER_BY_ID, RARITIES, sanitizeSet } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID } from './catalog.js';
+import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID, SETS } from './catalog.js';
 import { newPid, isPid, cleanNick, normalizeLife, normalizeRivals, cleanTitle, emptyLife } from './rivals.js';
 
 export const SCHEMA = META.schema;
@@ -113,7 +113,23 @@ export function grant(p, kind, id) {
   }
   if (kind === 'joker') q.jokers[id] = 1;
   else q.cosmetics[id] = true;
-  return { profile: q, duplicate: false, shards: 0 };
+  const completed = kind === 'cosmetic' ? completeSets(q) : [];
+  return { profile: q, duplicate: false, shards: 0, completed };
+}
+
+/** Повний тематичний набір → рамка профілю (додається один раз). Мутує q, повертає id завершених наборів. */
+export function completeSets(q) {
+  const done = [];
+  for (const st of SETS) {
+    if (q.cosmetics[st.frame]) continue;
+    if (st.items.every((id) => q.cosmetics[id])) { q.cosmetics[st.frame] = true; done.push(st.id); }
+  }
+  return done;
+}
+
+/** Прогрес наборів: [{ id, name, icon, have, total, frame, done }] */
+export function setProgress(p) {
+  return SETS.map((st) => ({ ...st, have: st.items.filter((id) => p.cosmetics[id]).length, total: st.items.length, done: !!p.cosmetics[st.frame] }));
 }
 
 // ───────── магазин ─────────
