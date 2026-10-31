@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ва-банк — макети дизайну</title>
+<style>
+body{margin:0;background:#0d0d10;color:#eee;font:16px/1.5 system-ui,-apple-system,sans-serif;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 6px}p{color:#aaa;margin:0 0 18px;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+a.card{display:block;border-radius:18px;padding:18px;color:#fff;text-decoration:none;min-height:120px}
+a.card b{font-size:20px;display:block;margin-bottom:6px}a.card span{opacity:.85;font-size:15px}
+.a{background:radial-gradient(ellipse at 50% 30%,#1f6b47,#0c3a26);border:2px solid #b8913f}
+.b{background:#14111c;border:1px solid #ff2f92;box-shadow:0 0 18px rgba(255,47,146,.35)}
+.c{background:#7b61ff}
+.frames{display:none;gap:24px;margin-top:28px;overflow-x:auto}
+.frames iframe{width:393px;height:1820px;border:0;border-radius:12px;flex-shrink:0;background:#111}
+@media (min-width:900px){.frames{display:flex}}
+</style></head><body>
+<h1>«Ва-банк» — три візуальні напрями</h1>
+<p>Однаковий стан гри в усіх трьох: 5-й раунд, козир — Вогонь, суперник підняв на 10, ти підглянув(-ла) («висока»). Другий екран — «Подвій або нічого». Відкрий кожен напрям, порівняй і напиши, який обираєш (можна з правками: «B, але кнопки як у C»).</p>
+<div class="grid">
+<a class="card a" href="a.html"><b>A · Підпільний клуб</b><span>Зелене сукно, латунь і золото, кремові карти, тепле світло.</span></a>
+<a class="card b" href="b.html"><b>B · Неон-нуар</b><span>Темний графіт, неон лише на важливому.</span></a>
+<a class="card c" href="c.html"><b>C · Сучасний мінімал</b><span>Плоскі кольори, великі форми, чиста типографіка.</span></a>
+</div>
+<div class="frames"><iframe src="a.html" title="A"></iframe><iframe src="b.html" title="B"></iframe><iframe src="c.html" title="C"></iframe></div>
+</body></html>

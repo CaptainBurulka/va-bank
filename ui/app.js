@@ -476,6 +476,11 @@ function boot() {
 }
 boot();
 
+// Налагодження/скриншоти: ?debug відкриває доступ до рендера (на гру не впливає)
+if (new URLSearchParams(location.search).has('debug')) {
+  window.__vb = { game, deliverToUi, renderEnd, show, openSettings, gameSetupModal, showRules, toast };
+}
+
 $('app-version').textContent = `версія ${APP_VERSION}`;
 
 // ───────── оновлення: новий service worker → банер «Оновити» ─────────
