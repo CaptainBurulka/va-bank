@@ -1,5 +1,6 @@
 // DOM-елементи карт. Масті — SVG-іконки різної форми (крапля / полум'я / гранований камінь).
 import { SUIT, SPECIAL } from './text.js';
+import { JOKER_BY_ID, RARITY_NAME } from '../game/jokers.js';
 
 const ico = (id, cls = '') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
@@ -19,7 +20,15 @@ export function cardEl(card, o = {}) {
 export function fillFace(el, card, o = {}) {
   const face = el.querySelector('.face');
   el.dataset.id = card.id;
-  el.classList.remove('water', 'fire', 'stone', 'special', 'trumped');
+  el.classList.remove('water', 'fire', 'stone', 'special', 'trumped', 'joker', 'r-common', 'r-rare', 'r-epic', 'r-legendary');
+  if (card.kind === 'joker') {
+    const j = JOKER_BY_ID[card.joker];
+    el.classList.add('joker', `r-${j.rarity}`);
+    face.innerHTML = `<div class="jk-tag">${o.small ? 'ДЖОКЕР' : RARITY_NAME[j.rarity].toUpperCase()}</div><div class="jk-ico">${j.icon}</div><div class="jk-name">${j.name}</div>`;
+    el.setAttribute('aria-label', `Джокер ${j.name}: ${j.desc}`);
+    el.title = j.desc;
+    return;
+  }
   el.querySelector('.tb')?.remove();
   if (card.kind === 'num') {
     const s = SUIT[card.suit];

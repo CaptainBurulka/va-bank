@@ -9,9 +9,15 @@ import { CONFIG, APP_VERSION } from '../config.js';
 import { BOT_STYLES } from '../game/bot.js';
 import { buildDeck } from '../game/cards.js';
 import { createOnlineHost, joinOnline, ROOM_ALPHABET, loadGuestSave, clearGuestSave, loadHostSave, clearHostSave } from '../net/online.js';
+import { initMeta, renderWallet, openCollection, openShop, openSlot, awardAfterGame } from './meta-ui.js';
+import { loadProfile, saveProfile } from './profile-store.js';
+import { applyOppLook, emojiSet } from './cosmetics.js';
+import { exportCode, importCode, publicLook } from '../meta/profile.js';
+import { JOKERS } from '../game/jokers.js';
+import { COSMETICS, COSMETIC_BY_ID, DEFAULT_EQUIPPED } from '../meta/catalog.js';
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ['menu', 'create', 'join', 'rules', 'game', 'end'];
+const SCREENS = ['menu', 'create', 'join', 'rules', 'game', 'end', 'collection', 'shop', 'slot'];
 const BOT_KEY = 'vabank-bot';
 
 let session = null;
@@ -22,6 +28,30 @@ function show(name) {
   if (current === name && !$(`scr-${name}`).classList.contains('hidden')) return;
   current = name;
   for (const s of SCREENS) $(`scr-${s}`).classList.toggle('hidden', s !== name);
+  if (name === 'menu') renderWallet();
+}
+
+/** Перед партією: мій набір джокерів і косметика на столі. */
+function prepareLooks(oppLook) {
+  const p = loadProfile();
+  game.setEmojiSet(emojiSet(p.equipped));
+  const opp = oppLook || DEFAULT_EQUIPPED;
+  applyOppLook(opp);
+  game.setWinFx(COSMETIC_BY_ID[p.equipped.win]?.fx || 'chips', COSMETIC_BY_ID[opp.win]?.fx || 'chips');
+  return p;
+}
+
+/** Бот: випадковий набір із 3 джокерів (зрідка — легендарний) і випадкова косметика. */
+function botLoadout() {
+  const pool = JOKERS.filter((j) => j.rarity !== 'legendary' || Math.random() < 0.15).map((j) => j.id);
+  const set = [];
+  while (set.length < 3 && pool.length) set.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  const look = { ...DEFAULT_EQUIPPED };
+  for (const cat of Object.keys(look)) {
+    const opts = COSMETICS.filter((c) => c.cat === cat && c.source !== 'ach');
+    if (Math.random() < 0.6) look[cat] = opts[Math.floor(Math.random() * opts.length)].id;
+  }
+  return { set, look };
 }
 
 function toast(text, ms = 2600, kind = '') {
@@ -62,7 +92,7 @@ document.addEventListener('click', unlock);
 document.addEventListener('gesturestart', (e) => e.preventDefault());
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 document.addEventListener('touchmove', (e) => {
-  if (!e.target.closest('.scrollable, .log-list')) e.preventDefault();
+  if (!e.target.closest('.scrollable, .log-list, .meta-body, textarea')) e.preventDefault();
 }, { passive: false });
 
 const game = new GameScreen({
@@ -121,11 +151,35 @@ function openSettings(back = null) {
     <label class="setting col">Гучність <input type="range" id="set-vol" min="0" max="100" value="${Math.round(getVolume() * 100)}" aria-label="Гучність"></label>
     <p>Версія ${APP_VERSION}</p>`, [
     { label: 'Пройти навчання ще раз', cls: 'secondary', onClick: () => startTutorial() },
+    { label: 'Експорт прогресу', cls: 'secondary', onClick: () => openExport() },
+    { label: 'Імпорт прогресу', cls: 'secondary', onClick: () => openImport() },
     { label: 'Готово', cls: 'primary', onClick: () => back?.() },
   ]);
   $('set-sound').addEventListener('change', (e) => { setMuted(!e.target.checked); sfx.tap(); });
   $('set-vol').addEventListener('input', (e) => setVolume(e.target.value / 100));
   $('set-vol').addEventListener('change', () => sfx.chip(3));
+}
+
+function openExport() {
+  const code = exportCode(loadProfile());
+  modal(`<h3>Код прогресу</h3><p>Збережи цей код (наприклад, у нотатках). Ним можна перенести прогрес на інший пристрій або з вкладки Safari в установлену гру.</p><textarea class="code-box" readonly rows="5">${code}</textarea>`, [
+    { label: 'Скопіювати', cls: 'primary', keep: true, onClick: async (el) => { try { await navigator.clipboard.writeText(code); el.textContent = 'Скопійовано ✓'; } catch { el.textContent = 'Виділи текст і скопіюй вручну'; } } },
+    { label: 'Готово', cls: 'tertiary' },
+  ]);
+}
+
+function openImport() {
+  modal('<h3>Імпорт прогресу</h3><p>Встав код. Поточний прогрес на цьому пристрої буде замінено.</p><textarea class="code-box" id="import-code" rows="5" placeholder="VB1.…"></textarea><p id="import-err" class="wait-line error"></p>', [
+    { label: 'Імпортувати', cls: 'primary', keep: true, onClick: () => {
+      const r = importCode($('import-code').value);
+      if (!r.ok) { $('import-err').textContent = r.error === 'checksum' ? 'Код пошкоджено (не збігається контрольна сума)' : 'Це не схоже на код прогресу'; return; }
+      saveProfile(r.profile);
+      closeModal();
+      initMeta({ show, modal, toast });
+      toast(`Прогрес імпортовано: ★ ${r.profile.points}, джокерів ${Object.keys(r.profile.jokers).length}`);
+    } },
+    { label: 'Скасувати', cls: 'tertiary' },
+  ]);
 }
 
 function openGameMenu() {
@@ -187,7 +241,7 @@ function deliverToUi(msg, opts = {}) {
     return;
   }
   if (session) {
-    if (session.lastPhase === 'over') game.reset();
+    if (session.lastPhase === 'over') { game.reset(); session.awarded = false; $('end-rewards').classList.add('hidden'); }
     session.lastPhase = view.phase;
   }
   if (['end', 'menu', 'create', 'join'].includes(current)) show('game');
@@ -195,6 +249,14 @@ function deliverToUi(msg, opts = {}) {
 }
 
 function renderEnd({ view, meta }, names) {
+  // Бали й досягнення — один раз за партію (навчання не рахується)
+  if (session && !session.awarded && session.mode !== 'tutorial') {
+    session.awarded = true;
+    const mode = session.mode === 'bot' ? 'bot' : session.mode === 'hotseat' ? 'hotseat' : 'online';
+    const box = $('end-rewards');
+    box.innerHTML = awardAfterGame(view, mode);
+    box.classList.toggle('hidden', !box.innerHTML);
+  }
   const me = view.you;
   const st = view.stats;
   const draw = view.winner === 'draw';
@@ -238,7 +300,9 @@ $('btn-end-menu').addEventListener('click', () => { sfx.tap(); leave(true); });
 function startBot(resume = false, opts = {}) {
   const saved = resume && GameHost.load(BOT_KEY);
   const style = (saved && saved.style) || opts.style || 'aggressive';
-  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds } });
+  const prof = loadProfile();
+  const bot0 = (saved && saved.botLoadout) || botLoadout();
+  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style, botLoadout: bot0 }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { jokerSets: [prof.set, bot0.set] } });
   const names = ['Ти', `Бот · ${STYLE_INFO[style].name}`];
   const bot = new BotSeat(host, 1, Math.random, style);
   session = {
@@ -255,6 +319,7 @@ function startBot(resume = false, opts = {}) {
   };
   game.reset();
   game.setNames(names[0], names[1]);
+  prepareLooks(bot0.look);
   $('btn-react').classList.remove('hidden');
   host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e) => game.showReaction(e, false) });
   host.attach(1, bot);
@@ -316,6 +381,7 @@ function startTutorial() {
   };
   game.reset();
   game.setNames(names[0], names[1]);
+  prepareLooks(null);
   $('btn-react').classList.add('hidden');
   host.attach(0, {
     deliver: (m) => {
@@ -348,7 +414,8 @@ function askBot() {
 
 // ───────── на одному телефоні ─────────
 function startHotseat(opts = {}) {
-  const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds } });
+  const prof = prepareLooks(null);
+  const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { jokerSets: [prof.set, prof.set] } });
   const names = ['Гравець 1', 'Гравець 2'];
   const msgs = [null, null];
   let shown = null;
@@ -441,9 +508,12 @@ async function startCreate(resumeSave = null) {
   game.setNames(...names);
   $('btn-react').classList.remove('hidden');
   try {
+    const prof = prepareLooks(null);
     session = await createOnlineHost({
       resume: resumeSave,
       gameConfig,
+      profile: { set: prof.set, look: publicLook(prof) },
+      onOppLook: (look) => prepareLooks(look),
       onCode: (code) => { $('room-code').textContent = code; $('btn-share').disabled = false; setLine('create-status', 'Чекаємо на друга'); },
       onStatus: (st) => {
         if (st.error) setLine('create-status', st.error, 'error');
@@ -469,9 +539,12 @@ async function startJoin(code, resumeSave = null) {
   game.setNames(...names);
   $('btn-react').classList.remove('hidden');
   try {
+    const prof = prepareLooks(null);
     session = await joinOnline({
       code,
       resume: resumeSave,
+      profile: { set: prof.set, look: publicLook(prof) },
+      onOppLook: (look) => prepareLooks(look),
       onStatus: (st) => {
         if (st.error) { setLine('join-status', st.error, 'error'); if (current === 'game') toast(st.error, 3000, 'error'); }
         if (st.joined) setLine('join-status', 'Підключено!', 'ok');
@@ -528,6 +601,9 @@ document.addEventListener('click', (e) => {
   else if (go === 'rules') showRules();
   else if (go === 'settings') openSettings();
   else if (go === 'tutorial') startTutorial();
+  else if (go === 'collection') openCollection();
+  else if (go === 'shop') openShop();
+  else if (go === 'slot') openSlot();
   else if (go === 'friend') openFriend();
   else if (go === 'bot') maybeTutorial(askBot);
   else if (go === 'hotseat') maybeTutorial(() => gameSetupModal({ withStyle: false, title: 'На одному телефоні', onStart: (o) => startHotseat(o) }));
@@ -554,6 +630,7 @@ window.addEventListener('pageshow', () => session?.onVisibility?.(false));
 
 // Запрошення ?room=ABCD (і старе #join=ABCD) — одразу приєднуємось
 function boot() {
+  initMeta({ show, modal, toast });
   refreshResume();
   const q = new URLSearchParams(location.search).get('room') || (location.hash.match(/join=([A-Z]{4})/i) || [])[1];
   const code = q && q.toUpperCase();
@@ -568,7 +645,7 @@ boot();
 
 // Налагодження/скриншоти: ?debug відкриває доступ до рендера (на гру не впливає)
 if (new URLSearchParams(location.search).has('debug')) {
-  window.__vb = { game, deliverToUi, renderEnd, show, openSettings, gameSetupModal, showRules, toast, modal, startTutorial, openFriend, setLine };
+  window.__vb = { game, deliverToUi, renderEnd, show, openSettings, gameSetupModal, showRules, toast, modal, startTutorial, openFriend, setLine, openCollection, openShop, openSlot, prepareLooks, saveProfile, loadProfile, initMeta, awardAfterGame };
 }
 
 $('app-version').textContent = `версія ${APP_VERSION}`;

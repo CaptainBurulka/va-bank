@@ -17,14 +17,14 @@ const os = require('os');
   await p.waitForSelector('#modal:not(.hidden)');
   await p.click('#m-rounds button:first-child'); // 8 раундів
   await p.click('#modal-btns .btn.primary');
-  const prefer = ['Чек', 'Колл', 'Далі без розвідки', 'Розвідка', 'Подвій або нічого', 'Показати карту', 'Далі', 'Забрати', 'Покласти'];
+  const prefer = ['Чек', 'Колл', 'Далі без розвідки', 'Розвідка', 'Подвій або нічого', 'Показати карту', 'Далі', 'Забрати', 'Покласти', 'Зіграти джокера'];
   let last = '', same = 0, ended = false;
   for (let i = 0; i < 1500; i++) {
     if (await p.isVisible('#scr-end')) { ended = true; break; }
     if (await p.isVisible('#curtain')) { await p.click('#curtain-btn'); await p.waitForTimeout(100); continue; }
     if (await p.isVisible('#don:not(.hidden)')) {
       const ch = await p.$$('#don-choices button:not([disabled])');
-      if (ch.length) await ch[Math.floor(Math.random() * ch.length)].click(); else await p.click('#don').catch(() => {});
+      if (ch.length) await ch[Math.floor(Math.random() * ch.length)].click({ timeout: 2000 }).catch(() => {}); else await p.click('#don').catch(() => {});
       await p.waitForTimeout(150); continue;
     }
     const st = `${await p.textContent('#round-tag')} | ${await p.textContent('#phase-title')} | ${(await p.textContent('#actions')).replace(/\s+/g, ' ').slice(0, 50)}`;
@@ -33,10 +33,10 @@ const os = require('os');
     let done = false;
     for (const want of prefer) {
       if (['Розвідка', 'Подвій або нічого', 'Показати карту'].includes(want) && Math.random() < 0.6) continue;
-      for (const b of btns) if ((await b.textContent()).includes(want)) { await b.click(); done = true; break; }
+      for (const b of btns) if (((await b.textContent().catch(() => '')) || '').includes(want)) { await b.click({ timeout: 2000 }).catch(() => {}); done = true; break; }
       if (done) break;
     }
-    if (!done) { const c = await p.$$('#hand .card'); if (c.length && !(await p.$('#hand .card.selected'))) await c[Math.floor(Math.random() * c.length)].click(); }
+    if (!done) { const c = await p.$$('#hand .card'); if (c.length && !(await p.$('#hand .card.selected'))) await c[Math.floor(Math.random() * c.length)].click({ timeout: 2000 }).catch(() => {}); }
     await p.waitForTimeout(mode === 'bot' ? 250 : 120);
   }
   await p.waitForTimeout(500);

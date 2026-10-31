@@ -1,6 +1,7 @@
 // Українські тексти: назви карт, журнал, пояснення розкриття, правила, підказки.
 import { CONFIG } from '../config.js';
 import { anteFor } from '../game/engine.js';
+import { JOKER_BY_ID, RARITY_NAME } from '../game/jokers.js';
 
 export const SUIT = {
   water: { name: 'Вода', gen: 'Води', ico: '💧' },
@@ -23,12 +24,14 @@ export { REACTIONS } from '../net/protocol.js';
 
 export function cardName(c) {
   if (!c) return '?';
+  if (c.kind === 'joker') return `${JOKER_BY_ID[c.joker]?.icon || '🃏'} ${JOKER_BY_ID[c.joker]?.name || 'Джокер'}`;
   if (c.kind === 'num') return `${c.value}${SUIT[c.suit].ico}`;
   return `${SPECIAL[c.kind].ico} ${SPECIAL[c.kind].name}`;
 }
 
 /** «7 Вогню», «Ніж» — для пояснень. */
 function longName(c) {
+  if (c.kind === 'joker') return JOKER_BY_ID[c.joker]?.name || 'Джокер';
   if (c.kind === 'num') return `${c.value} ${SUIT[c.suit].gen}`;
   return SPECIAL[c.kind].name;
 }
@@ -45,6 +48,12 @@ export function explain(detail, cards, trump) {
   const pw = detail.cmp >= 0 ? detail.pa : detail.pb;
   const pl = detail.cmp >= 0 ? detail.pb : detail.pa;
   switch (detail.reason) {
+    case 'joker': return `сила ${detail.pa} проти ${detail.pb}${detail.lowWins ? ' (перемагає менша)' : ''}`;
+    case 'forced': return 'перемога за ефектом джокера';
+    case 'coin': return 'вирішила монетка';
+    case 'duel': return `сума карт ${detail.pa} проти ${detail.pb}`;
+    case 'void': return 'раунд скасовано';
+    case 'replay': return 'раунд переграється';
     case 'knife-mirror': return 'Ніж б\'є Дзеркало';
     case 'knife10': return `Ніж б'є десятку (${cardName(l)})`;
     case 'mirror': return `Дзеркало копіює ${detail.copied} і виграє нічию`;
@@ -86,6 +95,8 @@ export function logLine(e, names) {
       return `${n(e.p)}: ${g} → ${cardName(e.card)} — ${res}`;
     }
     case 'reshuffle': return 'Колоду перетасовано';
+    case 'jokerDeal': return '🃏 Роздано джокерів!';
+    case 'joker': return `${n(e.p)}: ${e.text}`;
     case 'split': return `Після останнього раунду банк ${e.amount} поділено навпіл`;
     case 'timeout': return null;
     case 'over': return 'Партію завершено';
