@@ -9,6 +9,8 @@ const MOTIF = {
   // синтвейв-арпеджіо з пилкою
   // кото: пентатоніка міякобусі, щипок із довгим згасанням
   koto: (t, v) => [587, 622, 784, 880, 932, 1175].forEach((fq, i) => { const d = i * .13; t({ freq: fq, dur: 1.1, vol: .1 * v, delay: d, type: 'triangle', attack: .002, lp: 3200 }); t({ freq: fq * 2, dur: .25, vol: .03 * v, delay: d, attack: .001 }); }),
+  // бандура: перебір гармонічного мінору з легким «дзвоном» струни
+  bandura: (t, v) => [220, 262, 330, 415, 440, 523].forEach((fq, i) => { const d = i * .1; t({ freq: fq, dur: .9, vol: .09 * v, delay: d, type: 'triangle', attack: .002, lp: 2600 }); t({ freq: fq * 1.003, dur: .7, vol: .04 * v, delay: d + .004, type: 'sawtooth', lp: 1400 }); }),
   synth: (t, v) => [220, 277, 330, 440, 554, 660].forEach((fq, i) => t({ freq: fq, dur: .16, vol: .06 * v, delay: i * .06, type: 'sawtooth', lp: 1900 })),
 };
 

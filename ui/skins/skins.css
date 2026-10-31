@@ -415,3 +415,19 @@
 @keyframes smStamp { 0% { transform: translate(-50%, -50%) rotate(-12deg) scale(2.6); opacity: 0; } 18% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); opacity: .95; } 85% { opacity: .95; } 100% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); opacity: 0; } }
 .skwin .smsplash { position: absolute; left: 50%; top: 45%; width: 30px; height: 30px; margin: -15px; border-radius: 50%; background: radial-gradient(circle, rgba(20, 16, 12, .55), rgba(20, 16, 12, 0) 70%); animation: smSplash 1.6s ease-out both; }
 @keyframes smSplash { from { transform: scale(.2); opacity: 1; } to { transform: scale(14); opacity: 0; } }
+
+/* ═════════ Набір «Козацький» ═════════ */
+.sk-cossack .sk-tilt { background: #efe4cd; }
+.sk-cossack.r-legendary .sk-tilt { background: #1b1512; }
+/* легендарна: орнамент вишивається стовпчик за стовпчиком, тримається і зникає, щоб вишитись знову */
+.sk-cossack .kst { opacity: 0; animation: kStitch 7s steps(1) infinite; }
+@keyframes kStitch { 0% { opacity: 0; } 2%, 88% { opacity: 1; } 94%, 100% { opacity: 0; } }
+.sk-cossack .ksp { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 6px 2px #ff9a2a; opacity: 0; animation: kSpark var(--d) cubic-bezier(.2, .6, .4, 1) var(--delay) infinite; }
+@keyframes kSpark { 0% { transform: translate(0, 0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--tx), calc(var(--ty) * -.2 + 40px)) scale(.3); opacity: 0; } }
+.skwin .krush { position: absolute; left: 0; right: 0; top: 44%; height: 13%; transform-origin: left; transform: scaleX(0); animation: kRush 2.8s cubic-bezier(.3, .9, .3, 1) both;
+  background: repeating-linear-gradient(90deg, #b3201c 0 6px, transparent 6px 12px) top / 100% 4px no-repeat, repeating-linear-gradient(90deg, #b3201c 0 6px, transparent 6px 12px) bottom / 100% 4px no-repeat,
+  repeating-linear-gradient(45deg, transparent 0 9px, #1d1714 9px 11px, transparent 11px 20px), repeating-linear-gradient(-45deg, transparent 0 9px, #b3201c 9px 11px, transparent 11px 20px), #efe4cd; box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.skwin.r-legendary .krush { background-color: #1b1512; }
+@keyframes kRush { 0% { transform: scaleX(0); } 30% { transform: scaleX(1); } 85% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+.skwin .kspw { position: absolute; left: 50%; top: 52%; width: 4px; height: 4px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 8px 3px #ff9a2a; opacity: 0; animation: kSparkW 1.4s cubic-bezier(.1, .7, .3, 1) both; }
+@keyframes kSparkW { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(var(--tx), calc(var(--ty) + 160px)); opacity: 0; } }

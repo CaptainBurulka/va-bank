@@ -31,7 +31,7 @@ export function winBox(layer, cls, rar, html, ms = 3400) {
 
 // ── растровий шрифт 5×7: цифри і літери, потрібні для назв карт ──
 const G = {
-  '0': '.###.#...##..###.#.###..##...#.###.',
+  '0': '.###.#...##...##...##...##...#.###.',
   '1': '..#...##....#....#....#....#...###.',
   '2': '.###.#...#....#...#...#...#...#####',
   '3': '####.....#....#.###.....#....#####.',
@@ -58,6 +58,7 @@ const G = {
   'Я': '.#####...##...#.####..#.#.#..##...#',
   'Б': '######....#....####.#...##...#####.',
   '!': '..#....#....#....#....#.........#..',
+  '-': '................###................',
   ' ': '...................................',
 };
 /** Клітинки гліфа: [[col,row]…]. */
@@ -96,4 +97,30 @@ export function pixMatrix(rows, x, y, px, pal, attrs = '') {
   const by = {};
   rows.forEach((row, r) => [...row].forEach((ch, c) => { if (pal[ch]) by[ch] = (by[ch] || '') + `M${f(x + c * px)} ${f(y + r * px)}h${f(px)}v${f(px)}h${f(-px)}z`; }));
   return Object.entries(by).map(([ch, d]) => `<path d="${d}" fill="${pal[ch]}" shape-rendering="crispEdges" ${attrs}/>`).join('');
+}
+
+/**
+ * Матриця хрестиками вишивки. pal: { b: '#000', r: '#c00' }. Якщо задано cls — стовпчики
+ * групуються і отримують затримку анімації (орнамент «вишивається» ниткою зліва направо).
+ */
+export function stitchMatrix(rows, x, y, px, pal, { width = .36, cls = '', chunk = 4, period = 6 } = {}) {
+  const m = px * .12;
+  const cols = Math.max(...rows.map((r) => r.length));
+  const groups = cls ? Math.ceil(cols / chunk) : 1;
+  let out = '';
+  for (let gI = 0; gI < groups; gI++) {
+    const by = {};
+    const c0 = cls ? gI * chunk : 0, c1 = cls ? Math.min(cols, c0 + chunk) : cols;
+    rows.forEach((row, r) => {
+      for (let c = c0; c < c1; c++) {
+        const ch = row[c];
+        if (!pal[ch]) continue;
+        const X = x + c * px, Y = y + r * px;
+        by[ch] = (by[ch] || '') + `M${f(X + m)} ${f(Y + m)}L${f(X + px - m)} ${f(Y + px - m)}M${f(X + px - m)} ${f(Y + m)}L${f(X + m)} ${f(Y + px - m)}`;
+      }
+    });
+    const paths = Object.entries(by).map(([ch, d]) => `<path d="${d}" stroke="${pal[ch]}" stroke-width="${f(px * width)}" stroke-linecap="round" fill="none"/>`).join('');
+    out += cls ? `<g class="${cls}" style="animation-delay:${f((gI / groups) * period)}s">${paths}</g>` : paths;
+  }
+  return out;
 }
