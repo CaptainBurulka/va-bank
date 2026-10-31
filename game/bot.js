@@ -11,7 +11,11 @@ function estimate(view) {
   const card = view.me.played;
   const v2 = (view.rules || 1) >= 2;
   // Джокер: бот знає, наскільки він сильний у розкритті (і що в деяких це залежить від ставок)
-  if (card.kind === 'joker') return { power: 5.5, win: jokerWin(card.joker, view) };
+  if (card.kind === 'joker') {
+    const w = jokerWin(card.joker, view);
+    const rivals = (view.n || 2) > 2 ? view.players.filter((x) => x.seat !== view.you && !x.out && !x.folded).length : 1;
+    return { power: 5.5, win: rivals > 1 ? w ** rivals : w };
+  }
   const trump = view.trump;
   let power;
   if (card.kind === 'num') power = card.value + (v2 && trump === card.suit ? 1 : 0);
@@ -23,6 +27,7 @@ function estimate(view) {
   let win = Math.min(1, Math.max(0, (power + 0.3) / 11));
   if (card.kind === 'knife') win = 0.15;
   if (!v2 && card.kind === 'mirror') win = 0.5;
+  const base = win;
 
   const seen = view.me.scoutSeen;
   if (seen) {
@@ -34,19 +39,30 @@ function estimate(view) {
       if (SUIT_BEATS[seen] === card.suit) win -= 0.05;
     }
   }
-  return { power, win: Math.max(0, Math.min(1, win)) };
+  win = Math.max(0, Math.min(1, win));
+  // Утрьох треба побити кожного, хто ще в раунді: розвідка стосується лише одного з них
+  const rivals = (view.n || 2) > 2 ? view.players.filter((x) => x.seat !== view.you && !x.out && !x.folded).length : 1;
+  if (rivals > 1) win = (seen ? win : base) * base ** (rivals - 1);
+  return { power, win };
 }
 
 /** Оцінка шансу виграти розкриття з джокером (для ставок бота). */
 const JOKER_EST = {
-  turncoat: 0.5, roulette: 0.5, thief: 0.2, fist: 0.55, insurance: 0.3, twin: 0.5, chameleon: 0.55, modest: 0.5,
-  tax: 0.5, dice: 0.55, counter: 0.5, brazen: 0.5, magnet: 0.55, temptation: 0.55, storm: 0.45, swap: 0.55,
+  turncoat: 0.5, roulette: 0.5, thief: 0.45, fist: 0.55, insurance: 0.5, twin: 0.5, chameleon: 0.55, modest: 0.5,
+  tax: 0.5, dice: 0.55, counter: 0.5, brazen: 0.45, magnet: 0.55, temptation: 0.45, storm: 0.45, swap: 0.55,
   highroller: 0.5, pocket: 0.5, sharper: 0.5, luck: 0.5, antitrump: 0.55, boom: 0.5, coin: 0.5, redeal: 0.45,
   echo: 0.5, quake: 0.5, castling: 0.5, frenzy: 0.5, apocalypse: 0.5, rewind: 0.5, chaosking: 0.5, duel: 0.5, mirrorworld: 0.5,
 };
 function jokerWin(id, view) {
-  if (id === 'shadow') return view.opp.scouted ? 0.92 : 0.45;
-  if (id === 'trap') return view.bet?.toCall > 0 ? 0.95 : 0.35;
+  if (id === 'shadow') {
+    const seen = (view.n || 2) > 2 ? view.players.some((x) => x.scouted && x.scoutTarget === view.you) : view.opp.scouted;
+    return seen ? 0.92 : 0.45;
+  }
+  if (id === 'trap') return (view.bet?.owe ?? view.bet?.toCall) > 0 ? 0.95 : 0.35;
+  if (id === 'temptation') { // Аутсайдер: сильніший, коли відстаєш
+    const gap = Math.max(0, ...(view.players || [view.opp]).filter((x) => x.seat !== view.you).map((x) => x.chips)) - view.me.chips;
+    return Math.min(0.9, 0.35 + Math.max(0, gap) / 100);
+  }
   if (id === 'brave') return Math.min(0.9, 0.45 + 0.12 * (view.bet?.raises || 0));
   return JOKER_EST[id] ?? 0.5;
 }
@@ -70,6 +86,8 @@ export function botDecide(view, rng = Math.random, style = 'aggressive', over = 
   const P = over ? { ...(CONFIG.botStyles[style] || CONFIG.botStyles.aggressive), ...over } : (CONFIG.botStyles[style] || CONFIG.botStyles.aggressive);
   const legal = view.legal;
   if (!legal.length) return null;
+  const multi = (view.n || 2) > 2;
+  const k = multi ? view.players.filter((x) => x.seat !== view.you && !x.out && !x.folded).length : 1;
   const has = (t) => legal.find((a) => a.type === t);
 
   switch (view.phase) {
@@ -93,12 +111,17 @@ export function botDecide(view, rng = Math.random, style = 'aggressive', over = 
       return { type: 'play', cardId: hand[idx].id };
     }
     case 'scout': {
-      if (has('scout') && view.me.chips > 25 && rng() < P.scoutProb) return { type: 'scout' };
+      if (has('scout') && view.me.chips > 25 && rng() < P.scoutProb) {
+        const opts = legal.filter((a) => a.type === 'scout');
+        const pick = opts.length > 1 ? opts[Math.floor(rng() * opts.length)] : opts[0];
+        return pick.target === undefined ? { type: 'scout' } : { type: 'scout', target: pick.target };
+      }
       return { type: 'skipScout' };
     }
     case 'bet': {
       const { win } = estimate(view);
-      const s = win + (rng() - 0.5) * 0.15;
+      // утрьох пороги м'якші: шанс «побити обох» природно нижчий
+      const s = (multi ? Math.min(1, win * (1 + 0.6 * (k - 1)) + 0.05) : win) + (rng() - 0.5) * 0.15;
       const raises = legal.filter((a) => a.type === 'raise');
       const bluff = rng() < P.bluff;
       const pickRaise = () => {
@@ -113,7 +136,7 @@ export function botDecide(view, rng = Math.random, style = 'aggressive', over = 
         if ((s > P.raiseAt || bluff) && raises.length) return strip(pickRaise());
         return { type: 'check' };
       }
-      const toCall = view.bet.toCall;
+      const toCall = view.bet.owe ?? view.bet.toCall;
       const potOdds = toCall / (view.pot + toCall);
       if (s > P.reraiseAt && raises.length && rng() < 0.6) return strip(pickRaise());
       if (s > potOdds + P.callSlack || (bluff && s > 0.2)) return { type: 'call' };

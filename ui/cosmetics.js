@@ -1,5 +1,6 @@
 // Застосування косметики: CSS-змінні й класи. Уся графіка процедурна.
 import { COSMETIC_BY_ID, DEFAULT_EQUIPPED } from '../meta/catalog.js';
+import { setAccent } from './sound.js';
 
 const VAR_CATS = ['deck', 'back', 'felt', 'chips', 'frame'];
 
@@ -26,16 +27,22 @@ function applyTo(el, look, cats = VAR_CATS) {
   for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
   el.dataset.cosVars = Object.keys(vars).join(',');
   for (const a of anim) el.classList.add(a);
+  // Тематична колода: власні іконки мастей
+  if (cats.includes('deck')) {
+    const d = COSMETIC_BY_ID[sub.deck];
+    if (d?.suits) el.dataset.suits = d.suits; else delete el.dataset.suits;
+  }
 }
 
 /** Моя косметика — на весь документ. */
 export function applyMyLook(look) {
   applyTo(document.documentElement, look);
+  setAccent(COSMETIC_BY_ID[look?.sound]?.accent || null);
 }
 
 /** Косметика суперника — лише на його зону (рамка, фішки, сорочка, лице карти). */
-export function applyOppLook(look) {
-  for (const id of ['opp', 'slot-opp', 'opp-hand']) applyTo(document.getElementById(id), look, ['deck', 'back', 'chips', 'frame']);
+export function applyOppLook(look, panel = 'opp') {
+  for (const id of [panel, `slot-${panel}`, `${panel}-hand`]) applyTo(document.getElementById(id), look || DEFAULT_EQUIPPED, ['deck', 'back', 'chips', 'frame']);
 }
 
 export const emojiSet = (look) => COSMETIC_BY_ID[look?.emoji]?.set || COSMETIC_BY_ID.emoji_classic.set;
@@ -49,6 +56,11 @@ export function playWin(layer, fxId = 'chips', reduced = false) {
     hearts: { n: 20, html: () => '<i class="emo">❤️</i>' },
     fireworks: { n: 30, html: (i) => `<i class="spark" style="--c:${['#f3cf78', '#ff6f91', '#86c3ff'][i % 3]}"></i>` },
     goldrain: { n: 44, html: (i) => (i % 3 ? '<i class="coin"></i>' : '<svg class="chip-token"><use href="#i-chip"/></svg>') },
+    // тематичні набори
+    kyiv: { n: 34, html: (i) => (i % 3 ? `<i class="spark" style="--c:${['#ffb547', '#ffd27a', '#7fb2ff'][i % 3]}"></i>` : '<i class="emo">🌰</i>') },
+    sakura: { n: 38, html: (i) => `<i class="petal" style="--c:${['#ffc6d9', '#ff9fbf', '#fff0f5'][i % 3]}"></i>` },
+    glitch: { n: 30, html: (i) => `<i class="pix" style="--c:${['#2ff3ff', '#ff3fb4', '#ffe14d'][i % 3]}"></i>` },
+    cossack: { n: 28, html: (i) => (i % 2 ? '<i class="emo">🌻</i>' : `<i class="spark" style="--c:${['#d32f2f', '#ffd54f'][i % 4 ? 1 : 0]}"></i>`) },
   };
   const k = kinds[fxId] || kinds.chips;
   const box = document.createElement('div');

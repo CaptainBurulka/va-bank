@@ -1,5 +1,5 @@
 // Українські тексти: назви карт, журнал, пояснення розкриття, правила, підказки.
-import { CONFIG } from '../config.js';
+import { CONFIG, MODES, MODE_IDS, META } from '../config.js';
 import { anteFor } from '../game/engine.js';
 import { JOKER_BY_ID, RARITY_NAME } from '../game/jokers.js';
 
@@ -48,10 +48,13 @@ export function explain(detail, cards, trump) {
   const pw = detail.cmp >= 0 ? detail.pa : detail.pb;
   const pl = detail.cmp >= 0 ? detail.pb : detail.pa;
   switch (detail.reason) {
-    case 'joker': return `сила ${detail.pa} проти ${detail.pb}${detail.lowWins ? ' (перемагає менша)' : ''}`;
+    case 'tie3': return 'ніхто не б\'є обох — нічия за перше місце';
+    case 'joker':
+      if (detail.pw) return `сила ${detail.pw.map((x) => x[1]).join(' / ')}${detail.lowWins ? ' (перемагає менша)' : ''}`;
+      return `сила ${detail.pa} проти ${detail.pb}${detail.near != null ? ` (перемагає ближча до ${detail.near})` : detail.lowWins ? ' (перемагає менша)' : ''}`;
     case 'forced': return 'перемога за ефектом джокера';
     case 'coin': return 'вирішила монетка';
-    case 'duel': return `сума карт ${detail.pa} проти ${detail.pb}`;
+    case 'duel': return detail.sums && detail.sums.length > 2 ? `сума карт ${detail.sums.filter((x) => x).join(' / ')}` : `сума карт ${detail.pa} проти ${detail.pb}`;
     case 'void': return 'раунд скасовано';
     case 'replay': return 'раунд переграється';
     case 'knife-mirror': return 'Ніж б\'є Дзеркало';
@@ -70,22 +73,24 @@ export function explain(detail, cards, trump) {
   return '';
 }
 
-/** Рядок журналу. names: [ім'я гравця 0, ім'я гравця 1] з точки зору глядача. */
+/** Рядок журналу. names: імена за місцями з точки зору глядача. */
 export function logLine(e, names) {
   const n = (p) => names[p];
+  const cs = (xs) => xs.filter(Boolean).map(cardName).join(' проти ');
   switch (e.t) {
     case 'round': return `— Раунд ${e.r}${e.trump ? ` · козир ${SUIT[e.trump].ico}` : ''} —`;
     case 'ante': return null;
     case 'play': return `${n(e.p)}: карта на столі${e.auto ? ' (час вийшов)' : ''}`;
     case 'swap': return `${n(e.p)}: обмін карти (−${e.amount})`;
-    case 'scout': return `${n(e.p)}: розвідка (−${e.amount})`;
+    case 'scout': return `${n(e.p)}: розвідка${e.target !== undefined ? ` → ${n(e.target)}` : ''} (−${e.amount})`;
     case 'check': return `${n(e.p)}: чек${e.auto ? ' (час вийшов)' : ''}`;
     case 'raise': return `${n(e.p)}: ${e.allin ? 'ВА-БАНК' : 'підняття'} +${e.amount}`;
     case 'call': return `${n(e.p)}: колл ${e.amount}`;
     case 'fold': return `${n(e.p)}: пас${e.auto ? ' (час вийшов)' : ''}`;
     case 'foldwin': return `${n(e.p)} забирає банк ${e.amount} без розкриття`;
-    case 'showdown': return `${cardName(e.cards[0])} проти ${cardName(e.cards[1])}: ${n(e.p)} +${e.amount}${e.penalty ? ` (штраф ×2: ${e.penalty})` : ''}`;
-    case 'tie': return `${cardName(e.cards[0])} проти ${cardName(e.cards[1])}: нічия, банк ${e.pot} переходить далі`;
+    case 'showdown': return `${cs(e.cards)}: ${n(e.p)} +${e.amount}${e.penalty ? ` (штраф ×2: ${e.penalty})` : ''}`;
+    case 'tie': return `${cs(e.cards)}: нічия, банк ${e.pot} переходить далі`;
+    case 'out': return `💀 ${n(e.p)} вибуває — далі дивиться гру`;
     case 'show': return `${n(e.p)} показує карту: ${cardName(e.card)}`;
     case 'donBase': return `${n(e.p)} ризикує ${e.stake}: база ${cardName(e.card)}`;
     case 'donCancel': return `${n(e.p)} передумує й забирає виграш`;
@@ -97,7 +102,7 @@ export function logLine(e, names) {
     case 'reshuffle': return 'Колоду перетасовано';
     case 'jokerDeal': return '🃏 Роздано джокерів!';
     case 'joker': return `${n(e.p)}: ${e.text}`;
-    case 'split': return `Після останнього раунду банк ${e.amount} поділено навпіл`;
+    case 'split': return `Після останнього раунду банк ${e.amount} поділено порівну`;
     case 'timeout': return null;
     case 'over': return 'Партію завершено';
   }
@@ -154,6 +159,26 @@ export const RULES_HTML = `
 
 <h3>Кінець</h3>
 <p>Банкрут програє. Після останнього раунду перемагає той, у кого більше фішок; залишок банку ділиться навпіл. Після пасу можна показати свою карту — похизуватися блефом.</p>
+
+<h3>Гра втрьох</h3>
+<p>Усе те саме, лише за столом троє (по ${CONFIG.three.startChips} фішок). Відмінності:</p>
+<ul>
+<li><b>Торги по колу.</b> Першим ходить гравець після переможця минулого раунду. Ліміт — ${CONFIG.maxRaises} підняття на весь раунд.</li>
+<li><b>Ставки й ва-банк</b> не більші за найменший стек серед тих, хто ще в раунді (побічних банків немає).</li>
+<li><b>Пас</b> — вихід із раунду. Лишився один — він забирає банк.</li>
+<li><b>Розкриття</b> — серед тих, хто не спасував: перемагає карта, що б'є обидві інші. Якщо такої немає — <b>нічия за перше місце</b>, банк іде в джекпот.</li>
+<li><b>Розвідка</b>: торкнись суперника, до якого підглянути.</li>
+<li><b>Подвій або нічого</b>: ризикуєш тим, що внесли суперники; виграш вони платять пропорційно своїм внескам.</li>
+<li><b>Банкрут вибуває</b> і далі дивиться гру (бачить лише відкрите, може слати реакції). Партія закінчується, коли лишився один, або після останнього раунду — місця за фішками. Бали — за місце.</li>
+<li><b>Джокери втрьох</b> ціль не обирають. «Суперник» для джокера — <b>лідер за фішками</b> серед інших учасників розкриття; «обидва/кожен» — усі учасники; «програв/виграв» — щодо переможця раунду. Точний опис — на самому джокері в грі втрьох.</li>
+</ul>
+
+<h3>Режими</h3>
+<p>Хост обирає режим перед партією. Це лише інші налаштування — правила ті самі, для двох і для трьох.</p>
+<ul>
+${MODE_IDS.map((m) => `<li><b>${MODES[m].icon} ${MODES[m].name}</b> — ${MODES[m].desc}.</li>`).join('')}
+</ul>
+<p>Щодня один із режимів стає <b>режимом дня</b>: партія в ньому дає +${META.points.modeOfDay} ★.</p>
 `;
 
 /** Кроки інтерактивного навчання. */

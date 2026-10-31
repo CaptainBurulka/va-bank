@@ -93,6 +93,10 @@ function chord(freqs, { delay = 0, step = 0.07, dur = 0.5, vol = 0.12 } = {}) {
   freqs.forEach((f, i) => tone({ freq: f, dur, vol, delay: delay + i * step, type: 'triangle', attack: 0.02, lp: 2400 }));
 }
 
+let accentId = null;
+/** Звуковий акцент із косметики («Звук»): null — класика. */
+export function setAccent(id) { accentId = id || null; }
+
 export const sfx = {
   tap: () => noise({ dur: 0.03, vol: 0.12, freq: 1800, q: 3 }),
   deal: (i = 0) => noise({ dur: 0.09, vol: 0.22, delay: i * 0.07, freq: 1400, q: 0.7 }),
@@ -129,6 +133,40 @@ export const sfx = {
     else if (rarity === 'epic') { chord([523, 659, 784, 1046, 1318], { step: 0.07, dur: 0.7 }); for (let i = 0; i < 8; i++) clink(0.4 + i * 0.06); }
     else if (rarity === 'rare') chord([587, 740, 880], { step: 0.07, dur: 0.4 });
     else tone({ freq: 520, dur: 0.15, vol: 0.1, type: 'triangle' });
+  },
+  /** Великий банк / ва-банк: низький удар і уповільнений гул. */
+  bigPot: () => {
+    tone({ freq: 49, to: 41, dur: 1.1, vol: 0.3, type: 'sine' });
+    tone({ freq: 98, to: 82, dur: 1.2, vol: 0.08, type: 'sawtooth', lp: 380, delay: 0.05 });
+    [0, 0.42].forEach((d) => tone({ freq: 58, dur: 0.16, vol: 0.26, delay: d + 0.2, type: 'sine' }));
+  },
+  /** Пауза-напруга перед розкриттям: барабанний дріб, що наростає. */
+  drumroll: (sec = 0.9) => {
+    const n = Math.round(sec * 22);
+    for (let i = 0; i < n; i++) noise({ dur: 0.05, vol: 0.05 + (0.18 * i) / n, delay: i * (sec / n), freq: 260, type: 'lowpass' });
+  },
+  /** Штамп «Блеф пройшов!» / «Слабкою картою!». */
+  stamp: () => { noise({ dur: 0.14, vol: 0.4, freq: 180, type: 'lowpass' }); tone({ freq: 140, to: 70, dur: 0.22, vol: 0.25, type: 'sine' }); chord([523, 784], { delay: 0.12, step: 0.05, dur: 0.35, vol: 0.09 }); },
+  /** Звуковий акцент тематичного набору (на перемогу і великі моменти). */
+  accent: (big = false) => {
+    if (!ac || muted || !accentId) return;
+    const v = big ? 1.3 : 1;
+    switch (accentId) {
+      case 'bells': // церковні дзвони: низький удар + обертони
+        [0, 0.38].forEach((d, k) => { const f = k ? 392 : 523; tone({ freq: f, dur: 1.4, vol: 0.12 * v, delay: d, attack: 0.003 }); tone({ freq: f * 2.76, dur: 0.9, vol: 0.05 * v, delay: d }); tone({ freq: f * 5.4, dur: 0.5, vol: 0.025 * v, delay: d }); });
+        break;
+      case 'koto': // пентатоніка, щипок
+        [587, 659, 880, 988, 1175].forEach((f, i) => tone({ freq: f, dur: 0.5, vol: 0.09 * v, delay: i * 0.09, type: 'triangle', attack: 0.002, lp: 3000 }));
+        break;
+      case 'synth': // синтвейв-арпеджіо
+        [220, 277, 330, 440, 554, 660].forEach((f, i) => tone({ freq: f, dur: 0.16, vol: 0.06 * v, delay: i * 0.06, type: 'sawtooth', lp: 1800 }));
+        tone({ freq: 55, dur: 0.6, vol: 0.12 * v, type: 'square', lp: 300 });
+        break;
+      case 'bandura': // переливи бандури + удар бубна
+        [392, 494, 587, 784, 587, 784].forEach((f, i) => tone({ freq: f, dur: 0.35, vol: 0.08 * v, delay: i * 0.075, type: 'triangle', attack: 0.002, lp: 2600 }));
+        noise({ dur: 0.12, vol: 0.2 * v, delay: 0.5, freq: 3500, q: 0.8 });
+        break;
+    }
   },
   tension: () => {
     if (!ac || muted) return;

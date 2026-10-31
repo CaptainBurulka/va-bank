@@ -16,7 +16,7 @@ function playGame(seed, sets, rounds = 12, jokersOn = true) {
   let s = createGame({ timers: false, config: { maxRounds: rounds }, jokerSets: jokersOn ? sets : undefined }, ctx);
   const plays = [];
   let snap = s.players[0].chips - s.players[1].chips;
-  let prevPhase = s.phase, recorded = false, played = [null, null], revealed = false;
+  let prevPhase = s.phase, recorded = false, played = [null, null], revealed = false, changed = false;
   for (let steps = 0; s.phase !== 'over' && steps < 6000; steps++) {
     for (const p of [0, 1]) {
       // A розігрує джокера одразу, B — у половині випадків (реалістичніше, ніж завжди одночасно)
@@ -29,6 +29,7 @@ function playGame(seed, sets, rounds = 12, jokersOn = true) {
       recorded = true;
       played = [0, 1].map((p) => (s.players[p].played?.kind === 'joker' ? s.players[p].played.joker : null));
       revealed = s.result.reason !== 'fold';
+      changed = !!s.result.jokers?.changed;
     }
     // раунд закінчився: з «результату» перейшли до нової роздачі (зокрема переграного раунду) або кінця
     const ended = prevPhase === 'result' && s.phase !== 'result';
@@ -36,7 +37,7 @@ function playGame(seed, sets, rounds = 12, jokersOn = true) {
     if (ended) {
       const now = s.players[0].chips - s.players[1].chips; // анте однакове для обох — скорочується
       const rel = now - snap;
-      for (const p of [0]) if (played[p]) plays.push({ joker: played[p], p, revealed, score: (p === 0 ? rel : -rel) > 0 ? 1 : (p === 0 ? rel : -rel) < 0 ? 0 : 0.5 });
+      for (const p of [0]) if (played[p]) plays.push({ joker: played[p], p, revealed, changed, score: (p === 0 ? rel : -rel) > 0 ? 1 : (p === 0 ? rel : -rel) < 0 ? 0 : 0.5 });
       snap = now; recorded = false; played = [null, null];
     }
   }
@@ -47,15 +48,15 @@ export function simulateJokers(gamesPer = 400) {
   const per = {};
   const games = { on: [], off: [] };
   const gameWin = {};
-  let seed = 1;
-  for (const j of JOKERS) { per[j.id] = { n: 0, sum: 0, sn: 0, ssum: 0 }; gameWin[j.id] = { n: 0, w: 0 }; }
+  for (const j of JOKERS) { per[j.id] = { n: 0, sum: 0, sn: 0, ssum: 0, ch: 0 }; gameWin[j.id] = { n: 0, w: 0 }; }
   for (const j of JOKERS) {
     if (process.env.ONLY && !process.env.ONLY.split(",").includes(j.id)) continue;
     for (let g = 0; g < gamesPer; g++) {
       const other = JOKERS[(g * 7 + 3) % JOKERS.length].id;
-      const { s, plays } = playGame(seed++, [[j.id], [other]]);
+      // зерно залежить від номера джокера — тож запуск з ONLY дає ті самі партії, що й повний
+      const { s, plays } = playGame(1 + JOKERS.indexOf(j) * gamesPer + g, [[j.id], [other]]);
       games.on.push(s.round);
-      for (const x of plays) { per[x.joker].n++; per[x.joker].sum += x.score; if (x.revealed) { per[x.joker].sn++; per[x.joker].ssum += x.score; } }
+      for (const x of plays) { per[x.joker].n++; per[x.joker].sum += x.score; if (x.revealed) { per[x.joker].sn++; per[x.joker].ssum += x.score; if (x.changed) per[x.joker].ch++; } }
       if (s.stats[0].jokers.includes(j.id) && s.winner !== 'draw') { gameWin[j.id].n++; if (s.winner === 0) gameWin[j.id].w++; }
     }
   }
@@ -65,6 +66,8 @@ export function simulateJokers(gamesPer = 400) {
     showdownWinPct: per[j.id].sn ? Math.round((1000 * per[j.id].ssum) / per[j.id].sn) / 10 : null,
     roundWinPct: per[j.id].n ? Math.round((1000 * per[j.id].sum) / per[j.id].n) / 10 : null,
     gameWinPct: gameWin[j.id].n ? Math.round((1000 * gameWin[j.id].w) / gameWin[j.id].n) / 10 : null,
+    // як часто розкриття з цим джокером закінчилось інакше, ніж без його ефекту (номінальна сила)
+    changedPct: per[j.id].sn ? Math.round((1000 * per[j.id].ch) / per[j.id].sn) / 10 : null,
   }));
   const rarity = Object.fromEntries(RARITIES.map((r) => {
     const xs = JOKERS.filter((j) => j.rarity === r);
@@ -76,7 +79,7 @@ export function simulateJokers(gamesPer = 400) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const out = simulateJokers(Number(process.argv[2] || 400));
-  for (const r of out.rows) console.log(`${r.rarity.padEnd(9)} ${r.name.padEnd(14)} розкриття ${String(r.showdownWinPct).padStart(5)}% (${r.showdowns})  раунд ${String(r.roundWinPct).padStart(5)}%  партія ${String(r.gameWinPct).padStart(5)}%`);
+  for (const r of out.rows) console.log(`${r.rarity.padEnd(9)} ${r.name.padEnd(14)} розкриття ${String(r.showdownWinPct).padStart(5)}% (${r.showdowns})  раунд ${String(r.roundWinPct).padStart(5)}%  партія ${String(r.gameWinPct).padStart(5)}%  змінює ${String(r.changedPct).padStart(5)}%`);
   console.log('рідкості:', out.rarity, 'медіана раундів з/без:', out.medianRoundsWith, out.medianRoundsWithout);
   if (process.argv[3]) (await import('node:fs')).writeFileSync(process.argv[3], JSON.stringify(out, null, 2) + '\n');
 }

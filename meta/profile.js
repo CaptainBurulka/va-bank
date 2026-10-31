@@ -2,9 +2,10 @@
 // Чиста логіка без DOM — тестується в node. Збереження в localStorage — у ui/ (тут лише дані).
 // Жодних реальних грошей: бали й уламки — віртуальні, заробляються лише грою.
 
-import { META } from '../config.js';
+import { META, MODE_IDS } from '../config.js';
 import { JOKERS, JOKER_BY_ID, RARITIES, sanitizeSet } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID } from './catalog.js';
+import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID, SETS } from './catalog.js';
+import { newPid, isPid, cleanNick, normalizeLife, normalizeRivals, cleanTitle, emptyLife } from './rivals.js';
 
 export const SCHEMA = META.schema;
 const int = (x) => (Number.isFinite(x) ? Math.max(0, Math.floor(x)) : 0);
@@ -26,7 +27,52 @@ export function defaultProfile() {
     games: 0,
     wins: 0,
     flags: { legendarySpin: false },
+    // суперництво (схема 2)
+    nick: '',
+    pid: newPid(),
+    title: null,
+    life: emptyLife(),
+    rivals: {},
+    jokerStats: {}, // локальна статистика реальних партій: { id: { picked, played, wins, changed } }
   };
+}
+
+/** Записати джокерів партії: хто був у наборі, зіграний, з ким виграно, чи змінив результат. */
+export function recordJokers(stats, set, log) {
+  const out = normalizeJokerStats(stats);
+  const row = (id) => (out[id] ||= { picked: 0, played: 0, wins: 0, changed: 0 });
+  for (const id of set || []) if (JOKER_BY_ID[id]) row(id).picked += 1;
+  for (const e of log || []) {
+    if (!JOKER_BY_ID[e?.id]) continue;
+    const r = row(e.id);
+    r.played += 1;
+    if (e.won) r.wins += 1;
+    if (e.changed) r.changed += 1;
+  }
+  return out;
+}
+
+export function normalizeJokerStats(x) {
+  const out = {};
+  if (!x || typeof x !== 'object') return out;
+  for (const [id, r] of Object.entries(x)) {
+    if (!JOKER_BY_ID[id] || !r || typeof r !== 'object') continue;
+    const played = int(r.played);
+    out[id] = { picked: int(r.picked), played, wins: Math.min(int(r.wins), played), changed: Math.min(int(r.changed), played) };
+  }
+  return out;
+}
+
+/** CSV для експорту статистики джокерів. */
+export function jokerStatsCsv(stats) {
+  const rows = [['id', 'name', 'rarity', 'picked', 'played', 'wins', 'win_pct', 'changed', 'changed_pct']];
+  for (const j of JOKERS) {
+    const r = stats[j.id];
+    if (!r) continue;
+    const pc = (a) => (r.played ? Math.round((100 * a) / r.played) : '');
+    rows.push([j.id, j.name, j.rarity, r.picked, r.played, r.wins, pc(r.wins), r.changed, pc(r.changed)]);
+  }
+  return rows.map((x) => x.map((v) => (/[",;\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v)).join(',')).join('\n');
 }
 
 /**
@@ -40,7 +86,13 @@ export function migrate(raw) {
     if (Array.isArray(p.jokers)) p.jokers = Object.fromEntries(p.jokers.filter((x) => typeof x === 'string').map((id) => [id, 1]));
     p.v = 1;
   }
-  // майбутні міграції: if (p.v === 1) { …; p.v = 2; }
+  if (p.v === 1) {
+    // v1 → v2: нікнейм, постійний ID, суперники і довічна статистика (з уже зіграних партій — лише кількість і перемоги)
+    p.life = { ...emptyLife(), games: p.games || 0, wins: p.wins || 0 };
+    p.rivals = {};
+    p.v = 2;
+  }
+  // майбутні міграції: if (p.v === 2) { …; p.v = 3; }
   return normalize(p);
 }
 
@@ -74,6 +126,12 @@ export function normalize(p) {
   out.playedRarities = Array.isArray(p.playedRarities) ? RARITIES.filter((r) => p.playedRarities.includes(r)) : [];
   out.daily = { day: typeof p.daily?.day === 'string' ? p.daily.day.slice(0, 10) : '', won: !!p.daily?.won };
   out.flags = { legendarySpin: !!p.flags?.legendarySpin };
+  out.nick = cleanNick(p.nick);
+  out.pid = isPid(p.pid) ? p.pid : d.pid;
+  out.title = cleanTitle(p.title);
+  out.life = normalizeLife(p.life);
+  out.rivals = normalizeRivals(p.rivals);
+  out.jokerStats = normalizeJokerStats(p.jokerStats);
   out.v = SCHEMA;
   return out;
 }
@@ -95,7 +153,23 @@ export function grant(p, kind, id) {
   }
   if (kind === 'joker') q.jokers[id] = 1;
   else q.cosmetics[id] = true;
-  return { profile: q, duplicate: false, shards: 0 };
+  const completed = kind === 'cosmetic' ? completeSets(q) : [];
+  return { profile: q, duplicate: false, shards: 0, completed };
+}
+
+/** Повний тематичний набір → рамка профілю (додається один раз). Мутує q, повертає id завершених наборів. */
+export function completeSets(q) {
+  const done = [];
+  for (const st of SETS) {
+    if (q.cosmetics[st.frame]) continue;
+    if (st.items.every((id) => q.cosmetics[id])) { q.cosmetics[st.frame] = true; done.push(st.id); }
+  }
+  return done;
+}
+
+/** Прогрес наборів: [{ id, name, icon, have, total, frame, done }] */
+export function setProgress(p) {
+  return SETS.map((st) => ({ ...st, have: st.items.filter((id) => p.cosmetics[id]).length, total: st.items.length, done: !!p.cosmetics[st.frame] }));
 }
 
 // ───────── магазин ─────────
@@ -223,13 +297,22 @@ const dayKey = (d) => d.toISOString().slice(0, 10);
  * Підсумок партії → бали і досягнення.
  * summary: { won, draw, mode: 'online'|'bot'|'hotseat', endReason, me: stats, jokersPlayed: [ids] }
  */
+/** Режим дня: щодня інший (крім класики), однаковий для всіх гравців у той самий день. */
+export function modeOfDay(now = new Date()) {
+  const special = MODE_IDS.filter((m) => m !== 'classic');
+  const days = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  return special[days % special.length];
+}
+
 export function awardGame(p, summary, now = new Date()) {
   let q = clone(p);
   const mult = META.points.mult[summary.mode] ?? 0;
   const gained = [];
   const add = (label, n) => { const v = Math.round(n); if (v > 0) { gained.push({ label, amount: v }); q.points += v; } };
   add('За участь', META.points.play * mult);
-  if (summary.won) add('Бонус за перемогу', META.points.win * mult);
+  if (summary.players === 3 && summary.place) add(`Бонус за ${summary.place}-ге місце`, (META.points.place3[summary.place - 1] || 0) * mult);
+  else if (summary.won) add('Бонус за перемогу', META.points.win * mult);
+  if (summary.gameMode && summary.gameMode === modeOfDay(now)) add('Режим дня', META.points.modeOfDay * mult);
   const today = dayKey(now);
   if (q.daily.day !== today) q.daily = { day: today, won: false };
   if (summary.won && !q.daily.won && mult > 0) { q.daily.won = true; add('Перша перемога дня', META.points.firstWinOfDay); }

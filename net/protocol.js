@@ -1,6 +1,6 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 
 /** Порівняння версій «2.0.1» → -1 / 0 / 1. */
 export function compareVersions(a, b) {
@@ -31,8 +31,11 @@ export const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const PEER_PREFIX = 'vabank-ua-v1-';
 
 import { COSMETICS } from '../meta/catalog.js';
+import { PHRASES, isPid, cleanTitle } from '../meta/rivals.js';
 // Дозволені реакції — усі емодзі з усіх наборів косметики
 export const REACTIONS = [...new Set(COSMETICS.filter((c) => c.cat === 'emoji').flatMap((c) => c.set))];
+/** Реакція — емодзі з наборів або швидка фраза. */
+export const isReaction = (x) => REACTIONS.includes(x) || PHRASES.includes(x);
 
 export function randomCode(rng) {
   let s = '';
@@ -54,6 +57,13 @@ export function randomToken(rng) {
 
 export const msg = (type, body = {}) => ({ v: PROTOCOL_VERSION, type, ...body });
 
+/** Нікнейм: 1–16 видимих символів, без керівних; інакше null. */
+export function cleanName(x) {
+  if (typeof x !== 'string') return null;
+  const t = x.replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+  return t || null;
+}
+
 const ACTION_TYPES = new Set(['play', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
 
 /**
@@ -74,6 +84,9 @@ export function parseGuestMessage(m) {
           // набір джокерів і косметика гостя (довіряємо, але обрізаємо форму; повна перевірка — на хості)
           set: Array.isArray(m.set) ? m.set.filter((x) => typeof x === 'string' && x.length < 24).slice(0, 3) : [],
           look: m.look && typeof m.look === 'object' && !Array.isArray(m.look) ? m.look : null,
+          name: cleanName(m.name),
+          pid: isPid(m.pid) ? m.pid : null,
+          title: cleanTitle(m.title),
         },
       };
     case 'action': {
@@ -83,10 +96,11 @@ export function parseGuestMessage(m) {
       if (typeof a.cardId === 'string' && a.cardId.length <= 10) clean.cardId = a.cardId;
       if (a.amount === 'allin' || (Number.isInteger(a.amount) && a.amount > 0 && a.amount < 1e6)) clean.amount = a.amount;
       if (a.guess === 'higher' || a.guess === 'lower') clean.guess = a.guess;
+      if (Number.isInteger(a.target) && a.target >= 0 && a.target < 3) clean.target = a.target;
       return { ok: true, m: { type: 'action', action: clean } };
     }
     case 'react':
-      if (!REACTIONS.includes(m.emoji)) return { ok: false, error: 'bad-emoji' };
+      if (!isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
       return { ok: true, m: { type: 'react', emoji: m.emoji } };
     case 'ping':
     case 'pong':
@@ -103,6 +117,6 @@ export function parseHostMessage(m) {
   if (m.type === 'error' && m.code === 'version') return { ok: true, m: { type: 'error', code: 'version', app: typeof m.app === 'string' ? m.app : null } };
   if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version', app: typeof m.app === 'string' ? m.app : null };
   if (!['welcome', 'state', 'react', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
-  if (m.type === 'react' && !REACTIONS.includes(m.emoji)) return { ok: false, error: 'bad-emoji' };
+  if (m.type === 'react' && !isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
   return { ok: true, m };
 }

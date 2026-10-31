@@ -1,22 +1,23 @@
 // Екрани клубу: гаманець, колекція, магазин, ігровий автомат, нагороди після партії.
 import { JOKERS, JOKER_BY_ID, RARITY_NAME, RARITIES } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID } from '../meta/catalog.js';
+import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID, SETS } from '../meta/catalog.js';
 import {
-  buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL,
+  buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL, setProgress, completeSets, recordJokers, jokerStatsCsv,
 } from '../meta/profile.js';
 import { META } from '../config.js';
 import { loadProfile, saveProfile, needsInstallHint } from './profile-store.js';
 import { applyMyLook, playWin } from './cosmetics.js';
 import { cryptoRng } from '../net/host.js';
-import { sfx } from './sound.js';
+import { sfx, setAccent } from './sound.js';
 import { reducedMotion } from './motion.js';
+import { TITLES, TITLE_BY_ID, titlesOf, titleOf, cleanNick, addLife, recordGame } from '../meta/rivals.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let ui = null; // { show, modal, toast }
 
 export const SYMBOL_GLYPH = { cherry: '🍒', bell: '🔔', seven: '7', star: '⭐', clover: '🍀', diamond: '💎', crown: '👑' };
-const WIN_GLYPH = { chips: '🪙', confetti: '🎉', hearts: '❤️', fireworks: '🎆', goldrain: '🌟' };
+const WIN_GLYPH = { chips: '🪙', confetti: '🎉', hearts: '❤️', fireworks: '🎆', goldrain: '🌟', kyiv: '🌰', sakura: '🌸', glitch: '👾', cossack: '🌻' };
 const ERR = {
   'no-points': 'Не вистачає балів — зіграй ще кілька партій',
   'no-shards': 'Не вистачає уламків — вони з\'являються з дублікатів в автоматі',
@@ -41,6 +42,12 @@ export function initMeta(api) {
 }
 
 function update(p) {
+  // Повний тематичний набір → рамка (на випадок, якщо предмет прийшов не через grant, напр. з імпорту)
+  const before = loadProfile();
+  const q = { ...p, cosmetics: { ...p.cosmetics } };
+  completeSets(q);
+  p = q;
+  for (const st of SETS) if (p.cosmetics[st.frame] && !before.cosmetics[st.frame]) setTimeout(() => ui?.toast(`${st.icon} Повний набір «${st.name}»! Рамка профілю — твоя`, 4200), 400);
   saveProfile(p);
   applyMyLook(p.equipped);
   renderWallet();
@@ -58,7 +65,8 @@ export function renderWallet() {
 function swatch(c) {
   const v = c.vars || {};
   switch (c.cat) {
-    case 'deck': return `<div class="sw" style="background:${v['--card-face'] || 'var(--card-face)'};box-shadow:inset 0 0 0 2px ${v['--card-edge'] || 'var(--card-edge)'};display:grid;place-items:center;color:#1d1a14;font:800 26px/1 var(--font-ui)">7</div>`;
+    case 'deck': return `<div class="sw" style="background:${v['--card-face'] || 'var(--card-face)'};box-shadow:inset 0 0 0 2px ${v['--card-edge'] || 'var(--card-edge)'};display:grid;place-items:center;color:${v['--card-ink'] || '#1d1a14'};font:800 26px/1 var(--font-ui);position:relative">7${c.suits ? `<svg style="position:absolute;right:6px;bottom:6px;width:18px;height:18px;color:${v['--fire'] || 'var(--fire)'}"><use href="#i-${c.suits}-fire"/></svg>` : ''}</div>`;
+    case 'sound': return `<div class="big">${{ bells: '🔔', koto: '🎋', synth: '🎹', bandura: '🪕' }[c.accent] || '🔈'}</div>`;
     case 'back': return `<div class="sw" style="background:repeating-linear-gradient(45deg,transparent 0 5px,${v['--back-line'] || 'rgba(226,183,90,.25)'} 5px 6px),linear-gradient(160deg,${v['--card-back-1'] || '#7a1f2b'},${v['--card-back-2'] || '#4a0f19'});box-shadow:inset 0 0 0 2px #e2b75a"></div>`;
     case 'felt': return `<div class="sw" style="background:radial-gradient(circle,${v['--felt-1'] || '#1f6b47'},${v['--felt-3'] || '#0c3a26'});box-shadow:inset 0 0 0 3px ${v['--brass'] || '#6b5426'}"></div>`;
     case 'chips': return `<svg class="sw" style="color:${v['--chip'] || '#e2b75a'};box-shadow:none"><use href="#i-chip"/></svg>`;
@@ -73,7 +81,7 @@ const jokerTile = (j, { locked, inSet, extra = '' } = {}) =>
 const cosTile = (c, { locked, equipped } = {}) =>
   `<button class="tile r-${c.rarity} ${locked ? 'locked' : ''} ${equipped ? 'equipped' : ''}" data-cos="${c.id}">${swatch(c)}<span>${esc(c.name)}</span><span class="rr">${RARITY_NAME[c.rarity]}</span></button>`;
 
-const sourceText = (c) => ({ start: 'є з початку', shop: 'магазин або автомат', slot: 'лише автомат', ach: `досягнення «${Object.values(ACH_BY_ID).find((a) => a.reward.cosmetic === c.id)?.name || ''}»` }[c.source]);
+const sourceText = (c) => ({ start: 'є з початку', shop: 'магазин або автомат', slot: 'лише автомат', set: 'зібрати весь набір', ach: `досягнення «${Object.values(ACH_BY_ID).find((a) => a.reward.cosmetic === c.id)?.name || ''}»` }[c.source]);
 
 // ───────── колекція ─────────
 export function openCollection(tab = 'jokers') {
@@ -85,6 +93,7 @@ export function openCollection(tab = 'jokers') {
 function renderCollection(tab) {
   const p = loadProfile();
   const body = $('col-body');
+  if (tab === 'stats') return renderJokerStats(p, body);
   if (tab === 'jokers') {
     const owned = JOKERS.filter((j) => p.jokers[j.id]).length;
     const slots = [0, 1, 2].map((i) => {
@@ -100,7 +109,9 @@ function renderCollection(tab) {
     body.innerHTML = html;
     body.onclick = (e) => { const t = e.target.closest('[data-joker]'); if (t) jokerSheet(t.dataset.joker); };
   } else {
-    let html = '';
+    // Тематичні набори: прогрес і рамка за повний набір
+    let html = `<div class="sec-title"><span>Набори</span><span>повний набір — рамка профілю</span></div><div class="sets">${setProgress(p).map((st) => `
+      <div class="set-card ${st.done ? 'done' : ''}"><b>${st.icon} ${esc(st.name)}</b><span class="meter"><i style="width:${Math.round((st.have / st.total) * 100)}%"></i></span><span>${st.done ? '✓ рамка отримана' : `${st.have} / ${st.total}`}</span></div>`).join('')}</div>`;
     for (const [cat, name] of Object.entries(COSMETIC_CATS)) {
       const items = COSMETICS.filter((c) => c.cat === cat);
       html += `<div class="sec-title"><span>${name}</span><span>${items.filter((c) => p.cosmetics[c.id]).length} / ${items.length}</span></div><div class="grid-tiles">${items.map((c) => cosTile(c, { locked: !p.cosmetics[c.id], equipped: p.equipped[cat] === c.id })).join('')}</div>`;
@@ -111,8 +122,11 @@ function renderCollection(tab) {
       if (!t) return;
       const c = COSMETIC_BY_ID[t.dataset.cos];
       const q = loadProfile();
-      if (q.cosmetics[c.id]) { sfx.tap(); update(equip(q, c.cat, c.id)); renderCollection('cosmetics'); }
-      else ui.modal(`<h3>${esc(c.name)}</h3><p>${RARITY_NAME[c.rarity]} · ${COSMETIC_CATS[c.cat]}</p><p>Як отримати: ${sourceText(c)}.</p>`, [{ label: 'Зрозуміло', cls: 'primary' }]);
+      if (q.cosmetics[c.id]) {
+        sfx.tap(); update(equip(q, c.cat, c.id)); renderCollection('cosmetics');
+        if (c.cat === 'sound') { setAccent(c.accent); sfx.accent(); } // послухати
+      }
+      else ui.modal(`<h3>${esc(c.name)}</h3><p>${RARITY_NAME[c.rarity]} · ${COSMETIC_CATS[c.cat]}${c.set ? ` · набір «${esc(SETS.find((x) => x.id === c.set).name)}»` : ''}</p><p>Як отримати: ${sourceText(c)}.</p>${c.suits ? '<p>Власні іконки мастей; на великому банку карти світяться.</p>' : ''}`, [{ label: 'Зрозуміло', cls: 'primary' }]);
     };
   }
 }
@@ -293,15 +307,34 @@ function showPrize(res, ach) {
  * @param mode — 'online' | 'bot' | 'hotseat'
  * @returns HTML для екрана кінця
  */
-export function awardAfterGame(view, mode) {
+export function awardAfterGame(view, mode, meta = null) {
   const me = view.you;
   const summary = {
     won: view.winner === me, draw: view.winner === 'draw', mode, endReason: view.endReason,
-    me: view.stats[me],
+    me: view.stats[me], players: view.n || 2, place: view.places?.[me] ?? null, gameMode: view.cfg?.mode || 'classic',
   };
   const r = awardGame(loadProfile(), summary);
-  update(r.profile);
+  let prof = r.profile;
+  // Довічна статистика для титулів (на одному телефоні — ні: там грають різні люди)
+  const titleBefore = titleOf(prof);
+  if (mode !== 'hotseat') prof = { ...prof, life: addLife(prof.life, view.stats[me], { won: summary.won, rounds: view.round }) };
+  // Статистика джокерів реальних партій (на одному телефоні — ні)
+  if (mode !== 'hotseat') prof = { ...prof, jokerStats: recordJokers(prof.jokerStats, view.me.jokerSet, view.stats[me].jokerLog) };
+  // Рахунок особистих зустрічей — лише з живими суперниками онлайн
+  let rivalLines = [];
+  if (mode === 'online' && meta?.pids) {
+    const rec = recordGame(prof.rivals, view, meta);
+    prof = { ...prof, rivals: rec.rivals };
+    rivalLines = rec.touched.map((pid) => {
+      const x = rec.rivals[pid];
+      return `<div><span>Рахунок зустрічей · ${esc(x.name)}</span><b>${x.wins} : ${x.losses}${x.draws ? ` (нічиїх ${x.draws})` : ''}</b></div>`;
+    });
+  }
+  update(prof);
   const lines = r.gained.map((g) => `<div><span>${esc(g.label)}</span><b>+${g.amount} ★</b></div>`);
+  const titleAfter = titleOf(prof);
+  if (titleAfter && titleAfter !== titleBefore) lines.push(`<div class="ach"><span>${TITLE_BY_ID[titleAfter].icon} Новий титул: ${esc(TITLE_BY_ID[titleAfter].name)}</span><b></b></div>`);
+  lines.push(...rivalLines);
   for (const a of r.achievements) {
     const A = ACH_BY_ID[a];
     const rew = A.reward.points ? `+${A.reward.points} ★` : `🎁 ${esc(COSMETIC_BY_ID[A.reward.cosmetic].name)}`;
@@ -309,4 +342,91 @@ export function awardAfterGame(view, mode) {
   }
   if (mode !== 'online') lines.push(`<div><span>${mode === 'bot' ? 'Проти бота' : 'На одному телефоні'} — бали ×${META.points.mult[mode]}</span><span></span></div>`);
   return lines.join('');
+}
+
+// ───────── суперники ─────────
+
+/** Іконка титулу для показу біля ніку. */
+export const titleIcon = (id) => (id && TITLE_BY_ID[id] ? TITLE_BY_ID[id].icon : '');
+
+export function openRivals() {
+  renderRivals();
+  ui.show('rivals');
+  $('rivals-body').scrollTop = 0;
+}
+
+function renderRivals() {
+  const p = loadProfile();
+  const earned = titlesOf(p.life);
+  const main = titleOf(p);
+  const l = p.life;
+  const rv = Object.entries(p.rivals).sort((a, b) => b[1].last - a[1].last);
+  const streak = (n) => (n > 0 ? `<span class="streak w">${n} ${n === 1 ? 'перемога' : n < 5 ? 'перемоги' : 'перемог'} поспіль</span>` : n < 0 ? `<span class="streak l">${-n} ${-n === 1 ? 'поразка' : -n < 5 ? 'поразки' : 'поразок'} поспіль</span>` : '<span>серії немає</span>');
+  $('rivals-body').innerHTML = `
+    <div class="me-card">
+      <div class="nick"><input id="nick-input" maxlength="16" placeholder="Твій нік" value="${esc(p.nick)}" autocomplete="off" enterkeyhint="done" aria-label="Нікнейм"><span class="pid" title="Постійний ID — за ним гра впізнає тебе в друзів">ID ${esc(p.pid.slice(1, 5).toUpperCase())}</span></div>
+      <div class="hint-text">Нік бачать друзі за столом. ID постійний — за ним рахунок зустрічей не плутається, навіть якщо змінити нік.</div>
+      <div class="titles" id="title-list">${TITLES.map((t) => `<button class="title-chip ${t.id === main ? 'on' : ''} ${earned.includes(t.id) ? '' : 'locked'}" data-title="${t.id}" title="${esc(t.desc)}">${t.icon} ${esc(t.name)}</button>`).join('')}</div>
+      <div class="hint-text">Титули з'являються біля ніку. Торкнись заробленого, щоб показувати саме його. Сірі — ще попереду: ${esc(TITLES.find((t) => !earned.includes(t.id))?.desc || 'усі зароблено!')}.</div>
+      <div class="hint-text">Усього: партій <b>${l.games}</b> · перемог <b>${l.wins}</b> · блефів <b>${l.bluffs}</b> · найбільший банк <b>${l.biggestPot}</b></div>
+    </div>
+    <h3 class="sec-title">Рахунок зустрічей</h3>
+    ${rv.length ? rv.map(([, r]) => `
+      <div class="rival">
+        <div class="nm">${r.title ? `<span class="title-tag">${titleIcon(r.title)}</span>` : ''}${esc(r.name)}</div>
+        <div class="score">${r.wins}<span class="sep">:</span>${r.losses}</div>
+        <div class="sub">${streak(r.streak)}${r.draws ? ` · нічиїх ${r.draws}` : ''} · партій ${r.games}</div>
+        <div class="facts"><span>Найбільший банк <b>${r.bigPot}</b></span><span>Блефи <b>${r.myBluffs} : ${r.theirBluffs}</b></span><span>Програні «подвій» <b>${r.myDonLost} : ${r.theirDonLost}</b></span></div>
+      </div>`).join('') : '<p class="hint-text">Зіграй із другом онлайн — тут з\'явиться ваш рахунок, серії й найбільший банк.</p>'}`;
+  const inp = $('nick-input');
+  const save = () => { const q = loadProfile(); const v = cleanNick(inp.value); if (v !== q.nick) { update({ ...q, nick: v }); ui.toast(v ? `Нік: ${v}` : 'Нік прибрано'); } inp.value = v; };
+  inp.addEventListener('change', save);
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
+  $('title-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-title]');
+    if (!b) return;
+    sfx.tap();
+    const id = b.dataset.title;
+    if (!titlesOf(loadProfile().life).includes(id)) { ui.toast(TITLE_BY_ID[id].desc); return; }
+    update({ ...loadProfile(), title: id });
+    renderRivals();
+  });
+}
+
+/** Попросити нік перед першою онлайн-грою. */
+export function askNick(next) {
+  const p = loadProfile();
+  if (p.nick) return next();
+  ui.modal('<h3>Як тебе звати?</h3><p>Нік побачать друзі за столом, а гра рахуватиме ваші зустрічі.</p><input id="nick-ask" class="code-box" style="height:48px;font-size:18px" maxlength="16" placeholder="Нік" autocomplete="off">', [
+    { label: 'Готово', cls: 'primary', onClick: () => { const v = cleanNick($('nick-ask').value); if (v) update({ ...loadProfile(), nick: v }); next(); } },
+    { label: 'Пізніше', cls: 'tertiary', onClick: () => next() },
+  ]);
+  setTimeout(() => $('nick-ask')?.focus(), 250);
+}
+
+// ───────── статистика джокерів (локально, з реальних партій) ─────────
+function renderJokerStats(p, body) {
+  const st = p.jokerStats || {};
+  const rows = JOKERS.filter((j) => st[j.id]).sort((a, b) => st[b.id].played - st[a.id].played || st[b.id].picked - st[a.id].picked);
+  const pc = (a, n) => (n ? `${Math.round((100 * a) / n)}%` : '—');
+  body.innerHTML = `
+    <p class="hint-text">Лише твої партії на цьому телефоні (з ботом і онлайн). «Змінив» — розкриття закінчилось інакше, ніж якби джокер був звичайною картою своєї сили.</p>
+    ${rows.length ? `<table class="stats jstats"><tr><th>Джокер</th><th>У наборі</th><th>Зіграно</th><th>Перемог</th><th>Змінив</th></tr>${rows.map((j) => {
+      const r = st[j.id];
+      return `<tr><td>${j.icon} ${esc(j.name)}</td><td>${r.picked}</td><td>${r.played}</td><td>${pc(r.wins, r.played)}</td><td>${pc(r.changed, r.played)}</td></tr>`;
+    }).join('')}</table>` : '<p class="hint-text">Ще порожньо — зіграй партію з джокерами в наборі.</p>'}
+    <button class="btn secondary" id="jstats-export" style="width:100%;margin-top:12px" ${rows.length ? '' : 'disabled'}>Експорт статистики (CSV)</button>`;
+  body.onclick = null;
+  $('jstats-export').onclick = async () => {
+    sfx.tap();
+    const csv = jokerStatsCsv(loadProfile().jokerStats);
+    const file = typeof File === 'function' ? new File([csv], 'vabank-jokers.csv', { type: 'text/csv' }) : null;
+    try {
+      if (file && navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Статистика джокерів' }); return; }
+      await navigator.clipboard.writeText(csv);
+      ui.toast('Скопійовано: таблиця CSV у буфері обміну');
+    } catch {
+      ui.modal(`<h3>Статистика джокерів</h3><textarea class="code-box" readonly rows="8">${esc(csv)}</textarea>`, [{ label: 'Готово', cls: 'primary' }]);
+    }
+  };
 }

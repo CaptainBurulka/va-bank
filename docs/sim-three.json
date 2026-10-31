@@ -1,0 +1,369 @@
+{
+  "base": {
+    "games": 3000,
+    "rounds": 12,
+    "seatWinPct": [
+      34.8,
+      33.6,
+      31.3
+    ],
+    "drawPct": 0.2,
+    "medianRounds": 12,
+    "bustGamesPct": 86.6,
+    "medianFirstOutRound": 8,
+    "medianFirstOutFrac": 0.67
+  },
+  "withJokers": {
+    "games": 1500,
+    "rounds": 12,
+    "seatWinPct": [
+      32.3,
+      32.6,
+      35
+    ],
+    "drawPct": 0.1,
+    "medianRounds": 12,
+    "bustGamesPct": 86.5,
+    "medianFirstOutRound": 8,
+    "medianFirstOutFrac": 0.67
+  },
+  "jokers": {
+    "base": {
+      "showdowns": 572,
+      "showdownWinPct": 39.5,
+      "gameWinPct": 31.9
+    },
+    "rows": [
+      {
+        "id": "turncoat",
+        "name": "Перевертень",
+        "rarity": "common",
+        "showdowns": 160,
+        "showdownWinPct": 42.8,
+        "gameWinPct": 28.5,
+        "vsBase": 3.3
+      },
+      {
+        "id": "roulette",
+        "name": "Рулетка",
+        "rarity": "common",
+        "showdowns": 158,
+        "showdownWinPct": 36.7,
+        "gameWinPct": 28,
+        "vsBase": -2.8
+      },
+      {
+        "id": "thief",
+        "name": "Мисливець",
+        "rarity": "common",
+        "showdowns": 137,
+        "showdownWinPct": 37.6,
+        "gameWinPct": 30,
+        "vsBase": -1.9
+      },
+      {
+        "id": "fist",
+        "name": "Важкий кулак",
+        "rarity": "common",
+        "showdowns": 175,
+        "showdownWinPct": 44.6,
+        "gameWinPct": 30.5,
+        "vsBase": 5.1
+      },
+      {
+        "id": "insurance",
+        "name": "Чет-нечет",
+        "rarity": "common",
+        "showdowns": 157,
+        "showdownWinPct": 45.9,
+        "gameWinPct": 32.5,
+        "vsBase": 6.4
+      },
+      {
+        "id": "twin",
+        "name": "Двійник",
+        "rarity": "common",
+        "showdowns": 158,
+        "showdownWinPct": 39.2,
+        "gameWinPct": 32.5,
+        "vsBase": -0.3
+      },
+      {
+        "id": "chameleon",
+        "name": "Хамелеон",
+        "rarity": "common",
+        "showdowns": 176,
+        "showdownWinPct": 39.5,
+        "gameWinPct": 29.5,
+        "vsBase": 0
+      },
+      {
+        "id": "modest",
+        "name": "Підробка",
+        "rarity": "common",
+        "showdowns": 158,
+        "showdownWinPct": 38,
+        "gameWinPct": 29,
+        "vsBase": -1.5
+      },
+      {
+        "id": "tax",
+        "name": "Податок",
+        "rarity": "common",
+        "showdowns": 161,
+        "showdownWinPct": 31.7,
+        "gameWinPct": 28,
+        "vsBase": -7.8
+      },
+      {
+        "id": "dice",
+        "name": "Кості",
+        "rarity": "common",
+        "showdowns": 176,
+        "showdownWinPct": 38.9,
+        "gameWinPct": 31,
+        "vsBase": -0.6
+      },
+      {
+        "id": "counter",
+        "name": "Рахівник",
+        "rarity": "common",
+        "showdowns": 158,
+        "showdownWinPct": 38.6,
+        "gameWinPct": 30.5,
+        "vsBase": -0.9
+      },
+      {
+        "id": "brazen",
+        "name": "Середняк",
+        "rarity": "common",
+        "showdowns": 137,
+        "showdownWinPct": 45.3,
+        "gameWinPct": 32.5,
+        "vsBase": 5.8
+      },
+      {
+        "id": "magnet",
+        "name": "Магніт",
+        "rarity": "common",
+        "showdowns": 176,
+        "showdownWinPct": 41.5,
+        "gameWinPct": 30.5,
+        "vsBase": 2
+      },
+      {
+        "id": "temptation",
+        "name": "Аутсайдер",
+        "rarity": "common",
+        "showdowns": 128,
+        "showdownWinPct": 44.5,
+        "gameWinPct": 30.5,
+        "vsBase": 5
+      },
+      {
+        "id": "storm",
+        "name": "Буря",
+        "rarity": "rare",
+        "showdowns": 131,
+        "showdownWinPct": 45,
+        "gameWinPct": 33,
+        "vsBase": 5.5
+      },
+      {
+        "id": "swap",
+        "name": "Обмін",
+        "rarity": "rare",
+        "showdowns": 175,
+        "showdownWinPct": 43.4,
+        "gameWinPct": 34.5,
+        "vsBase": 3.9
+      },
+      {
+        "id": "shadow",
+        "name": "Тінь",
+        "rarity": "rare",
+        "showdowns": 137,
+        "showdownWinPct": 39.4,
+        "gameWinPct": 25.5,
+        "vsBase": -0.1
+      },
+      {
+        "id": "trap",
+        "name": "Пастка",
+        "rarity": "rare",
+        "showdowns": 179,
+        "showdownWinPct": 49.2,
+        "gameWinPct": 33.5,
+        "vsBase": 9.7
+      },
+      {
+        "id": "highroller",
+        "name": "Ва-банкір",
+        "rarity": "rare",
+        "showdowns": 161,
+        "showdownWinPct": 32.6,
+        "gameWinPct": 29,
+        "vsBase": -6.9
+      },
+      {
+        "id": "pocket",
+        "name": "Кишеньковий",
+        "rarity": "rare",
+        "showdowns": 158,
+        "showdownWinPct": 37,
+        "gameWinPct": 30,
+        "vsBase": -2.5
+      },
+      {
+        "id": "sharper",
+        "name": "Шулер",
+        "rarity": "rare",
+        "showdowns": 161,
+        "showdownWinPct": 41.9,
+        "gameWinPct": 31.5,
+        "vsBase": 2.4
+      },
+      {
+        "id": "luck",
+        "name": "Удача",
+        "rarity": "rare",
+        "showdowns": 158,
+        "showdownWinPct": 38.9,
+        "gameWinPct": 30,
+        "vsBase": -0.6
+      },
+      {
+        "id": "brave",
+        "name": "Сміливець",
+        "rarity": "rare",
+        "showdowns": 184,
+        "showdownWinPct": 39.9,
+        "gameWinPct": 32.5,
+        "vsBase": 0.4
+      },
+      {
+        "id": "antitrump",
+        "name": "Анти-козир",
+        "rarity": "rare",
+        "showdowns": 176,
+        "showdownWinPct": 39.2,
+        "gameWinPct": 28.5,
+        "vsBase": -0.3
+      },
+      {
+        "id": "boom",
+        "name": "Вибух",
+        "rarity": "epic",
+        "showdowns": 157,
+        "showdownWinPct": 34.7,
+        "gameWinPct": 32,
+        "vsBase": -4.8
+      },
+      {
+        "id": "coin",
+        "name": "Монетка",
+        "rarity": "epic",
+        "showdowns": 158,
+        "showdownWinPct": 38.3,
+        "gameWinPct": 34,
+        "vsBase": -1.2
+      },
+      {
+        "id": "redeal",
+        "name": "Нова роздача",
+        "rarity": "epic",
+        "showdowns": 131,
+        "showdownWinPct": 45,
+        "gameWinPct": 34,
+        "vsBase": 5.5
+      },
+      {
+        "id": "echo",
+        "name": "Ехо",
+        "rarity": "epic",
+        "showdowns": 160,
+        "showdownWinPct": 35.9,
+        "gameWinPct": 31,
+        "vsBase": -3.6
+      },
+      {
+        "id": "quake",
+        "name": "Землетрус",
+        "rarity": "epic",
+        "showdowns": 196,
+        "showdownWinPct": 36,
+        "gameWinPct": 32,
+        "vsBase": -3.5
+      },
+      {
+        "id": "castling",
+        "name": "Рокіровка",
+        "rarity": "epic",
+        "showdowns": 161,
+        "showdownWinPct": 35.4,
+        "gameWinPct": 30,
+        "vsBase": -4.1
+      },
+      {
+        "id": "frenzy",
+        "name": "Ажіотаж",
+        "rarity": "epic",
+        "showdowns": 161,
+        "showdownWinPct": 32.6,
+        "gameWinPct": 27.5,
+        "vsBase": -6.9
+      },
+      {
+        "id": "apocalypse",
+        "name": "Апокаліпсис",
+        "rarity": "legendary",
+        "showdowns": 158,
+        "showdownWinPct": 38.3,
+        "gameWinPct": 35.5,
+        "vsBase": -1.2
+      },
+      {
+        "id": "rewind",
+        "name": "Назад у часі",
+        "rarity": "legendary",
+        "showdowns": 157,
+        "showdownWinPct": 49,
+        "gameWinPct": 29.5,
+        "vsBase": 9.5
+      },
+      {
+        "id": "chaosking",
+        "name": "Король хаосу",
+        "rarity": "legendary",
+        "showdowns": 159,
+        "showdownWinPct": 40.3,
+        "gameWinPct": 28.5,
+        "vsBase": 0.8
+      },
+      {
+        "id": "duel",
+        "name": "Дуель",
+        "rarity": "legendary",
+        "showdowns": 158,
+        "showdownWinPct": 43.7,
+        "gameWinPct": 35.5,
+        "vsBase": 4.2
+      },
+      {
+        "id": "mirrorworld",
+        "name": "Задзеркалля",
+        "rarity": "legendary",
+        "showdowns": 160,
+        "showdownWinPct": 42.2,
+        "gameWinPct": 31.5,
+        "vsBase": 2.7
+      }
+    ],
+    "rarity": {
+      "common": 40.3,
+      "rare": 40.6,
+      "epic": 36.8,
+      "legendary": 42.7
+    }
+  }
+}

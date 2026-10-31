@@ -17,15 +17,21 @@ export class GameHost {
    * @param {object} [o.extra] додаткові дані для збереження (код кімнати, токен гостя)
    */
   constructor({ timers = true, persistKey = null, extra = {}, gameConfig = {}, gameOpts = {} } = {}) {
-    this.gameOpts = gameOpts; // напр. складена колода для навчання: { deck, trumps, firstToAct }
+    this.gameOpts = gameOpts; // напр. складена колода для навчання: { deck, trumps, firstToAct }, players: 2 | 3
     this.timers = timers;
     this.gameConfig = gameConfig; // напр. { maxRounds: 16 }
     this.persistKey = persistKey;
     this.extra = extra;
-    this.seats = [null, null];
-    this.connected = [false, false];
+    this.n = gameOpts.players === 3 ? 3 : 2;
+    this.seats = Array(this.n).fill(null);
+    this.connected = Array(this.n).fill(false);
     this.hidden = false;
-    this.rematch = [false, false];
+    this.rematch = Array(this.n).fill(false);
+    this.names = Array(this.n).fill(null); // публічні імена за місцями (для журналу й столу)
+    this.looks = Array(this.n).fill(null); // косметика за місцями (лише для показу)
+    this.pids = Array(this.n).fill(null); // постійні ID гравців (для рахунку зустрічей)
+    this.titles = Array(this.n).fill(null); // титули біля ніків
+    this.bots = Array(this.n).fill(false); // місця, які займає бот (бот завжди «на зв'язку» й погоджується на реванш)
     this.state = null;
     this._timer = null;
   }
@@ -41,8 +47,8 @@ export class GameHost {
   }
 
   start() {
-    this.state = createGame({ timers: this.timers, config: this.gameConfig, ...this.gameOpts }, this.ctx());
-    this.rematch = [false, false];
+    this.state = createGame({ timers: this.timers, config: this.gameConfig, ...this.gameOpts, players: this.n }, this.ctx());
+    this.rematch = Array(this.n).fill(false);
     this.refresh();
   }
 
@@ -51,7 +57,12 @@ export class GameHost {
     this.state = saved.state;
     if (saved.state?.cfg?.maxRounds) this.gameConfig = { ...this.gameConfig, maxRounds: saved.state.cfg.maxRounds };
     if (saved.state?.jokerSets) this.gameOpts = { ...this.gameOpts, jokerSets: saved.state.jokerSets };
-    this.rematch = saved.rematch || [false, false];
+    if (saved.state?.cfg?.mode) this.gameOpts = { ...this.gameOpts, mode: saved.state.cfg.mode };
+    if (saved.names) this.names = saved.names;
+    if (saved.looks) this.looks = saved.looks;
+    if (saved.pids) this.pids = saved.pids;
+    if (saved.titles) this.titles = saved.titles;
+    this.rematch = saved.rematch || Array(this.n).fill(false);
     if (this.state.timer && !this.state.timer.paused) {
       // Після перезавантаження час, що минув, не рахуємо — відновлюємо з паузи.
       const left = Math.max(3000, this.state.timer.deadline - (saved.savedAt || Date.now()));
@@ -78,7 +89,7 @@ export class GameHost {
     try {
       localStorage.setItem(
         this.persistKey,
-        JSON.stringify({ state: this.state, rematch: this.rematch, savedAt: Date.now(), ...this.extra }),
+        JSON.stringify({ state: this.state, rematch: this.rematch, names: this.names, looks: this.looks, pids: this.pids, titles: this.titles, savedAt: Date.now(), ...this.extra }),
       );
     } catch {}
   }
@@ -89,14 +100,14 @@ export class GameHost {
     if (action.type === 'rematch') {
       if (this.state.phase !== 'over') return false;
       this.rematch[p] = true;
-      if (this.rematch[0] && this.rematch[1]) this.start();
+      if (this.rematch.every(Boolean)) this.start();
       else this.commit();
       return true;
     }
     // Клієнт не може надсилати системні дії.
     if (['pause', 'resume', 'timeout'].includes(action.type)) return false;
-    const { type, cardId, amount, guess } = action;
-    const r = reduce(this.state, { type, cardId, amount, guess, player: p }, this.ctx());
+    const { type, cardId, amount, guess, target } = action;
+    const r = reduce(this.state, { type, cardId, amount, guess, target, player: p }, this.ctx());
     if (!r.ok) {
       this.seats[p]?.error?.(r.error);
       this.sendTo(p);
@@ -122,7 +133,8 @@ export class GameHost {
   /** Пауза таймерів, якщо хтось не на зв'язку. */
   syncPause() {
     if (!this.state) return;
-    const pause = this.hidden || !(this.connected[0] && this.connected[1]);
+    // Пауза, якщо хтось із тих, хто ще грає, не на зв'язку (глядачі, що вибули, гру не зупиняють)
+    const pause = this.hidden || this.connected.some((c, p) => !c && !this.state.players[p]?.out);
     const r = reduce(this.state, { type: pause ? 'pause' : 'resume' }, this.ctx());
     this.state = r.state;
   }
@@ -153,12 +165,18 @@ export class GameHost {
   }
 
   message(p) {
+    const others = this.connected.map((_, q) => q).filter((q) => q !== p);
     return {
       view: viewFor(this.state, p, Date.now()),
       meta: {
-        oppConnected: this.connected[1 - p],
+        oppConnected: others.every((q) => this.connected[q]),
+        connected: this.connected.slice(),
+        names: this.names.slice(),
+        looks: this.looks.slice(),
+        pids: this.pids.slice(),
+        titles: this.titles.slice(),
         paused: !!this.state.timer?.paused,
-        rematch: { me: this.rematch[p], opp: this.rematch[1 - p] },
+        rematch: { me: this.rematch[p], opp: others.some((q) => this.rematch[q]), all: this.rematch.slice() },
       },
     };
   }
@@ -168,17 +186,17 @@ export class GameHost {
   }
 
   broadcast() {
-    this.sendTo(0);
-    this.sendTo(1);
+    for (let p = 0; p < this.n; p++) this.sendTo(p);
   }
 
+  /** Реакції бачать усі за столом, зокрема глядачі, що вибули. */
   relayReaction(from, emoji) {
-    this.seats[1 - from]?.reaction?.(emoji);
+    for (let q = 0; q < this.n; q++) if (q !== from) this.seats[q]?.reaction?.(emoji, from);
   }
 
   stop() {
     clearTimeout(this._timer);
-    this.seats = [null, null];
+    this.seats = Array(this.n).fill(null);
   }
 }
 
@@ -194,36 +212,44 @@ export class BotSeat {
   }
 
   deliver({ view, meta }) {
-    clearTimeout(this._t);
     if (view.phase === 'over') {
-      if (!meta.rematch.me && meta.rematch.opp) this._t = setTimeout(() => this.host.dispatch(this.p, { type: 'rematch' }), 700);
+      clearTimeout(this._t); this._t = null;
+      if (!meta.rematch.me && meta.rematch.opp) this._t = setTimeout(() => { this._t = null; this.host.dispatch(this.p, { type: 'rematch' }); }, 700);
       return;
     }
-    if (meta.paused && view.timer) return;
-    const action = botDecide(view, this.rng, this.style);
-    if (!action) return;
-    const delay = view.phase === 'play' ? 700 + this.rng() * 1600
-      : view.phase === 'result' ? (view.result?.don?.pending ? 1800 : 1400) + this.rng() * 1200
-      : 600 + this.rng() * 1400;
-    const seq = view.seq;
-    this._t = setTimeout(() => {
-      if (this.host.state?.seq !== seq) return;
-      this.host.dispatch(this.p, action);
-    }, delay);
+    if (view.me.out) return; // вибув — лише дивиться
     // Іноді реакція на результат раунду
     if (view.phase === 'result' && view.round !== this._lastRound && view.result) {
       this._lastRound = view.round;
-      if (this.rng() < 0.45) {
+      if (this.rng() < (this.host.n > 2 ? 0.3 : 0.45)) {
         const won = view.result.winner === this.p;
-        const pool = view.result.winner === null ? ['😱', '🤡'] : won ? ['😎', '😂', '🔥'] : ['😱', '👏', '🤡'];
+        const pool = view.result.winner === null ? ['😱', '🤡', 'Ой-ой'] : won ? ['😎', '😂', '🔥', 'Щастить же!'] : ['😱', '👏', '🤡', 'Ну ти даєш!', 'Ще побачимо'];
         const emoji = pool[Math.floor(this.rng() * pool.length)];
         setTimeout(() => this.host.relayReaction(this.p, emoji), 500 + this.rng() * 800);
       }
     }
+    if (meta.paused && view.timer) { clearTimeout(this._t); this._t = null; return; }
+    if (!view.legal.length) { clearTimeout(this._t); this._t = null; return; }
+    // Уже «думаємо» — не скидаємо паузу через чужі ходи; рішення приймемо за актуальним станом
+    if (this._t && this._phase === view.phase && this._round === view.round) return;
+    clearTimeout(this._t);
+    this._phase = view.phase;
+    this._round = view.round;
+    const delay = view.phase === 'play' ? 700 + this.rng() * 1600
+      : view.phase === 'result' ? (view.result?.don?.pending ? 1800 : 1400) + this.rng() * 1200
+      : 600 + this.rng() * 1400;
+    this._t = setTimeout(() => {
+      this._t = null;
+      if (!this.host.state || this.host.state.phase === 'over') return;
+      const m = this.host.message(this.p);
+      if (m.meta.paused && m.view.timer) return;
+      const action = botDecide(m.view, this.rng, this.style);
+      if (action) this.host.dispatch(this.p, action);
+    }, delay);
   }
 
   reaction(emoji) {
-    if (this.rng() < 0.3) setTimeout(() => this.host.relayReaction(this.p, emoji === '😂' ? '🤡' : '😂'), 900);
+    if (this.rng() < (this.host.n > 2 ? 0.15 : 0.3)) setTimeout(() => this.host.relayReaction(this.p, emoji === '😂' ? '🤡' : '😂'), 900);
   }
 
   stop() {

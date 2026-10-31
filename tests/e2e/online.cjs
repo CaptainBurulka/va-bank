@@ -7,19 +7,29 @@ const fs = require('fs');
   await ctx.addInitScript({ content: fs.readFileSync(require('path').join(__dirname, 'mockpeer.js'),'utf8') });
   await ctx.route('**/vendor/peerjs.min.js', r => r.fulfill({ body: '/* mocked */', contentType: 'application/javascript' }));
   const A = await ctx.newPage(), B = await ctx.newPage();
+
+  // «Грати з другом»: за потреби ввести нік (перед першою онлайн-грою гра питає)
+  const friend = async (P, nick) => {
+    await P.click('[data-go="friend"]');
+    await P.waitForSelector('#modal:not(.hidden)');
+    if (await P.isVisible('#nick-ask')) { await P.fill('#nick-ask', nick); await P.click('#modal-btns .btn.primary'); await P.waitForTimeout(150); }
+  };
   const errs=[]; for (const [n,p] of [['A',A],['B',B]]) p.on('pageerror', e => errs.push(n+': '+e.message));
   await A.goto('http://localhost:8080/'); await B.goto('http://localhost:8080/');
   for (const P of [A, B]) await P.evaluate(() => localStorage.setItem('vabank-tutorial', 'done'));
   // профіль гостя: сапфірова сорочка і набір джокерів
   await B.evaluate(() => localStorage.setItem('vabank-profile', JSON.stringify({ v: 1, jokers: { storm: 1, boom: 1, coin: 1 }, cosmetics: { back_sapphire: true }, equipped: { back: 'back_sapphire' }, set: ['storm', 'boom', 'coin'] })));
   await B.reload(); await B.waitForTimeout(500);
-  await A.click('[data-go="friend"]'); await A.click('#modal-btns .btn.primary'); await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
+  await friend(A, 'Хост'); await A.click('#modal-btns .btn.primary'); await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-rounds button:last-child'); // 16 раундів — щоб партія не скінчилась посеред тесту
   const code = (await A.textContent('#room-code')).trim();
   console.log('code', code);
-  await B.click('[data-go="friend"]'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code); await B.click('#btn-join');
+  await friend(B, 'Оля'); await B.click('#modal-btns .btn.secondary'); await B.fill('#join-code', code); await B.click('#btn-join');
   await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }); await A.waitForTimeout(500);
   console.log('A screen game:', await A.isVisible('#scr-game'), 'B:', await B.isVisible('#scr-game'));
+  console.log('A бачить нік:', await A.textContent('#opp-name'), '| B бачить нік:', await B.textContent('#opp-name'));
+  console.log('інтро з рахунком:', await A.isVisible('.intro'), (await A.textContent('.intro').catch(() => '')).replace(/\s+/g, ' ').slice(0, 60));
+  await A.click('.intro').catch(() => {}); await B.click('.intro').catch(() => {});
   // Перевірка: B не має карт A у DOM
   const aHand = await A.$$eval('#hand .card', els => els.map(e => e.dataset.id));
   const bHtml = await B.content();
@@ -62,6 +72,9 @@ const fs = require('fs');
   for (let i=0;i<40;i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   await A.click('#btn-rematch'); await B.waitForTimeout(500);
+  console.log('рахунок у профілі A:', await A.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vabank-profile')).rivals).map((r) => `${r.name} ${r.wins}:${r.losses}`)));
+  console.log('момент партії:', (await A.textContent('#end-moment')).replace(/\s+/g, ' '));
+  await A.screenshot({ path: require('path').join(require('os').tmpdir(), 'onA-end.png') });
   console.log('B rematch status:', await B.textContent('#rematch-status'));
   await B.click('#btn-rematch'); await A.waitForTimeout(800);
   console.log('after rematch A', await A.isVisible('#scr-game'), await A.textContent('#round-tag'), await A.textContent('#me-chips'), 'B', await B.isVisible('#scr-game'));

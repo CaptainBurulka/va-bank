@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '3.0.1'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '4.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 2,             // версія правил (для бота і симуляцій)
@@ -32,6 +32,13 @@ export const CONFIG = Object.freeze({
   // Приклад: { urls: 'turn:turn.example.com:3478', username: 'user', credential: 'pass' }
   turn: null,
   logSize: 40,
+  // Гра на трьох: власні числа (режим на двох їх не бачить). Підібрано симуляціями tools/simulate3.js:
+  // перший гравець вибуває в середньому не раніше ~2/3 партії, перемоги за місцями 28–38%.
+  three: Object.freeze({
+    startChips: 180,         // більше фішок: утрьох банки більші, а вибувати рано — нудно
+    allinFreeFromRound: 8,   // до 8-го раунду ва-банк не більший за банк
+    anteEvery: 6,            // анте росте повільніше: 5 → 10 кожні 6 раундів
+  }),
   // Стилі бота (рівні складності і гравці для симуляцій). Пороги — оцінка шансу виграти 0..1.
   botStyles: Object.freeze({
     cautious: Object.freeze({ jokerPlay: 0.4, raiseAt: 0.72, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.32, bluff: 0.03, scoutProb: 0.45, donStart: 0.25, donMinP: 0.75, swapMax: 3, swapProb: 0.7, playStrong: 0.3, playWeak: 0.15, showProb: 0.1 }),
@@ -44,21 +51,24 @@ export const CONFIG = Object.freeze({
 export const JOKER_TUNING = Object.freeze({
   turncoat: { power: 6 },
   roulette: { max: 12 },
-  thief: { power: 2, steal: 10 },
+  thief: { power: 5 },
   fist: { power: 7, fee: 10, loseTie: true },
-  insurance: { power: 2 },
+  insurance: { power: 2, high: 11 },
   chameleon: { power: 5 },
-  modest: { power: 6 },
+  modest: { bias: 0 },
   tax: { power: 6, fee: 5 },
+  twin: { plus: 0 },
   dice: { minus: 1 },
   counter: { plus: 1 },
-  brazen: { power: 6, fine: 5 },
+  brazen: { power: 5, target: 7 },
   magnet: { power: 7 },
-  temptation: { power: 6, pct: 30 },
+  temptation: { power: 4, step: 10, max: 12 },
   shadow: { power: 6, scouted: 10 },
-  trap: { power: 2 },
+  trap: { power: 0 },
+  swap: { oppBonus: 0 },
+  pocket: { tries: 1 },
   highroller: { power: 6 },
-  sharper: { power: 5, alt: 6 },
+  sharper: { power: 4, alt: 6 },
   luck: { high: 9, low: 1 },
   brave: { power: 5, perRaise: 2 },
   antitrump: { power: 6 },
@@ -68,17 +78,90 @@ export const JOKER_TUNING = Object.freeze({
   echo: { power: 6 },
   storm: { oppBonus: 0 },
   redeal: { oppBonus: 0 },
-  castling: { power: 6 },
+  castling: { power: 6, myTie: true },
+});
+
+// Гра втрьох: ті самі ідеї джокерів, інші числа (треба побити двох суперників). Решта — як для двох.
+export const JOKER_TUNING_3 = Object.freeze({
+  turncoat: { power: 7 },
+  fist: { power: 9, fee: 14 },
+  insurance: { power: 1, high: 12 },
+  twin: { plus: 1 },
+  chameleon: { power: 7 },
+  modest: { bias: 1 },
+  tax: { power: 8 },
+  dice: { minus: 0 },
+  counter: { plus: 3 },
+  brazen: { power: 6 },
+  magnet: { power: 9 },
+  temptation: { power: 2, step: 15 },
+  storm: { oppBonus: -1 },
+  shadow: { power: 8 },
+  thief: { power: 7 },
+  trap: { power: 3 },
+  swap: { oppBonus: 1 },
+  castling: { power: 8, myTie: false },
+  mirrorworld: { power: 6 },
+  highroller: { power: 8 },
+  pocket: { tries: 2 },
+  sharper: { power: 7, alt: 8 },
+  luck: { high: 11, low: 1 },
+  brave: { power: 7 },
+  antitrump: { power: 8 },
+  echo: { power: 8 },
+  quake: { power: 8 },
+  frenzy: { power: 8 },
+  redeal: { oppBonus: -1 },
 });
 
 // Коли роздаються джокери: один і той самий випадковий раунд для обох
 export const JOKER_DEAL = Object.freeze({ fromRound: 3, toRound: 7, setSize: 3 });
 
+// ───────── Відчуття гри: коли раунд «гарячий» (великий банк або ва-банк) ─────────
+export const FEEL = Object.freeze({
+  hotPot: 50,        // банк від стількох фішок…
+  hotShare: 0.3,     // …або від такої частки всіх фішок за столом
+  tensionMs: 1100,   // пауза-напруга перед розкриттям у гарячому раунді
+  weakCard: 3,       // перемога картою з номіналом до цього — «слабкою картою!»
+  bluffCard: 4,      // пас суперника на мою карту до цього номіналу — «блеф пройшов!»
+});
+
+// ───────── Режими-модифікатори: лише пресети наявних налаштувань (для 2 і 3 гравців) ─────────
+// preset(n, cfg) повертає зміни налаштувань поверх звичайних (cfg — уже з урахуванням гри втрьох).
+export const MODES = Object.freeze({
+  classic: Object.freeze({ name: 'Класика', icon: '♠️', desc: 'Звичайні правила', preset: () => ({}) }),
+  chaos: Object.freeze({ name: 'Ніч хаосу', icon: '🌪️', desc: 'Джокери з 1-го раунду, по 2 на гравця', preset: () => ({ jokerFrom: 1, jokerTo: 1, jokersPerPlayer: 2 }) }),
+  blitz: Object.freeze({ name: 'Бліц', icon: '⚡', desc: '8 раундів, анте росте вдвічі швидше', preset: (n, c) => ({ maxRounds: 8, anteEvery: Math.max(1, Math.round(c.anteEvery / 2)) }) }),
+  blind: Object.freeze({ name: 'Сліпа гра', icon: '🙈', desc: 'Без розвідки', preset: (n, c) => ({ features: { ...c.features, scout: false } }) }),
+  highstakes: Object.freeze({ name: 'Великі ставки', icon: '💎', desc: 'Старт 50 фішок, програний «подвій» кидає в джекпот удвічі більше', preset: () => ({ startChips: 50, jackpotMult: 2 }) }),
+});
+export const MODE_IDS = Object.freeze(Object.keys(MODES));
+
+// ───────── Суперництво: титули, рахунок зустрічей, «момент партії» ─────────
+export const RIVALS = Object.freeze({
+  keep: 50, // скільки суперників пам'ятати (найдавніші відпадають)
+  titles: Object.freeze({
+    shark: Object.freeze({ wins: 20, rate: 0.6 }),
+    bluffking: Object.freeze({ total: 10, perGame: 0.8 }),
+    kamikaze: Object.freeze({ lost: 8 }),
+    lucky: Object.freeze({ won: 12 }),
+    allin: Object.freeze({ wins: 6 }),
+    rock: Object.freeze({ games: 10, foldsPerGame: 0.6 }),
+    spy: Object.freeze({ games: 8, perGame: 2 }),
+    jester: Object.freeze({ jokers: 15 }),
+  }),
+  // вага кандидатів у «момент партії»
+  moment: Object.freeze({ pot: 1, bluff: 40, bluffWeak: 40, legend: 150, don: 30, tie3: 60, comeback: 120, comebackFrom: 0.2 }),
+});
+
 // ───────── Прогресія: бали, магазин, автомат, уламки (лише віртуальні, без реальних грошей) ─────────
 export const META = Object.freeze({
-  schema: 1,
+  schema: 2,
   // Бали за партію: участь + бонус за перемогу (слабший гравець теж прогресує)
-  points: Object.freeze({ play: 40, win: 40, firstWinOfDay: 60, mult: Object.freeze({ online: 1, bot: 0.3, hotseat: 0.3 }) }),
+  points: Object.freeze({ play: 40, win: 40, firstWinOfDay: 60, mult: Object.freeze({ online: 1, bot: 0.3, hotseat: 0.3 }),
+    // гра втрьох: бонус за місце (1-ше, 2-ге, 3-тє) замість бонусу за перемогу
+    place3: Object.freeze([40, 15, 0]),
+    modeOfDay: 30 }), // бонус за партію в режимі дня (× множник режиму гри)
   // Ціни в магазині. Джокер: звичайний ≈ 2 партії, рідкісний ≈ 4, епічний ≈ 8 (у середньому ~60 балів за партію з другом)
   prices: Object.freeze({
     joker: Object.freeze({ common: 120, rare: 240, epic: 480 }),
