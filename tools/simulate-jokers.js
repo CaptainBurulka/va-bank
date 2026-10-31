@@ -48,8 +48,9 @@ export function simulateJokers(gamesPer = 400) {
   const games = { on: [], off: [] };
   const gameWin = {};
   let seed = 1;
-  for (const j of JOKERS) { per[j.id] = { n: 0, sum: 0 }; gameWin[j.id] = { n: 0, w: 0 }; }
+  for (const j of JOKERS) { per[j.id] = { n: 0, sum: 0, sn: 0, ssum: 0 }; gameWin[j.id] = { n: 0, w: 0 }; }
   for (const j of JOKERS) {
+    if (process.env.ONLY && !process.env.ONLY.split(",").includes(j.id)) continue;
     for (let g = 0; g < gamesPer; g++) {
       const other = JOKERS[(g * 7 + 3) % JOKERS.length].id;
       const { s, plays } = playGame(seed++, [[j.id], [other]]);

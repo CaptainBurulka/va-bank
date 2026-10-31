@@ -36,8 +36,12 @@ export const JOKERS = [
     desc: `Сила ${T.thief.power}. За будь-якого результату забираєш у суперника ${T.thief.steal} фішок.`,
     apply: (api) => api.after(() => { const n = api.transfer(api.opp, api.me, T.thief.steal); api.note(`Злодій поцупив ${n}`); }) },
   { id: 'fist', name: 'Важкий кулак', rarity: 'common', icon: '👊', power: T.fist.power, stage: 'power',
-    desc: `Сила ${T.fist.power} без масті, нічию програє.`,
-    apply: (api) => { if (isMine(api)) api.X.loseTie[api.me] = true; api.note(`Важкий кулак: сила ${T.fist.power}`); } },
+    desc: `Сила ${T.fist.power} без масті, нічию програє; удар коштує ${T.fist.fee} фішки в джекпот.`,
+    apply: (api) => {
+      if (isMine(api) && T.fist.loseTie) api.X.loseTie[api.me] = true;
+      api.note(`Важкий кулак: сила ${T.fist.power}`);
+      if (T.fist.fee) api.after(() => api.burn(api.me, T.fist.fee));
+    } },
   { id: 'insurance', name: 'Страховка', rarity: 'common', icon: '☂️', power: T.insurance.power, stage: 'power',
     desc: `Сила ${T.insurance.power}. Якщо програєш — твоя частина банку повертається тобі.`,
     apply: (api) => api.after(({ winner }) => {
@@ -93,7 +97,7 @@ export const JOKERS = [
 
   // ───── Рідкісні: змінюють ситуацію за столом ─────
   { id: 'storm', name: 'Буря', rarity: 'rare', icon: '🌪️', stage: 'replace',
-    desc: `Обидві карти замінюються випадковими з колоди (карта суперника +${T.storm.oppBonus}).`,
+    desc: `Обидві карти замінюються випадковими з колоди${T.storm.oppBonus ? ` (карта суперника +${T.storm.oppBonus})` : ''}.`,
     apply: (api) => {
       api.X.cards = [api.drawNum(), api.drawNum()]; api.X.pow = [null, null];
       if (T.storm.oppBonus) api.mod((pw) => { pw[api.opp] += T.storm.oppBonus; });
@@ -128,8 +132,13 @@ export const JOKERS = [
       api.note('Кишеньковий витяг карту з руки суперника');
     } },
   { id: 'sharper', name: 'Шулер', rarity: 'rare', icon: '🎩', power: T.sharper.power, stage: 'power',
-    desc: `Сила ${T.sharper.power}, нічию виграє.`,
-    apply: (api) => { if (isMine(api)) api.X.winTie[api.me] = true; api.note(`Шулер: сила ${T.sharper.power}, нічия — його`); } },
+    desc: `Сила ${T.sharper.power} або ${T.sharper.alt} (50/50), нічию виграє.`,
+    apply: (api) => {
+      const v = api.rng() < 0.5 ? T.sharper.power : T.sharper.alt;
+      setPow(api, v);
+      if (isMine(api)) api.X.winTie[api.me] = true;
+      api.note(`Шулер: сила ${v}, нічия — його`);
+    } },
   { id: 'luck', name: 'Удача', rarity: 'rare', icon: '🍀', stage: 'power',
     desc: `50 на 50: сила ${T.luck.high} або ${T.luck.low}.`,
     apply: (api) => { const v = api.rng() < 0.5 ? T.luck.high : T.luck.low; setPow(api, v); api.note(v === T.luck.high ? `Удача всміхнулась: сила ${v}` : `Удача відвернулась: сила ${v}`); } },
@@ -152,7 +161,7 @@ export const JOKERS = [
       api.X.coin = true; api.note('Монетка: банк подвоєно, вирішує підкидання');
     } },
   { id: 'redeal', name: 'Нова роздача', rarity: 'epic', icon: '🃏', stage: 'replace',
-    desc: `Обидва скидають руки; розкриваються верхні карти колоди (суперникові +${T.redeal.oppBonus}).`,
+    desc: `Обидва скидають руки; розкриваються верхні карти колоди${T.redeal.oppBonus ? ` (суперникові +${T.redeal.oppBonus})` : ''}.`,
     apply: (api) => {
       api.dumpHand(0); api.dumpHand(1); api.X.cards = [api.drawNum(), api.drawNum()]; api.X.pow = [null, null];
       if (T.redeal.oppBonus) api.mod((pw) => { pw[api.opp] += T.redeal.oppBonus; });
@@ -195,10 +204,10 @@ export const JOKERS = [
       api.note(`ДУЕЛЬ: ${sums[0]} проти ${sums[1]}`);
     } },
   { id: 'mirrorworld', name: 'Задзеркалля', rarity: 'legendary', icon: '🪞', power: T.mirrorworld.power, stage: 'replace',
-    desc: 'Ставки подвоюються, перемагає менша карта, а козир дає −1.',
+    desc: `Ставки подвоюються, перемагає менша карта, а козир дає ${T.mirrorworld.trump}.`,
     apply: (api) => {
       const a = api.pay(api.me, api.contrib(api.me)), b = api.pay(api.opp, api.contrib(api.opp));
-      api.X.lowWins = !api.X.lowWins; api.X.trumpDelta = [-1, -1];
+      api.X.lowWins = !api.X.lowWins; api.X.trumpDelta = [T.mirrorworld.trump, T.mirrorworld.trump];
       api.note(`ЗАДЗЕРКАЛЛЯ: банк +${a + b}, перемагає менша`);
     } },
 ];

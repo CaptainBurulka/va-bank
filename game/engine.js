@@ -211,7 +211,7 @@ function updateBiggest(s, p, amount) {
 function enterResult(s, ctx, winner, reason, detail = null, winnerCard = null) {
   s.phase = 'result';
   s.bet = null;
-  const res = { winner, reason, won: 0, penalty: 0, revealed: reason === 'showdown', bluff: false, don: null, detail };
+  const res = { winner, reason, won: 0, penalty: 0, revealed: reason === 'showdown' || reason === 'void' || reason === 'replay', bluff: false, don: null, detail };
   if (winner === null) {
     res.carry = s.pot;
     log(s, { t: 'tie', pot: s.pot, cards: [s.players[0].played, s.players[1].played], detail });

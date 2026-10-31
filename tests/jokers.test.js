@@ -135,8 +135,8 @@ test('Кишеньковий: випадкова карта з руки супе
   assert.ok(['f3', 's5', 's8'].includes(c.id));
   assert.equal(s.players[1].hand.length, 2, 'суперник втратив карту');
 });
-test('Шулер: нічию виграє', () => { assert.equal(duel({ j0: 'sharper', c1: 's5' }).result.winner, 0); });
-test('Удача: 10 або 1', () => { const s = duel({ j0: 'luck' }); assert.match(notes(s), /сила (10|1)\b/); });
+test('Шулер: сила 5 або 6, нічию виграє', () => { assert.equal(duel({ j0: 'sharper', c1: 's5' }).result.winner, 0); });
+test('Удача: висока або низька сила', () => { const s = duel({ j0: 'luck' }); assert.match(notes(s), new RegExp(`сила (${T.luck.high}|${T.luck.low})\\b`)); });
 test('Сміливець: +2 за кожне підняття', () => {
   const s = duel({ j0: 'brave', c1: 's8', bets: [act('raise', 0, { amount: 5 }), act('raise', 1, { amount: 5 }), act('call', 0)] });
   assert.match(notes(s), new RegExp(`сила ${T.brave.power + 2 * T.brave.perRaise}\\b`));
