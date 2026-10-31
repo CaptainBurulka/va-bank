@@ -3,7 +3,7 @@
 // (повз HTTP-кеш браузера) і більше не переписуються по одному — інакше після деплою в кеші могла
 // опинитися мішанина файлів двох версій, і модулі не завантажувались («гра висить у меню»).
 // Версія кешу = APP_VERSION із config.js (перевіряє тест). Змінюйте разом із кожним релізом.
-const CACHE = 'vabank-4.0.1';
+const CACHE = 'vabank-4.0.2';
 const FONTS = ['playfair-display-cyrillic-700', 'playfair-display-latin-700', 'playfair-display-cyrillic-900', 'playfair-display-latin-900',
   'manrope-cyrillic-500', 'manrope-latin-500', 'manrope-cyrillic-700', 'manrope-latin-700', 'manrope-cyrillic-800', 'manrope-latin-800']
   .map((f) => `fonts/${f}-normal.woff2`);
