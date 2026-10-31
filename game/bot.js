@@ -101,11 +101,14 @@ export function botDecide(view, rng = Math.random, style = 'aggressive') {
     case 'result': {
       const r = view.result;
       // Нові правила: спершу відкривається база, потім вибір із шансами
-      if (r?.don?.pending && has('don')) {
+      if (r?.don?.pending) {
         const o = r.don.pending.odds;
-        const pick = o.higher.p * o.higher.m >= o.lower.p * o.lower.m ? 'higher' : 'lower';
-        if (o[pick].m <= 1) return { type: 'don', guess: o.higher.p >= o.lower.p ? 'higher' : 'lower' };
-        return { type: 'don', guess: pick };
+        const opts = legal.filter((a) => a.type === 'don');
+        if (!opts.length) return { type: 'ready' };
+        // Обираємо варіант із більшим шансом; обережний відмовляється, якщо шанс малий
+        const best = opts.reduce((x, y) => (o[y.guess].p > o[x.guess].p ? y : x));
+        if (o[best.guess].p < P.donMinP - 0.1) return { type: 'ready' };
+        return { type: 'don', guess: best.guess };
       }
       if (has('donStart')) {
         if (rng() < P.donStart) return { type: 'donStart' };

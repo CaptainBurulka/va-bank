@@ -24,8 +24,11 @@ export function stackedDeck(ids) {
   return [...top, ...all.filter((c) => !ids.includes(c.id))];
 }
 
+/** Нова партія зі складеною колодою. Козир за замовчуванням вимкнено (trumps: ['fire'] — увімкнути). */
 export function newGame(ids = [], opts = {}) {
-  return createGame({ deck: stackedDeck(ids), firstToAct: 0, ...opts }, ctx());
+  const { config = {}, trumps, ...rest } = opts;
+  const features = { trump: !!trumps, swap: true, ...(config.features || {}) };
+  return createGame({ deck: stackedDeck(ids), firstToAct: 0, trumps, ...rest, config: { ...config, features } }, ctx());
 }
 
 /** Послідовно застосовує дії; кидає помилку, якщо якась невалідна. */

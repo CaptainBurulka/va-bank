@@ -2,25 +2,30 @@
 // Усі випадкові рішення беруться з ctx.rng(), час — з ctx.now.
 
 import { CONFIG } from '../config.js';
-import { buildDeck, shuffle, compareCards, cardValue } from './cards.js';
+import { buildDeck, shuffle, compareDetail, scoutClass, donOdds, SUITS } from './cards.js';
 
-export const STATE_VERSION = 1;
-export const PHASES = ['play', 'scout', 'bet', 'result', 'over'];
+export const STATE_VERSION = 2;
 
 const other = (p) => 1 - p;
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
 function newStats() {
-  return { biggestPot: 0, bluffs: 0, donWon: 0, donLost: 0, roundsWon: 0, scouts: 0, folds: 0 };
+  return { biggestPot: 0, bluffs: 0, donWon: 0, donLost: 0, donPush: 0, roundsWon: 0, scouts: 0, folds: 0, swaps: 0 };
+}
+
+/** Анте для раунду: 5 → 10 → 15 → … кожні anteEvery раундів. */
+export function anteFor(round, cfg) {
+  return cfg.anteBase + cfg.anteStep * Math.floor((round - 1) / cfg.anteEvery);
 }
 
 /**
  * Створює нову партію і одразу починає перший раунд.
- * @param {object} opts { config?, timers?: boolean, deck?: card[] (для тестів, без перетасування) }
+ * @param {object} opts { config?, timers?: boolean, deck?: card[] (для тестів), firstToAct?, trumps?: string[] (для тестів) }
  * @param {object} ctx { rng, now }
  */
 export function createGame(opts = {}, ctx) {
   const cfg = { ...CONFIG, ...(opts.config || {}) };
+  cfg.features = { trump: true, swap: true, ...(CONFIG.features || {}), ...(opts.config?.features || {}) };
   const deck = opts.deck ? clone(opts.deck) : shuffle(buildDeck(), ctx.rng);
   const s = {
     v: STATE_VERSION,
@@ -32,10 +37,15 @@ export function createGame(opts = {}, ctx) {
     discard: [],
     pot: 0,
     carry: 0,
+    jackpot: 0,
+    trump: null,
+    fixedTrumps: opts.trumps || null,
+    contrib: [0, 0],
     players: [0, 1].map(() => ({
       chips: cfg.startChips,
       hand: [],
       played: null,
+      swapped: false,
       scouted: false,
       scoutDecided: false,
       scoutSeen: null,
@@ -64,20 +74,39 @@ function log(s, entry) {
   if (s.log.length > s.cfg.logSize) s.log.splice(0, s.log.length - s.cfg.logSize);
 }
 
+function reshuffle(s, ctx) {
+  s.deck = s.deck.concat(shuffle(s.discard, ctx.rng));
+  s.discard = [];
+  log(s, { t: 'reshuffle' });
+}
+
 function drawCard(s, ctx) {
   if (s.deck.length === 0) {
     if (s.discard.length === 0) return null;
-    s.deck = shuffle(s.discard, ctx.rng);
-    s.discard = [];
-    log(s, { t: 'reshuffle' });
+    reshuffle(s, ctx);
   }
   return s.deck.shift();
+}
+
+/** Наступна числова карта (спецкарти йдуть у відбій). Для «подвій або нічого». */
+function drawNumeric(s, ctx) {
+  for (let guard = 0; guard < 80; guard++) {
+    if (!s.deck.some((c) => c.kind === 'num')) {
+      if (!s.discard.some((c) => c.kind === 'num')) return null;
+      reshuffle(s, ctx);
+    }
+    const c = s.deck.shift();
+    if (c.kind === 'num') return c;
+    s.discard.push(c);
+  }
+  return null;
 }
 
 function pay(s, p, amount) {
   const a = Math.max(0, Math.min(amount, s.players[p].chips));
   s.players[p].chips -= a;
   s.pot += a;
+  s.contrib[p] += a;
   return a;
 }
 
@@ -100,17 +129,22 @@ function setTimer(s, phase, ctx) {
 function startRound(s, ctx, first = false) {
   s.round += 1;
   s.carry = s.pot;
-  if (!first) {
-    if (s.lastLoser !== null) s.firstToAct = s.lastLoser;
-  }
+  if (!first && s.lastLoser !== null) s.firstToAct = s.lastLoser;
   s.result = null;
   s.bet = null;
+  s.contrib = [0, 0];
+  if (s.pot === 0) s.jackpot = 0;
   for (const pl of s.players) {
-    Object.assign(pl, { played: null, scouted: false, scoutDecided: false, scoutSeen: null, shown: false, ready: false });
+    Object.assign(pl, { played: null, swapped: false, scouted: false, scoutDecided: false, scoutSeen: null, shown: false, ready: false });
   }
-  log(s, { t: 'round' });
+  // Козир раунду
+  s.trump = s.cfg.features.trump
+    ? (s.fixedTrumps ? s.fixedTrumps[(s.round - 1) % s.fixedTrumps.length] : SUITS[Math.floor(ctx.rng() * SUITS.length)])
+    : null;
+  log(s, { t: 'round', trump: s.trump });
+  const ante = anteFor(s.round, s.cfg);
   for (const p of [0, 1]) {
-    const a = pay(s, p, s.cfg.ante);
+    const a = pay(s, p, ante);
     log(s, { t: 'ante', p, amount: a });
   }
   for (const p of [0, 1]) {
@@ -144,18 +178,19 @@ function updateBiggest(s, p, amount) {
   s.stats[p].biggestPot = Math.max(s.stats[p].biggestPot, amount);
 }
 
-function enterResult(s, ctx, winner, reason) {
+function enterResult(s, ctx, winner, reason, detail = null) {
   s.phase = 'result';
   s.bet = null;
-  const res = { winner, reason, won: 0, penalty: 0, revealed: reason === 'showdown', bluff: false, don: null };
+  const res = { winner, reason, won: 0, penalty: 0, revealed: reason === 'showdown', bluff: false, don: null, detail };
   if (winner === null) {
     res.carry = s.pot;
-    log(s, { t: 'tie', pot: s.pot, cards: [s.players[0].played, s.players[1].played] });
+    log(s, { t: 'tie', pot: s.pot, cards: [s.players[0].played, s.players[1].played], detail });
   } else {
     const loser = other(winner);
     const potAmount = s.pot;
     s.players[winner].chips += potAmount;
     s.pot = 0;
+    s.jackpot = 0;
     if (reason === 'showdown' && s.players[winner].played.kind === 'double') {
       res.penalty = transfer(s, loser, winner, potAmount);
     }
@@ -165,13 +200,23 @@ function enterResult(s, ctx, winner, reason) {
     updateBiggest(s, winner, res.won);
     if (reason === 'fold') {
       // Вдалий блеф: суперник спасував, хоча його карта була сильніша.
-      res.bluff = compareCards(s.players[winner].played, s.players[loser].played, s.cfg) < 0;
+      res.bluff = compareDetail(s.players[winner].played, s.players[loser].played, s.cfg, s.trump).cmp < 0;
       if (res.bluff) s.stats[winner].bluffs += 1;
       s.stats[loser].folds += 1;
     }
-    res.don = { stake: res.won, attempts: [], done: false };
+    // Ризикувати можна лише чистим виграшем: тим, що вніс суперник (+ штраф «Подвоєння»).
+    const stake = s.contrib[loser] + res.penalty;
+    if (stake > 0) {
+      res.don = {
+        stake,
+        attempts: [],
+        done: false,
+        pending: null,
+        maxAttempts: s.round >= s.cfg.don.secondFromRound ? 2 : 1,
+      };
+    }
     if (reason === 'showdown') {
-      log(s, { t: 'showdown', p: winner, amount: res.won, penalty: res.penalty, cards: [s.players[0].played, s.players[1].played] });
+      log(s, { t: 'showdown', p: winner, amount: res.won, penalty: res.penalty, cards: [s.players[0].played, s.players[1].played], detail });
     } else {
       log(s, { t: 'foldwin', p: winner, amount: res.won });
     }
@@ -180,7 +225,17 @@ function enterResult(s, ctx, winner, reason) {
   setTimer(s, 'result', ctx);
 }
 
+function cancelPending(s) {
+  const d = s.result?.don;
+  if (d?.pending) {
+    s.discard.push(d.pending.base);
+    d.pending = null;
+    d.done = true;
+  }
+}
+
 function endRound(s, ctx) {
+  cancelPending(s);
   for (const pl of s.players) {
     if (pl.played) s.discard.push(pl.played);
     pl.played = null;
@@ -191,7 +246,8 @@ function endRound(s, ctx) {
   }
   if (s.round >= s.cfg.maxRounds) {
     if (s.pot > 0) {
-      // Нічия в останньому раунді: банк ділиться навпіл, непарна фішка — тому, в кого менше.
+      // Банк лишився (нічия чи джекпот) після останнього раунду: ділиться навпіл,
+      // непарна фішка — тому, в кого менше.
       const half = Math.floor(s.pot / 2);
       const poorer = s.players[0].chips <= s.players[1].chips ? 0 : 1;
       s.players[0].chips += half;
@@ -199,6 +255,7 @@ function endRound(s, ctx) {
       s.players[poorer].chips += s.pot - half * 2;
       log(s, { t: 'split', amount: s.pot });
       s.pot = 0;
+      s.jackpot = 0;
     }
     return finish(s, 'rounds');
   }
@@ -217,7 +274,16 @@ function finish(s, reason) {
 function maxRaiseFor(s, p) {
   const me = s.players[p];
   const opp = s.players[other(p)];
-  return Math.max(0, Math.min(me.chips - s.bet.toCall, opp.chips));
+  let max = Math.min(me.chips - s.bet.toCall, opp.chips);
+  // Ліміт банку в ранніх раундах: ва-банк не більший за банк (після колу)
+  if (s.round < (s.cfg.allinFreeFromRound ?? 1)) max = Math.min(max, s.pot + s.bet.toCall);
+  return Math.max(0, max);
+}
+
+function donCanStart(s, p) {
+  const r = s.result;
+  const d = r?.don;
+  return !!(d && r.winner === p && !d.done && !d.pending && d.stake > 0 && d.attempts.length < d.maxAttempts && s.players[other(p)].chips > 0);
 }
 
 // ───────────── легальні дії ─────────────
@@ -228,7 +294,12 @@ export function legalActions(s, p) {
   const out = [];
   switch (s.phase) {
     case 'play':
-      if (!me.played) for (const c of me.hand) out.push({ type: 'play', cardId: c.id });
+      if (!me.played) {
+        if (s.cfg.features.swap && !me.swapped && me.chips >= s.cfg.swapCost) {
+          for (const c of me.hand) out.push({ type: 'swap', cardId: c.id });
+        }
+        for (const c of me.hand) out.push({ type: 'play', cardId: c.id });
+      }
       break;
     case 'scout':
       if (!me.scoutDecided) {
@@ -251,11 +322,13 @@ export function legalActions(s, p) {
     case 'result': {
       if (me.ready) break;
       const r = s.result;
-      if (r.winner === p && r.don && !r.don.done && r.don.attempts.length < s.cfg.donMaxAttempts) {
-        out.push({ type: 'don', guess: 'higher' });
-        out.push({ type: 'don', guess: 'lower' });
+      const d = r.don;
+      if (d?.pending && r.winner === p) {
+        for (const g of ['higher', 'lower']) if (d.pending.odds[g].m > 1) out.push({ type: 'don', guess: g });
+      } else if (donCanStart(s, p)) {
+        out.push({ type: 'donStart' });
       }
-      if (!r.revealed && !me.shown && me.played) out.push({ type: 'show' });
+      if (!r.revealed && !me.shown && me.played && !(d?.pending && r.winner === p)) out.push({ type: 'show' });
       out.push({ type: 'ready' });
       break;
     }
@@ -305,6 +378,24 @@ export function reduce(state, action, ctx) {
   const opp = s.players[other(p)];
 
   switch (action.type) {
+    case 'swap': {
+      if (s.phase !== 'play') return err('wrong-phase');
+      if (!s.cfg.features.swap) return err('disabled');
+      if (me.played) return err('already-played');
+      if (me.swapped) return err('already-swapped');
+      if (me.chips < s.cfg.swapCost) return err('no-chips');
+      const idx = me.hand.findIndex((c) => c.id === action.cardId);
+      if (idx < 0) return err('no-such-card');
+      pay(s, p, s.cfg.swapCost);
+      const old = me.hand.splice(idx, 1)[0];
+      const fresh = drawCard(s, ctx);
+      if (fresh) me.hand.splice(idx, 0, fresh);
+      s.discard.push(old); // після добору, щоб не витягнути ту саму карту
+      me.swapped = true;
+      s.stats[p].swaps += 1;
+      log(s, { t: 'swap', p, amount: s.cfg.swapCost });
+      break;
+    }
     case 'play': {
       if (s.phase !== 'play') return err('wrong-phase');
       if (me.played) return err('already-played');
@@ -322,7 +413,7 @@ export function reduce(state, action, ctx) {
       pay(s, p, s.cfg.scoutCost);
       me.scouted = true;
       me.scoutDecided = true;
-      me.scoutSeen = opp.played.kind === 'num' ? opp.played.suit : 'special';
+      me.scoutSeen = scoutClass(opp.played, s.cfg);
       s.stats[p].scouts += 1;
       log(s, { t: 'scout', p, amount: s.cfg.scoutCost });
       if (opp.scoutDecided) enterBet(s, ctx);
@@ -381,18 +472,32 @@ export function reduce(state, action, ctx) {
       enterResult(s, ctx, other(p), 'fold');
       break;
     }
+    case 'donStart': {
+      if (s.phase !== 'result') return err('wrong-phase');
+      if (s.result.winner !== p) return err('not-winner');
+      if (me.ready || !donCanStart(s, p)) return err('don-unavailable');
+      const base = drawNumeric(s, ctx);
+      if (!base) { s.result.don.done = true; break; }
+      if (!s.deck.some((c) => c.kind === 'num')) reshuffle(s, ctx);
+      s.result.don.pending = { base, odds: donOdds(base.value, s.deck, s.cfg) };
+      log(s, { t: 'donBase', p, card: base, stake: s.result.don.stake });
+      setTimer(s, 'result', ctx);
+      break;
+    }
     case 'don': {
       if (s.phase !== 'result') return err('wrong-phase');
       const r = s.result;
       if (r.winner !== p) return err('not-winner');
-      if (me.ready || r.don.done || r.don.attempts.length >= s.cfg.donMaxAttempts) return err('don-unavailable');
+      if (me.ready || !r.don?.pending) return err('don-unavailable');
       if (action.guess !== 'higher' && action.guess !== 'lower') return err('bad-guess');
-      doubleOrNothing(s, ctx, p, action.guess);
+      if (!(r.don.pending.odds[action.guess].m > 1)) return err('bad-guess');
+      resolveDon(s, ctx, p, action.guess);
       break;
     }
     case 'show': {
       if (s.phase !== 'result') return err('wrong-phase');
       if (s.result.revealed || me.shown) return err('already-visible');
+      if (!me.played) return err('no-card');
       me.shown = true;
       log(s, { t: 'show', p, card: me.played });
       break;
@@ -401,7 +506,11 @@ export function reduce(state, action, ctx) {
       if (s.phase !== 'result') return err('wrong-phase');
       if (me.ready) return err('already-ready');
       me.ready = true;
-      if (s.result.winner === p && s.result.don) s.result.don.done = true;
+      if (s.result.winner === p && s.result.don) {
+        if (s.result.don.pending) log(s, { t: 'donCancel', p });
+        cancelPending(s);
+        s.result.don.done = true;
+      }
       if (opp.ready) endRound(s, ctx);
       break;
     }
@@ -414,39 +523,47 @@ export function reduce(state, action, ctx) {
 
 function showdown(s, ctx) {
   const [a, b] = [s.players[0].played, s.players[1].played];
-  const cmp = compareCards(a, b, s.cfg);
-  enterResult(s, ctx, cmp > 0 ? 0 : cmp < 0 ? 1 : null, 'showdown');
+  const d = compareDetail(a, b, s.cfg, s.trump);
+  enterResult(s, ctx, d.cmp > 0 ? 0 : d.cmp < 0 ? 1 : null, 'showdown', d);
 }
 
-function doubleOrNothing(s, ctx, p, guess) {
+function resolveDon(s, ctx, p, guess) {
   const r = s.result;
-  const me = s.players[p];
-  const opp = s.players[other(p)];
-  // Щоб «подвоїти», треба розкрити свою карту — від неї відраховується «більше/менше».
-  if (!r.revealed) me.shown = true;
-  const ref = cardValue(me.played, opp.played, s.cfg);
-  const card = drawCard(s, ctx);
-  if (!card) { r.don.done = true; return; }
+  const d = r.don;
+  const { base, odds } = d.pending;
+  const m = odds[guess].m;
+  const card = drawNumeric(s, ctx);
+  d.pending = null;
+  s.discard.push(base);
+  if (!card) { d.done = true; return; }
   s.discard.push(card);
-  const val = card.kind === 'mirror' ? ref : cardValue(card, null, s.cfg);
-  const win = guess === 'higher' ? val > ref : val < ref;
-  const attempt = { guess, ref, card, value: val, win, stakeBefore: r.don.stake };
-  if (win) {
-    const extra = transfer(s, other(p), p, r.don.stake);
-    r.don.stake += extra;
-    attempt.delta = extra;
+  const stakeBefore = d.stake;
+  const attempt = { guess, base, card, m, stakeBefore, outcome: 'push', delta: 0 };
+  if (card.value === base.value) {
+    // Рівне значення — ставка повертається (лишається у гравця)
+    s.stats[p].donPush += 1;
+  } else if ((guess === 'higher') === (card.value > base.value)) {
+    const want = Math.min(Math.floor(stakeBefore * (m - 1)), s.cfg.don.maxWin);
+    const won = transfer(s, other(p), p, Math.max(1, want));
+    d.stake += won;
+    attempt.outcome = 'win';
+    attempt.delta = won;
     s.stats[p].donWon += 1;
-    updateBiggest(s, p, r.don.stake);
-    if (r.don.attempts.length + 1 >= s.cfg.donMaxAttempts || extra === 0) r.don.done = true;
+    updateBiggest(s, p, r.won + (d.stake - stakeBefore));
   } else {
-    const lost = transfer(s, p, other(p), r.don.stake);
+    // Програна ставка йде в банк наступного раунду як джекпот
+    const lost = Math.min(stakeBefore, s.players[p].chips);
+    s.players[p].chips -= lost;
+    s.pot += lost;
+    s.jackpot += lost;
+    d.stake = 0;
+    attempt.outcome = 'lose';
     attempt.delta = -lost;
-    r.don.stake = 0;
-    r.don.done = true;
     s.stats[p].donLost += 1;
   }
-  r.don.attempts.push(attempt);
-  log(s, { t: 'don', p, guess, card, ref, win, amount: Math.abs(attempt.delta) });
+  d.attempts.push(attempt);
+  if (attempt.outcome === 'lose' || d.attempts.length >= d.maxAttempts || s.players[other(p)].chips === 0) d.done = true;
+  log(s, { t: 'don', p, guess, base, card, m, outcome: attempt.outcome, amount: Math.abs(attempt.delta) });
   setTimer(s, 'result', ctx);
 }
 
@@ -482,6 +599,7 @@ function applyTimeout(s, ctx) {
       break;
     }
     case 'result':
+      cancelPending(s);
       if (s.result.don) s.result.don.done = true;
       for (const pl of s.players) pl.ready = true;
       endRound(s, ctx);
@@ -495,6 +613,17 @@ function applyTimeout(s, ctx) {
 function playedVisible(s, viewer, p) {
   if (viewer === p) return true;
   return !!(s.result && (s.result.revealed || s.players[p].shown));
+}
+
+/** Скільки високих / низьких / спецкарт лишилось у колоді (за номіналом). */
+export function deckStats(deck, cfg) {
+  let high = 0, low = 0, special = 0;
+  for (const c of deck) {
+    if (c.kind !== 'num') special++;
+    else if (c.value >= cfg.scoutHighFrom) high++;
+    else low++;
+  }
+  return { total: deck.length, high, low, special };
 }
 
 /**
@@ -515,20 +644,31 @@ export function viewFor(s, p, now) {
     : null;
   return clone({
     v: s.v,
+    rules: s.cfg.rules,
     seq: s.seq,
     you: p,
     phase: s.phase,
     round: s.round,
     maxRounds: s.cfg.maxRounds,
-    cfg: { scoutCost: s.cfg.scoutCost, raiseSizes: s.cfg.raiseSizes, maxRaises: s.cfg.maxRaises, donMaxAttempts: s.cfg.donMaxAttempts, startChips: s.cfg.startChips, ante: s.cfg.ante },
+    cfg: {
+      scoutCost: s.cfg.scoutCost, swapCost: s.cfg.swapCost, raiseSizes: s.cfg.raiseSizes, maxRaises: s.cfg.maxRaises,
+      startChips: s.cfg.startChips, trumpBonus: s.cfg.trumpBonus, scoutHighFrom: s.cfg.scoutHighFrom,
+      donMaxWin: s.cfg.don.maxWin, donSecondFromRound: s.cfg.don.secondFromRound, features: s.cfg.features,
+      knifeBeats: s.cfg.knifeBeats, doublePower: s.cfg.doublePower, knifePower: s.cfg.knifePower,
+    },
+    ante: anteFor(s.round, s.cfg),
+    nextAnte: s.round < s.cfg.maxRounds ? anteFor(s.round + 1, s.cfg) : null,
+    trump: s.trump,
     pot: s.pot,
     carry: s.carry,
-    deckCount: s.deck.length,
+    jackpot: s.jackpot,
+    deck: deckStats(s.deck, s.cfg),
     firstToAct: s.firstToAct,
     me: {
       chips: me.chips,
       hand: me.hand,
       played: me.played,
+      swapped: me.swapped,
       scouted: me.scouted,
       scoutDecided: me.scoutDecided,
       scoutSeen: me.scoutSeen,
@@ -540,6 +680,7 @@ export function viewFor(s, p, now) {
       handCount: op.hand.length,
       hasPlayed: !!op.played,
       played: playedVisible(s, p, other(p)) ? op.played : null,
+      swapped: op.swapped,
       scouted: op.scouted,
       scoutDecided: op.scoutDecided,
       shown: op.shown,
@@ -547,7 +688,10 @@ export function viewFor(s, p, now) {
     },
     bet: s.bet ? { toAct: s.bet.toAct, raises: s.bet.raises, toCall: s.bet.toCall, checks: s.bet.checks } : null,
     result: r
-      ? { winner: r.winner, reason: r.reason, won: r.won, penalty: r.penalty, revealed: r.revealed, carry: r.carry ?? 0, don: r.don }
+      ? {
+          winner: r.winner, reason: r.reason, won: r.won, penalty: r.penalty, revealed: r.revealed, carry: r.carry ?? 0,
+          don: r.don, detail: r.revealed ? r.detail : null,
+        }
       : null,
     // Записи журналу публічні за побудовою: карти з'являються лише в showdown/tie/show/don.
     log: s.log,
