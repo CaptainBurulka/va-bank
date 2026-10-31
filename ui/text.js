@@ -14,7 +14,7 @@ export const SPECIAL = {
   double: { name: 'Подвоєння', ico: '×2', sub: 'сила 5' },
 };
 
-export const REACTIONS = ['😂', '😱', '😎', '🔥', '🤡', '👏'];
+export { REACTIONS } from '../net/protocol.js';
 
 export function cardName(c) {
   if (!c) return '?';

@@ -72,8 +72,9 @@ function openGameMenu() {
 }
 
 function confirmLeave() {
-  modal('Вийти з партії?' + (session?.mode === 'bot' ? '<br><small class="muted">Партію з ботом можна буде продовжити.</small>' : ''), [
-    { label: 'Вийти', cls: 'danger', onClick: () => leave() },
+  modal('Вийти з партії?' + (session?.mode === 'bot' ? '<br><small class="muted">Партію з ботом можна буде продовжити.</small>' : session?.mode?.startsWith('online') ? '<br><small class="muted">Кімнату буде закрито для обох.</small>' : ''), [
+    // Онлайн-кімнату вихід через меню закриває для обох; збереження лишається лише для випадку, коли iOS вивантажила сторінку.
+    { label: 'Вийти', cls: 'danger', onClick: () => leave(session?.mode !== 'bot') },
     { label: 'Скасувати' },
   ]);
 }
@@ -278,6 +279,7 @@ async function startCreate(resumeSave = null) {
       onCode: (code) => { $('room-code').textContent = code; $('create-status').textContent = 'Чекаємо на суперника… Передай йому код.'; },
       onStatus: (st) => {
         if (st.error) $('create-status').textContent = st.error;
+        if (st.left) toast('Суперник вийшов з кімнати', 3500);
         game.setOffline(st.started && !st.oppConnected);
         if (st.started && !st.oppConnected && current === 'create') show('game');
       },
@@ -303,9 +305,7 @@ async function startJoin(code, resumeSave = null) {
       onStatus: (st) => {
         if (st.error) { $('join-status').textContent = st.error; toast(st.error); }
         if (st.joined) $('join-status').textContent = 'Підключено!';
-        const off = st.joined && !st.hostConnected;
-        game.setOffline(off, st.reconnecting ? 'Перепідключення…' : "Суперник не на зв'язку…");
-        if (!off && st.joined && st.oppConnected === false) game.setOffline(true);
+        game.setOffline(st.joined && !st.hostConnected, "Суперник не на зв'язку… перепідключення");
       },
       onMessage: (m) => deliverToUi(m, { names }),
       onReaction: (e) => game.showReaction(e, false),
