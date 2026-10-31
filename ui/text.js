@@ -49,7 +49,7 @@ export function explain(detail, cards, trump) {
     case 'knife10': return `Ніж б'є десятку (${cardName(l)})`;
     case 'mirror': return `Дзеркало копіює ${detail.copied} і виграє нічию`;
     case 'power': {
-      const t = detail.trumped && trump ? `Козир ${SUIT[trump].ico} +${CONFIG.trumpBonus}: ` : '';
+      const t = detail.trumped && trump ? `Козир +${CONFIG.trumpBonus}: ` : '';
       return `${t}${longName(w)} (${pw}) > ${longName(l)} (${pl})`;
     }
     case 'suit': {

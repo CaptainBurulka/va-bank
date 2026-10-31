@@ -142,7 +142,8 @@ export class GameScreen {
     this.renderTable(prev, view);
     this.renderHand(prev, view);
     this.renderActions();
-    this.renderVerdict(prev, view);
+    if (view.phase !== 'result') { clearTimeout(this.st.timers.verdict); this.hideVerdict(); }
+    else this.renderVerdict(prev, view);
     this.renderDon(prev, view);
     this.renderCoach();
     if (prev && this.myTurn(view) && !this.myTurn(prev) && view.phase !== 'result') sfx.turn();
