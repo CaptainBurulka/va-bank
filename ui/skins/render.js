@@ -43,7 +43,7 @@ export function renderItem(o) {
       : o.kind === 'felt' ? set.felt(rarity, { live })
         : set.chip(rarity, { live });
   el.innerHTML = `<div class="sk-tilt ${built.cls || ''}"><div class="sk-art">${built.layers.map((l) => `<div class="plx d${l.d}">${l.svg}</div>`).join('')}</div>`
-    + `<div class="sk-ink">${built.ink || ''}</div><div class="sk-live"></div><div class="sk-foil"></div><div class="sk-glare"></div><div class="sk-frame"></div>${rarity === 'legendary' && !shape ? ORN : ''}<div class="sk-gem" title="${RAR[rarity].name}"></div></div>`;
+    + `<div class="sk-ink">${built.ink || ''}</div><div class="sk-live"></div><div class="sk-foil"></div><div class="sk-glare"></div><div class="sk-frame"></div><div class="sk-bevel"></div>${rarity === 'legendary' && !shape ? ORN : ''}<div class="sk-gem" title="${RAR[rarity].name}"></div></div>`;
   if (built.live && live && rarity === 'legendary') {
     const stop = built.live(el.querySelector('.sk-live'), SKINS.particles.legendary);
     if (typeof stop === 'function') el._stop = stop;
