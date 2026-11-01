@@ -390,6 +390,9 @@ export function awardGame(p, summary, now = new Date()) {
   if (summary.won && !q.daily.won && mult > 0) { q.daily.won = true; add('Перша перемога дня', META.points.firstWinOfDay); }
   q.games += 1;
   if (summary.won) q.wins += 1;
+  // Перемоги в розкритті за комбінаціями (досягнення «Повна колода»)
+  q.comboWins = { ...(q.comboWins || {}) };
+  for (const [c, n] of Object.entries(summary.me.combos || {})) q.comboWins[c] = (q.comboWins[c] || 0) + n;
   for (const id of summary.me.jokers || []) {
     const r = JOKER_BY_ID[id]?.rarity;
     if (r && !q.playedRarities.includes(r)) q.playedRarities.push(r);

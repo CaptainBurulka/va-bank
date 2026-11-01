@@ -454,8 +454,8 @@ function enterResult(s, ctx, winner, reason, detail = null, winnerCard = null) {
       if (detail?.combos) {
         const mc = detail.combos[winner];
         (s.stats[winner].combos ||= {})[mc.id] = (s.stats[winner].combos[mc.id] || 0) + 1;
-        if (mc.id === 'trio' && /10$/.test(mc.label)) s.stats[winner].trio10 = (s.stats[winner].trio10 || 0) + 1;
-        if (mc.id === 'high' && res.parts.some((q) => q !== winner && detail.combos[q]?.rank >= COMBO_RANK.pair)) s.stats[winner].highBeatsPair = (s.stats[winner].highBeatsPair || 0) + 1;
+        if (mc.id === 'trio' && /10$/.test(mc.label)) s.stats[winner].trio10 = (s.stats[winner].trio10 || 0) + 1;
+        if (mc.id === 'high' && !detail.lowWins && res.parts.some((q) => q !== winner && detail.combos[q]?.rank >= COMBO_RANK.pair)) s.stats[winner].highBeatsPair = (s.stats[winner].highBeatsPair || 0) + 1;
       }
       log(s, { t: 'showdown', p: winner, amount: res.won, penalty: res.penalty, cards: shownCards, detail });
     } else {

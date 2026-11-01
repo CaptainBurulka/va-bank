@@ -192,3 +192,25 @@ test('утрьох: перемагає найсильніша комбінаці
   assert.equal(s.result.winner, 0);
   assert.deepEqual(Object.keys(s.result.detail.combos).map(Number).sort(), [0, 1, 2]);
 });
+
+test('досягнення комбінацій: «Трійка десяток», «Нахаба», «Повна колода»', async () => {
+  const { awardGame, defaultProfile } = await import('../meta/profile.js');
+  const base = { won: true, mode: 'bot', players: 2, endReason: 'rounds' };
+  let p = defaultProfile();
+  let r = awardGame(p, { ...base, me: { trio10: 1, highBeatsPair: 1, combos: { trio: 1, high: 1 } } });
+  assert.ok(r.achievements.includes('trio10') && r.achievements.includes('high_beats_pair'));
+  assert.ok(!r.achievements.includes('combo_all'));
+  r = awardGame(r.profile, { ...base, me: { combos: { pair: 2, flush: 1, straight: 1, sflush: 1 } } });
+  assert.ok(r.achievements.includes('combo_all'));
+});
+
+test('статистика рушія: «Трійка 10» і «Старша проти Пари» рахуються переможцю', () => {
+  let s = g2(['w10', 'f10', 's10', 'w1', 'f2', 's3', 'w4', 'f4', 's6', 'w9', 'f9', 's2']);
+  s = run(s, [playSet(0, ['w10', 'f10', 's10']), playSet(1, ['w4', 'f4', 's6']), act('skipScout', 0), act('skipScout', 1), act('check', 0), act('check', 1)], ctx());
+  assert.equal(s.stats[0].trio10, 1);
+  assert.equal(s.stats[0].combos.trio, 1);
+  let t = g2(['knife', 'w9', 'f3', 'w1', 'f2', 's5', 'w4', 'f4', 's8', 'w7', 'f7', 's2']);
+  t = run(t, [playSet(0, ['knife', 'w9', 'f3']), playSet(1, ['w4', 'f4', 's8']), act('skipScout', 0), act('skipScout', 1), act('check', 0), act('check', 1)], ctx());
+  // Ніж ріже 8 — у суперника лишається пара 4; Старша 9 її не б'є
+  assert.equal(t.result.winner, 1);
+});
