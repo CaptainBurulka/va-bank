@@ -69,16 +69,16 @@ export const JOKER_TUNING = Object.freeze({
   insurance: { v: 2 },                   // Чет-нечет
   twin: {},
   chameleon: { v: 6 },
-  modest: { alt: 9 },                    // Підробка
+  modest: { alt: 8 },                    // Підробка
   tax: { v: 6, fee: 5 },
   dice: { d: 2 },                        // Стрибок
   counter: { v: 1, ranks: 1 },           // Сходинка
-  brazen: { suit: false },               // Близнюк
+  brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
   magnet: { v: 6 },
-  temptation: { v: 3, gap: 40 },         // Аутсайдер
-  storm: { v: 4 },
+  temptation: { v: 3, gap: 60 },         // Аутсайдер
+  storm: { v: 3 },
   swap: {},
-  shadow: { v: 5 },
+  shadow: { v: 4 },
   trap: { v: 3, ranks: 1 },
   highroller: { v: 7 },
   pocket: { v: 6 },

@@ -95,12 +95,11 @@ const build = (T) => [
     desc: `Значення ${T.chameleon.v}, масть будь-яка; нічию виграє.`,
     apply: (api) => { api.setSlot(T.chameleon.v); api.X.winTie[api.me] = true; api.note(`Хамелеон: ${T.chameleon.v}, нічия — його`); } },
   { id: 'modest', name: 'Підробка', rarity: 'common', icon: '🎭', type: 'value', stage: 'power', slot: { v: T.modest.alt },
-    desc: `Значення відкритої карти суперника або ${T.modest.alt} — що краще для комбінації (масть будь-яка); у нього відкрита карта втрачає масть.`,
-    d3: `Значення відкритої карти лідера або ${T.modest.alt} — що краще для комбінації (масть будь-яка); у нього відкрита карта втрачає масть.`,
+    desc: `Значення відкритої карти суперника або ${T.modest.alt} — що краще для комбінації (масть будь-яка).`,
+    d3: `Значення відкритої карти лідера або ${T.modest.alt} — що краще для комбінації (масть будь-яка).`,
     apply: (api) => {
       const t = api.opp, open = api.openOf(t), sl = plainSlot(open);
       api.setChoice([sl.v ?? T.modest.alt, T.modest.alt]);
-      if (open) api.pre((slots) => { const i = api.cards(t).findIndex((c) => c.id === open.id); if (i >= 0 && slots[t]) slots[t][i] = { ...slots[t][i], s: null }; });
       api.note(`Підробка: копія ${sl.v ?? 5}`);
     } },
   { id: 'tax', name: 'Податок', rarity: 'common', icon: '🧾', type: 'value', stage: 'power', slot: { v: T.tax.v },
@@ -131,10 +130,12 @@ const build = (T) => [
     desc: `${T.counter.v == null ? 'Місце порожнє' : `Значення ${T.counter.v} без масті`}, а твоя комбінація на ${T.counter.ranks} сходинку сильніша (Пара → як Масть…).`,
     apply: (api) => { api.setSlot(T.counter.v ?? null); const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.counter.ranks); }); api.note('Сходинка: комбінація сильніша'); } },
   { id: 'brazen', name: 'Близнюк', rarity: 'common', icon: '♊', type: 'value', stage: 'power', slot: { mirror: true }, noSuit: !T.brazen.suit,
-    desc: `Копія значення твоєї наймолодшої іншої зіграної карти${T.brazen.suit ? ' (і масті)' : ', без масті'}.`,
+    desc: `${Math.round(T.brazen.p * 100)}%: копія значення твоєї наймолодшої іншої зіграної карти${T.brazen.suit ? ' (і масті)' : ', без масті'}${T.brazen.loseTie ? '; нічию програє' : ''}, інакше — 1.`,
     apply: (api) => {
       const others = api.cards(api.me).filter((c) => c.id !== api.card.id).map(plainSlot).filter((x) => x.v != null);
       const top = others.sort((a, b) => a.v - b.v)[0];
+      if (T.brazen.loseTie) api.X.loseTie[api.me] = true;
+      if (top && api.rng() >= T.brazen.p) { api.setSlot(1); api.note('Близнюк не вдався: 1'); return; }
       if (top) { X_set(api, top.v, T.brazen.suit ? top.s : null); api.note(`Близнюк: копія ${top.v}`); } else { api.setSlot(null); api.note('Близнюк: нема кого копіювати'); }
     } },
   { id: 'magnet', name: 'Магніт', rarity: 'common', icon: '🧲', type: 'value', stage: 'power', slot: { v: T.magnet.v },
@@ -151,8 +152,8 @@ const build = (T) => [
     } },
 
   // ───── Рідкісні ─────
-  { id: 'storm', name: 'Буря', rarity: 'rare', icon: '🌪️', type: 'cards', stage: 'replace', slot: { v: T.storm.v },
-    desc: `Значення ${T.storm.v}. Усі закриті карти на столі замінюються випадковими з колоди.`,
+  { id: 'storm', name: 'Буря', rarity: 'rare', icon: '🌪️', type: 'cards', stage: 'replace', slot: { v: T.storm.v }, noSuit: true,
+    desc: `Значення ${T.storm.v} без масті. Усі закриті карти на столі замінюються випадковими з колоди.`,
     apply: (api) => {
       api.setSlot(T.storm.v);
       for (const q of api.parts) {
@@ -175,9 +176,9 @@ const build = (T) => [
       api.replaceMe(took);
       api.note('Обмін: закриту карту суперника вкрадено');
     } },
-  { id: 'shadow', name: 'Тінь', rarity: 'rare', icon: '🌑', type: 'value', stage: 'power', slot: { v: T.shadow.v },
-    desc: `Значення ${T.shadow.v}; якщо суперник підглядав до тебе — твоя комбінація на сходинку сильніша.`,
-    d3: `Значення ${T.shadow.v}; якщо хтось підглядав саме до тебе — твоя комбінація на сходинку сильніша.`,
+  { id: 'shadow', name: 'Тінь', rarity: 'rare', icon: '🌑', type: 'value', stage: 'power', slot: { v: T.shadow.v }, noSuit: true,
+    desc: `Значення ${T.shadow.v} без масті; якщо суперник підглядав до тебе — твоя комбінація на сходинку сильніша.`,
+    d3: `Значення ${T.shadow.v} без масті; якщо хтось підглядав саме до тебе — твоя комбінація на сходинку сильніша.`,
     apply: (api) => {
       const seen = api.others.some((q) => api.s.players[q].scouted && (api.s.players[q].scoutTarget ?? api.me) === api.me);
       api.setSlot(T.shadow.v);
