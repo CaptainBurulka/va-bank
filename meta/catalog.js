@@ -72,10 +72,13 @@ export const DEFAULT_EQUIPPED = Object.fromEntries(Object.keys(COSMETIC_CATS).ma
 /** Досягнення: перевірка за підсумком партії (summary) і профілем. Нагорода — бали або унікальна косметика. */
 export const ACHIEVEMENTS = [
   { id: 'first_win', name: 'Перша кров', desc: 'Виграти партію', reward: { points: 60 }, check: (s) => s.won },
-  { id: 'bluff_one', name: 'Покер-фейс', desc: 'Виграти пасом суперника, маючи карту 1', reward: { skin: 'back_pixel', rarity: 'rare' }, check: (s) => s.me.bluffOne > 0 },
+  { id: 'bluff_one', name: 'Покер-фейс', desc: 'Виграти пасом суперника зі Старшою картою (у класиці — з карткою 1)', reward: { skin: 'back_pixel', rarity: 'rare' }, check: (s) => s.me.bluffOne > 0 },
   { id: 'comeback', name: 'Камбек', desc: 'Виграти партію, маючи посеред гри менше 15 фішок', reward: { points: 150 }, check: (s) => s.won && s.me.minChips < 15 },
   { id: 'legend_play', name: 'Легенда', desc: 'Зіграти легендарного джокера', reward: { cosmetic: 'frame_legend' }, check: (s) => s.me.legendary > 0 },
-  { id: 'knife10', name: 'Ніж у спину', desc: 'Перемогти десятку Ножем', reward: { points: 80 }, check: (s) => s.me.knife10 > 0 },
+  { id: 'knife10', name: 'Ніж у спину', desc: 'Відрізати Ножем десятку суперника й виграти (у класиці — побити Ножем 10)', reward: { points: 80 }, check: (s) => s.me.knife10 > 0 },
+  { id: 'trio10', name: 'Трійка десяток', desc: 'Виграти розкриття Трійкою 10', reward: { points: 120 }, check: (s) => (s.me.trio10 || 0) > 0 },
+  { id: 'high_beats_pair', name: 'Нахаба', desc: 'Виграти розкриття Старшою картою проти Пари чи сильнішої', reward: { points: 80 }, check: (s) => (s.me.highBeatsPair || 0) > 0 },
+  { id: 'combo_all', any: true, name: 'Повна колода', desc: 'Виграти розкриття кожною з 6 комбінацій (за весь час)', reward: { points: 150 }, check: (s, p) => ['high', 'pair', 'flush', 'straight', 'trio', 'sflush'].every((c) => (p.comboWins || {})[c] > 0) },
   { id: 'double_don', name: 'Двічі пощастило', desc: 'Вгадати «Подвій або нічого» двічі за раунд', reward: { points: 100 }, check: (s) => s.me.donRoundMax >= 2 },
   { id: 'allin_win', name: 'Ва-банк!', desc: 'Виграти розкриття після ва-банку', reward: { points: 60 }, check: (s) => s.me.allinWins > 0 },
   { id: 'bankrupt_win', name: 'Сухий рахунок', desc: 'Забрати всі фішки суперника', reward: { points: 80 }, check: (s) => s.won && s.endReason === 'bankrupt' },

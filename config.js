@@ -1,8 +1,16 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '5.0.1'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '6.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
-  rules: 2,             // версія правил (для бота і симуляцій)
+  rules: 3,             // версія правил (для бота і симуляцій): 3 — комбінації з 3 карт
+  // Основа раунду. 'combo' — рука 6, граєш 3 карти (одна відкрита), перемагає сильніша комбінація.
+  // 'single' — стара гра однією картою (лишається в лобі як «Класика (1 карта)» на час тестування; без джокерів).
+  core: 'combo',
+  combo: Object.freeze({
+    handSize: 6,        // карт у руці
+    playCount: 3,       // скільки карт грається за раунд (одна з них відкрита)
+    scoutHighFrom: 8,   // розвідка: «чи є серед закритих карт висока (від 8)»
+  }),
   startChips: 100,      // фішок у кожного гравця на старті
   // Анте зростає: anteBase, далі +anteStep кожні anteEvery раундів (5 → 10 → 15 → 20)
   anteBase: 5,
@@ -43,75 +51,51 @@ export const CONFIG = Object.freeze({
   botStyles: Object.freeze({
     cautious: Object.freeze({ jokerPlay: 0.4, raiseAt: 0.72, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.32, bluff: 0.03, scoutProb: 0.45, donStart: 0.25, donMinP: 0.75, swapMax: 3, swapProb: 0.7, playStrong: 0.3, playWeak: 0.15, showProb: 0.1 }),
     aggressive: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
+    // для метрики глибини в «Класиці (1 карта)»: жадібний — завжди найсильніша карта, без блефу; розумний — як агресивний
+    greedy: Object.freeze({ jokerPlay: 1, raiseAt: 0.7, reraiseAt: 0.85, allinAt: 0.95, callSlack: 0.1, bluff: 0, scoutProb: 0, donStart: 0.5, donMinP: 0.6, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0 }),
+    greedyPick: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0.3 }),
+    smart: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
     bluffer: Object.freeze({ jokerPlay: 0.5, raiseAt: 0.6, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.2, bluff: 0.3, scoutProb: 0.3, donStart: 0.5, donMinP: 0.6, swapMax: 2, swapProb: 0.4, playStrong: 0.25, playWeak: 0.35, showProb: 0.8 }),
   }),
 });
 
-// ───────── Джокери: числа ефектів (підібрано симуляціями на ~50% перемог) ─────────
+// ───────── Джокери: числа ефектів (комбінації з 3 карт; підібрано симуляціями на 45–55% перемог) ─────────
+// Значення — у комбінації (1–10). Ключі — id джокерів (переосмислені джокери зберегли id).
 export const JOKER_TUNING = Object.freeze({
-  turncoat: { power: 6 },
-  roulette: { max: 12 },
-  thief: { power: 5 },
-  fist: { power: 7, fee: 10, loseTie: true },
-  insurance: { power: 2, high: 11 },
-  chameleon: { power: 5 },
-  modest: { bias: 0 },
-  tax: { power: 6, fee: 5 },
-  twin: { plus: 0 },
-  dice: { minus: 1 },
-  counter: { plus: 1 },
-  brazen: { power: 5, target: 7 },
-  magnet: { power: 7 },
-  temptation: { power: 4, step: 10, max: 12 },
-  shadow: { power: 6, scouted: 10 },
-  trap: { power: 0 },
-  swap: { oppBonus: 0 },
-  pocket: { tries: 1 },
-  highroller: { power: 6 },
-  sharper: { power: 4, alt: 6 },
-  luck: { high: 9, low: 1 },
-  brave: { power: 5, perRaise: 2 },
-  antitrump: { power: 6 },
-  quake: { power: 6 },
-  frenzy: { power: 6 },
-  mirrorworld: { power: 5, trump: -2 },
-  echo: { power: 6 },
-  storm: { oppBonus: 0 },
-  redeal: { oppBonus: 0 },
-  castling: { power: 6, myTie: true },
+  turncoat: { v: 10 },                   // Перевертень: сам — 10 без масті (заважає власній «слабкості»)
+  roulette: { k: 8 },
+  thief: { max: 3, loseTie: false },     // Дикун
+  fist: { v: 8, fee: 10 },
+  insurance: { v: 2 },                   // Чет-нечет
+  twin: {},
+  chameleon: { v: 6 },
+  modest: { alt: 8 },                    // Підробка
+  tax: { v: 6, fee: 5 },
+  dice: { d: 2 },                        // Стрибок
+  counter: { v: 1, ranks: 1, loseTie: true },           // Сходинка
+  brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
+  magnet: { v: 6 },
+  temptation: { v: 3, gap: 60 },         // Аутсайдер
+  storm: { v: 5 },
+  swap: {},
+  shadow: { v: 4 },
+  trap: { v: 2, ranks: 1 },
+  highroller: { v: 7 },
+  pocket: { v: 6 },
+  sharper: { v: 4, alt: 8 },
+  luck: { v: 5, up: 1 },
+  brave: { v: 6, perRaise: 1 },
+  antitrump: { ranks: 3 },               // Ламач
+  echo: { v: 7 },
+  quake: { v: 6 },
+  castling: { v: 6, myTie: true },
+  frenzy: { v: 6 },
+  mirrorworld: { v: 7 },
+  duel: { extra: 2 },
 });
 
 // Гра втрьох: ті самі ідеї джокерів, інші числа (треба побити двох суперників). Решта — як для двох.
 export const JOKER_TUNING_3 = Object.freeze({
-  turncoat: { power: 7 },
-  fist: { power: 9, fee: 14 },
-  insurance: { power: 1, high: 12 },
-  twin: { plus: 1 },
-  chameleon: { power: 7 },
-  modest: { bias: 1 },
-  tax: { power: 8 },
-  dice: { minus: 0 },
-  counter: { plus: 3 },
-  brazen: { power: 6 },
-  magnet: { power: 9 },
-  temptation: { power: 2, step: 15 },
-  storm: { oppBonus: -1 },
-  shadow: { power: 8 },
-  thief: { power: 7 },
-  trap: { power: 3 },
-  swap: { oppBonus: 1 },
-  castling: { power: 8, myTie: false },
-  mirrorworld: { power: 6 },
-  highroller: { power: 8 },
-  pocket: { tries: 2 },
-  sharper: { power: 7, alt: 8 },
-  luck: { high: 11, low: 1 },
-  brave: { power: 7 },
-  antitrump: { power: 8 },
-  echo: { power: 8 },
-  quake: { power: 8 },
-  frenzy: { power: 8 },
-  redeal: { oppBonus: -1 },
 });
 
 // Коли роздаються джокери: один і той самий випадковий раунд для обох
@@ -148,6 +132,8 @@ export const MODES = Object.freeze({
   blitz: Object.freeze({ name: 'Бліц', icon: '⚡', desc: '8 раундів, анте росте вдвічі швидше', preset: (n, c) => ({ maxRounds: 8, anteEvery: Math.max(1, Math.round(c.anteEvery / 2)) }) }),
   blind: Object.freeze({ name: 'Сліпа гра', icon: '🙈', desc: 'Без розвідки', preset: (n, c) => ({ features: { ...c.features, scout: false } }) }),
   highstakes: Object.freeze({ name: 'Великі ставки', icon: '💎', desc: 'Старт 50 фішок, програний «подвій» кидає в джекпот удвічі більше', preset: () => ({ startChips: 50, jackpotMult: 2 }) }),
+  // Стара гра однією картою (рука 4, без джокерів) — для порівняння й тестів; не буває «режимом дня»
+  single: Object.freeze({ name: 'Класика (1 карта)', icon: '1️⃣', desc: 'Стара гра: одна карта за раунд, рука 4, без джокерів', noDay: true, preset: () => ({ core: 'single' }) }),
 });
 export const MODE_IDS = Object.freeze(Object.keys(MODES));
 

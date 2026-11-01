@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newPid, isPid, cleanNick, recordGame, normalizeRivals, titlesOf, titleOf, addLife, emptyLife, pickMoment, scoreLine, PHRASES } from '../meta/rivals.js';
 import { migrate, defaultProfile, exportCode, importCode } from '../meta/profile.js';
-import { parseGuestMessage, parseHostMessage } from '../net/protocol.js';
+import { parseGuestMessage, parseHostMessage, PROTOCOL_VERSION } from '../net/protocol.js';
 import { RIVALS, META } from '../config.js';
 import { createGame, reduce, viewFor } from '../game/engine.js';
 import { botDecide } from '../game/bot.js';
@@ -119,14 +119,14 @@ test('момент партії: рушій збирає кандидатів і
 });
 
 test('протокол: hello несе нік, ID і титул; фрази — дозволені реакції', () => {
-  const m = parseGuestMessage({ v: 4, type: 'hello', token: null, name: 'Оля', pid: A, title: 'spy' }).m;
+  const m = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'hello', token: null, name: 'Оля', pid: A, title: 'spy' }).m;
   assert.equal(m.name, 'Оля'); assert.equal(m.pid, A); assert.equal(m.title, 'spy');
-  const bad = parseGuestMessage({ v: 4, type: 'hello', token: null, pid: 'hack', title: 'god' }).m;
+  const bad = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'hello', token: null, pid: 'hack', title: 'god' }).m;
   assert.equal(bad.pid, null); assert.equal(bad.title, null);
   assert.ok(PHRASES.length >= 6 && PHRASES.length <= 8);
-  for (const ph of PHRASES) assert.ok(parseGuestMessage({ v: 4, type: 'react', emoji: ph }).ok, ph);
-  assert.ok(parseHostMessage({ v: 4, type: 'react', emoji: 'Блефуєш?' }).ok);
-  assert.ok(!parseGuestMessage({ v: 4, type: 'react', emoji: 'будь-що' }).ok);
+  for (const ph of PHRASES) assert.ok(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'react', emoji: ph }).ok, ph);
+  assert.ok(parseHostMessage({ v: PROTOCOL_VERSION, type: 'react', emoji: 'Блефуєш?' }).ok);
+  assert.ok(!parseGuestMessage({ v: PROTOCOL_VERSION, type: 'react', emoji: 'будь-що' }).ok);
 });
 
 test('новий профіль має порожніх суперників і випадковий ID', () => {

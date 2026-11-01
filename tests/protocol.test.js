@@ -17,6 +17,9 @@ test('протокол: версія обовʼязкова, дії чистят
   assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'timeout' } }).error, 'bad-action');
   const p = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'raise', amount: 10, player: 0, evil: 1 } });
   assert.deepEqual(p.m.action, { type: 'raise', amount: 10 });
+  const ps = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'playSet', cards: ['w1', 'J0-mirrorworld', 'f3'], open: 'f3', player: 1 } });
+  assert.deepEqual(ps.m.action, { type: 'playSet', cards: ['w1', 'J0-mirrorworld', 'f3'], open: 'f3' });
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'playSet', cards: ['a', 'b', 'c', 'd'] } }).m.action.cards, undefined);
   assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'react', emoji: '<script>' }).ok, false);
   assert.equal(parseHostMessage({ v: PROTOCOL_VERSION, type: 'state', msg: {} }).ok, true);
 });
@@ -29,10 +32,12 @@ test('GameHost: гість не може діяти за хоста, систе�
   h.start();
   assert.equal(h.dispatch(1, { type: 'timeout' }), false);
   assert.equal(h.dispatch(1, { type: 'pause' }), false);
-  const myCard = got[1].at(-1).view.me.hand[0].id;
-  const hostCard = got[0].at(-1).view.me.hand[0].id;
-  assert.equal(h.dispatch(1, { type: 'play', cardId: hostCard }), false, 'чужу карту зіграти не можна');
-  assert.equal(h.dispatch(1, { type: 'play', cardId: myCard, player: 0 }), true);
+  const mine = got[1].at(-1).view.me.hand.filter((c) => c.kind !== 'joker').slice(0, 3).map((c) => c.id);
+  const host = got[0].at(-1).view.me.hand.filter((c) => c.kind !== 'joker').slice(0, 3).map((c) => c.id);
+  try {
+    assert.equal(h.dispatch(1, { type: 'playSet', cards: host, open: host[0] }), false, 'чужі карти зіграти не можна');
+    assert.equal(h.dispatch(1, { type: 'playSet', cards: mine, open: mine[0], player: 0 }), true);
+  } catch (e) { h.stop(); throw e; }
   assert.ok(h.state.players[1].played, 'дія записана за гостем, а не за player з повідомлення');
   assert.equal(h.state.players[0].played, null);
   h.setConnected(1, false);
@@ -70,7 +75,7 @@ test('протокол: нові дії обмін і подвоєння, пом
 test('кеш service worker змінюється разом із версією застосунку', () => {
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.ok(sw.includes(`'vabank-${APP_VERSION}'`), `sw.js має містити CACHE = 'vabank-${APP_VERSION}'`);
-  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'game/jokers.js', 'meta/profile.js', 'meta/catalog.js', 'ui/meta-ui.js', 'ui/profile-store.js', 'ui/cosmetics.js', 'net/protocol.js', 'ui/skins/skins.css', 'ui/skins/render.js', 'ui/skins/ceremony.js']) assert.ok(sw.includes(`'${f}'`), f);
+  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'game/combos.js', 'game/jokers.js', 'meta/profile.js', 'meta/catalog.js', 'ui/meta-ui.js', 'ui/profile-store.js', 'ui/cosmetics.js', 'net/protocol.js', 'ui/skins/skins.css', 'ui/skins/render.js', 'ui/skins/ceremony.js']) assert.ok(sw.includes(`'${f}'`), f);
   for (const s of ['kyiv', 'samurai', 'cyber', 'cossack', 'deco', 'abyss', 'pixel', 'space']) assert.ok(sw.includes(`'${s}'`), `набір ${s} у кеші`);
 });
 

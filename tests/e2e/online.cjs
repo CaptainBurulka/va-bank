@@ -42,6 +42,8 @@ const fs = require('fs');
     for (const want of ['Чек','Колл','Далі без розвідки','Далі','Забрати']) for (const b of btns) if ((await b.textContent()).includes(want)) { await b.click().catch(()=>{}); return; }
     const cards = await p.$$('#hand .card'); const hint = await p.textContent('#actions');
     if (cards.length && hint.includes('спершу торкнись')) { await cards[0].click(); await p.click('#actions .btn.primary').catch(()=>{}); }
+    // комбінації: вибрати 3 карти (не джокери) і покласти
+    if (cards.length && hint.includes('торкайся карт')) { const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, 3)) await p.click(`#hand .card[data-id="${id}"]`).catch(()=>{}); await p.click('#actions .btn.primary').catch(()=>{}); }
   };
   for (let i=0;i<30;i++){ await step(A); await step(B); await A.waitForTimeout(150); }
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));

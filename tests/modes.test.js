@@ -32,7 +32,12 @@ test('Бліц: 8 раундів і анте росте вдвічі швидш�
 test('Сліпа гра: розвідки немає — після карт одразу торги', () => {
   for (const n of [2, 3]) {
     let s = make('blind', n);
-    for (let p = 0; p < n; p++) s = reduce(s, { type: 'play', player: p, cardId: s.players[p].hand[0].id }, ctx()).state;
+    for (let p = 0; p < n; p++) {
+      const ids = s.players[p].hand.filter((c) => c.kind !== 'joker').slice(0, 3).map((c) => c.id);
+      const r = reduce(s, { type: 'playSet', player: p, cards: ids, open: ids[0] }, ctx());
+      assert.ok(r.ok, r.error);
+      s = r.state;
+    }
     assert.equal(s.phase, 'bet');
     assert.ok(!legalActions(s, s.bet.toAct).some((a) => a.type === 'scout'));
   }
@@ -70,10 +75,18 @@ test('усі режими × 2 і 3 гравці: партії ботів зав
   }
 });
 
+test('«Класика (1 карта)»: стара гра однією картою, рука 4, без джокерів', () => {
+  const s = make('single', 2);
+  assert.equal(s.cfg.core, 'single');
+  assert.equal(s.players[0].hand.length, CONFIG.handSize);
+  assert.ok(s.jokerSets.every((x) => x.length === 0));
+  assert.ok(legalActions(s, 0).some((a) => a.type === 'play'));
+});
+
 test('режим дня: щодня інший, без класики, і дає бонус до балів', () => {
   const days = Array.from({ length: 8 }, (_, i) => modeOfDay(new Date(2026, 9, 1 + i)));
-  assert.ok(days.every((m) => MODES[m] && m !== 'classic'));
-  assert.ok(new Set(days).size === MODE_IDS.length - 1, 'за тиждень зустрічаються всі');
+  assert.ok(days.every((m) => MODES[m] && m !== 'classic' && m !== 'single'));
+  assert.ok(new Set(days).size === MODE_IDS.length - 2, 'за тиждень зустрічаються всі (крім класик)');
   assert.notEqual(days[0], days[1]);
   const now = new Date(2026, 9, 3);
   const st = { jokers: [], minChips: 100 };

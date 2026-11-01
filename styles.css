@@ -790,3 +790,100 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 .trump b { font-weight: 800; }
 .trump[data-suit="water"] { --tc: var(--water-ui); } .trump[data-suit="fire"] { --tc: var(--fire-ui); } .trump[data-suit="stone"] { --tc: var(--stone-ui); }
 .trump .tb-plus { min-width: 26px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center; font: 900 14px/1 var(--font-ui); color: #10131a; background: var(--tc, var(--gold)); }
+
+/* ───────── комбінації з 3 карт ───────── */
+#scr-game.combo { --card-w-hand: min(12.4vw, 54px); --card-w-set: min(12.6vw, 50px); --card-w-open: min(17vw, 66px); }
+.combo .hand { gap: 3px; height: calc(var(--card-w-hand) * 1.42 + 24px); }
+.combo .hand .card.selected { transform: translateY(-14px); }
+.combo .hand .card.open-pick .face { box-shadow: var(--sh-card-lift), 0 0 0 3px var(--gold-hi), 0 0 18px rgba(243, 207, 120, .6); }
+.hand .eye-tog { position: absolute; top: -10px; right: -8px; width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; background: #0d1712; color: var(--ink-2); box-shadow: inset 0 0 0 1.5px var(--line), 0 2px 6px rgba(0, 0, 0, .5); z-index: 4; cursor: pointer; }
+.hand .eye-tog::before { content: ""; position: absolute; inset: -8px; } /* більша зона тапу */
+.hand .eye-tog svg { width: 16px; height: 16px; }
+.hand .card.open-pick .eye-tog { background: var(--gold); color: var(--accent-ink); box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+
+.combo .acts { height: 186px; }
+.combo-live { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px; min-height: 30px; padding: 0 2px; }
+.combo-live b { font: 800 var(--fs-m)/1.1 var(--font-ui); color: var(--gold-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
+.combo-live.empty b { color: var(--ink-2); font-weight: 700; }
+.combo-live .meter { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.combo-live .meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c0563f, #e2b75a 50%, #5fc48a); }
+.combo-live .pc { color: var(--ink-2); font: 700 12px/1 var(--font-ui); white-space: nowrap; grid-column: 3; }
+.combo-live.empty .pc { grid-column: 2 / 4; justify-self: start; }
+.cs-btn, .cheat-btn { height: 30px; padding: 0 10px; border-radius: var(--r-pill); border: 0; background: var(--panel-2); color: var(--ink); font: 700 12px/1 var(--font-ui); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.cs-btn { grid-column: 4; }
+.cheat-btn { height: 26px; font-size: 11.5px; margin-left: auto; }
+
+/* стіл: набори */
+.combo:not(.three) .arena { grid-template-columns: 1fr; grid-template-rows: 1fr auto 1fr; row-gap: 2px; }
+.combo:not(.three) .arena .pot { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 2px 10px; }
+.combo:not(.three) .arena .pot .num { font-size: 34px; }
+.combo:not(.three) .arena .pot .deck { margin-top: 0; }
+.combo:not(.three) .seat { flex-direction: row; gap: 10px; align-items: center; }
+.combo:not(.three) .seat-info { margin-top: 0; min-width: 0; }
+.slot.set { width: auto; height: auto; border: 0; perspective: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.slot.set .set-row { display: flex; gap: 4px; align-items: flex-end; justify-content: center; min-height: calc(var(--card-w-set) * 1.42); min-width: calc(var(--card-w-set) * 3 + 8px); border-radius: var(--r-card); }
+.slot.set .set-row:empty { border: 1.5px dashed rgba(246, 239, 224, .22); }
+.slot.set .card { position: relative; inset: auto; --cw: var(--card-w-set); perspective: 800px; }
+.s-opp .slot.set .card.open, .s-opp2 .slot.set .card.open { --cw: var(--card-w-open); }
+.slot.set .open-eye { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--gold); color: var(--accent-ink); z-index: 3; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
+.slot.set .open-eye svg { width: 13px; height: 13px; }
+.slot.set .slot-tag { position: static; transform: none; display: flex; justify-content: center; max-width: 100%; }
+.combo-tag { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 4px 10px; border-radius: var(--r-pill); background: rgba(8, 14, 11, .9); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font: 700 12.5px/1.2 var(--font-ui); text-align: center; max-width: min(92vw, 360px); }
+.combo-tag.maybe { color: var(--ink-2); }
+.combo-tag.mine { color: var(--gold-hi); }
+.combo-tag.win { color: #10200f; background: var(--win); box-shadow: none; }
+.combo-tag.lose { opacity: .75; }
+.combo-tag .pill { padding: 2px 7px; font-size: 11px; }
+.combo-tag svg { width: 13px; height: 13px; }
+
+/* утрьох: дрібніші набори */
+#scr-game.combo.three { --card-w-set: min(9.2vw, 38px); --card-w-open: min(9.2vw, 38px); --card-w-table: 38px; }
+.combo.three .slot.set .set-row { gap: 2px; min-width: calc(var(--card-w-set) * 3 + 4px); }
+.combo.three .combo-tag { font-size: 10.5px; padding: 3px 6px; max-width: 31vw; }
+.combo.three .slot.set .open-eye { width: 18px; height: 18px; top: -6px; right: -5px; }
+.combo.three .slot.set .card .cor { font-size: calc(var(--cw) * .32); }
+
+/* вердикт: дві комбінації */
+.vs-combos { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 2px; }
+.vs-combos span { display: flex; flex-direction: column; align-items: center; font: 800 var(--fs-m)/1.15 var(--font-ui); color: var(--ink); }
+.vs-combos span.w { color: var(--gold-hi); }
+.vs-combos small { font: 600 11px/1 var(--font-ui); color: var(--ink-2); margin-bottom: 2px; }
+.vs-combos i { color: var(--ink-3); font-style: normal; font-size: 12px; }
+.jk-reveal .fin-sets { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 6px; }
+.jk-reveal .fin-row { display: flex; gap: 4px; align-items: center; }
+.jk-reveal .fin-row small { min-width: 64px; text-align: right; color: var(--ink-2); }
+.jk-reveal .fin-row .card.mini { --cw: 44px; animation: none; }
+
+/* шпаргалка */
+.cheat-modal { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(3, 6, 4, .72); }
+.cheat-modal .box { width: 100%; max-width: 420px; max-height: 100%; overflow: auto; padding: 16px; border-radius: var(--r-l); background: var(--panel); box-shadow: var(--sh-panel), inset 0 0 0 1px var(--line); display: flex; flex-direction: column; gap: 8px; }
+.cheat-modal h3 { margin: 0; }
+.cheat { display: flex; flex-direction: column; gap: 6px; }
+.cs-row { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: var(--r-m); background: var(--panel-2); }
+.cs-n { font: 900 16px/1 var(--font-ui); color: var(--gold-hi); text-align: center; }
+.cs-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cs-t b { font: 800 14px/1.1 var(--font-ui); }
+.cs-t span { font-size: 11.5px; color: var(--ink-2); }
+.cs-row .mini-cards { display: flex; gap: 2px; margin: 0; }
+.cs-row .mini-cards .card { --cw: 30px; }
+.cs-row .card .cor svg { display: none; }
+.cs-notes { margin: 4px 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); display: flex; flex-direction: column; gap: 4px; }
+@media (max-height: 740px) {
+  #scr-game.combo { --card-w-hand: min(11.6vw, 48px); --card-w-set: min(11vw, 42px); --card-w-open: min(14vw, 54px); }
+  .combo .acts { height: 176px; }
+  #scr-game.combo.three { --card-w-set: min(8.4vw, 33px); --card-w-open: min(8.4vw, 33px); }
+}
+.combo .hand.five .card, .combo .hand .card { --cw: var(--card-w-hand); }
+.combo .tbar { flex-wrap: wrap; row-gap: 4px; }
+.combo .trump { font-size: 13px; padding: 5px 9px 5px 7px; gap: 5px; }
+.combo .trump svg { width: 20px; height: 20px; }
+.combo .trump .tb-plus { font-size: 11px; height: 19px; }
+.combo .round { font-size: 11.5px; }
+.combo:not(.three) .arena { grid-template-rows: auto auto auto; align-content: space-evenly; }
+#scr-game.combo:not(.three) { --card-w-set: min(11.6vw, 46px); --card-w-open: min(15vw, 58px); }
+.combo .tbar { flex-wrap: nowrap; gap: 6px; }
+.combo .cheat-btn { margin-left: auto; flex-shrink: 0; }
+.combo .trump .tb-plus { display: none; }
+.combo.three .slot.set .card .sp-sub, .combo.three .slot.set .card .jk-tag { display: none; }
+.combo.three .slot.set .card .sp-name, .combo.three .slot.set .card .jk-name { font-size: 8px; }
+#scr-game { max-width: 100%; }
