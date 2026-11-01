@@ -88,7 +88,7 @@ const hanko = (x, y, s, txt = 'ВБ', rot = -4) => `<g transform="translate(${f(
 function bigValue(v, rar, id) {
   const fill = { common: '#3a352d', rare: INK, epic: INK, legendary: `url(#GD${id})` }[rar];
   const stroke = rar === 'legendary' ? `stroke="${INK}" stroke-width="1.1" paint-order="stroke"` : rar === 'epic' ? `stroke="url(#GD${id})" stroke-width=".7" paint-order="stroke"` : '';
-  return `<text class="${rar === 'legendary' ? 'smbig' : ''}" x="50" y="70" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-style="italic" font-weight="900" font-size="50" fill="${fill}" ${stroke} filter="url(#BR${id})">${v}</text>`;
+  return `<text class="${rar === 'legendary' ? 'smbig' : ''}" x="${String(v).length > 1 ? 57 : 50}" y="70" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-style="italic" font-weight="900" font-size="${String(v).length > 1 ? 42 : 50}" fill="${fill}" ${stroke} filter="url(#BR${id})">${v}</text>`;
 }
 
 function face(card, rar, opts = {}) {

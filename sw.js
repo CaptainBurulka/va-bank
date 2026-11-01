@@ -3,7 +3,7 @@
 // (повз HTTP-кеш браузера) і більше не переписуються по одному — інакше після деплою в кеші могла
 // опинитися мішанина файлів двох версій, і модулі не завантажувались («гра висить у меню»).
 // Версія кешу = APP_VERSION із config.js (перевіряє тест). Змінюйте разом із кожним релізом.
-const CACHE = 'vabank-5.0.0';
+const CACHE = 'vabank-5.0.1';
 const FONTS = ['oswald-cyrillic-700', 'oswald-latin-700', 'unbounded-cyrillic-800', 'unbounded-latin-800', 'unbounded-cyrillic-600', 'unbounded-latin-600',
   'playfair-display-cyrillic-700', 'playfair-display-latin-700', 'playfair-display-cyrillic-900', 'playfair-display-latin-900',
   'manrope-cyrillic-500', 'manrope-latin-500', 'manrope-cyrillic-700', 'manrope-latin-700', 'manrope-cyrillic-800', 'manrope-latin-800']
@@ -16,7 +16,7 @@ const ASSETS = [
   'ui/app.js', 'ui/game.js', 'ui/cardview.js', 'ui/fx.js', 'ui/motion.js', 'ui/sound.js', 'ui/text.js', 'ui/settings.js', 'ui/tokens.css',
   'ui/meta-ui.js', 'ui/profile-store.js', 'ui/cosmetics.js',
   // скіни: система рідкостей і 8 тематичних наборів (процедурна графіка)
-  'ui/skins/skins.css', 'ui/skins/core.js', 'ui/skins/render.js', 'ui/skins/tilt.js', 'ui/skins/sound.js', 'ui/skins/ceremony.js',
+  'ui/skins/skins.css', 'ui/skins/core.js', 'ui/skins/render.js', 'ui/skins/raster.js', 'ui/skins/tilt.js', 'ui/skins/sound.js', 'ui/skins/ceremony.js',
   ...['kit', 'kyiv', 'samurai', 'cyber', 'cossack', 'deco', 'abyss', 'pixel', 'space'].map((s) => `ui/skins/sets/${s}.js`),
   'vendor/peerjs.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',

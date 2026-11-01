@@ -116,7 +116,7 @@ function face(card, rar, opts = {}) {
   if (card.kind === 'num') {
     const col = SUIT_COLOR[card.suit];
     const glow = atLeast(rar, 'epic') ? `GL${id}` : '';
-    center = number7(card.value, 50, 60, 40, rar, id, live ? 'cyglitch' : '')
+    center = number7(card.value, card.value > 9 ? 56 : 50, 60, card.value > 9 ? 36 : 40, rar, id, live ? 'cyglitch' : '')
       + suitG(card.suit, 82, 112, 13, col, glow);
   } else {
     const col = { knife: NEON.white, mirror: NEON.cyan, double: NEON.yellow }[card.kind];

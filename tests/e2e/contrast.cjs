@@ -14,6 +14,8 @@ const MIN = 4.5;
   await p.goto('http://localhost:8080/tests/e2e/contrast.html');
   await p.waitForFunction(() => window.ready);
   await p.evaluate(() => document.fonts.ready);
+  // самоперевірка скрипта: CONTRAST_SELFTEST=1 навмисно псує контраст — скрипт мусить упасти
+  if (process.env.CONTRAST_SELFTEST) await p.addStyleTag({ content: '.sk-idx .v { color: #3a3f4a !important; } .sk-idx { background: #2a2e36 !important; }' });
   await p.waitForTimeout(800);
   if (OUT) {
     fs.mkdirSync(OUT, { recursive: true });
@@ -38,7 +40,7 @@ const MIN = 4.5;
       return o;
     });
     const regions = Object.fromEntries(Object.entries(rel).map(([k, r]) => [k, { x: Math.round(r.x * dpr), y: Math.round(r.y * dpr), w: Math.round(r.w * dpr), h: Math.round(r.h * dpr) }]));
-    const shot = await p.screenshot({ clip: box });
+    const shot = await idx.screenshot();
     const res = await p.evaluate(([d, rg]) => window.analyze(d, rg), [`data:image/png;base64,${shot.toString('base64')}`, regions]);
     for (const [k, v] of Object.entries(res)) {
       n++;

@@ -6,6 +6,8 @@
   "description": "Ва-банк — карткова дуель для двох (PWA)",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "serve": "python3 -m http.server 8080"
+    "serve": "python3 -m http.server 8080",
+    "check:contrast": "node tests/e2e/contrast.cjs",
+    "perf:skins": "node tools/perf-skins.cjs"
   }
 }

@@ -146,7 +146,11 @@ function face(card, rar, opts = {}) {
   const R = rng(`kyiv-${card.kind}-${card.suit || ''}-${card.value || ''}`);
   const live = rar === 'legendary' && opts.live !== false;
   const lit = { common: .32, rare: .45, epic: .55, legendary: .68 }[rar];
-  const sky = uniq(svg('0 0 100 140', `${defs(rar)}<rect width="100" height="140" fill="url(#SKY)"/><rect width="100" height="140" fill="url(#HAL)"/>${stars(R, atLeast(rar, 'epic') ? 34 : 22, 100, 78, live ? 'ktw' : '')}${moon(80, 18, 6, SKY[rar][0])}`), id);
+  // зорі: у живої легендарної — два шари, що по черзі мерехтять (анімується лише opacity шару)
+  const starStr = stars(R, atLeast(rar, 'epic') ? 34 : 22, 100, 78);
+  const sky = uniq(svg('0 0 100 140', `${defs(rar)}<rect width="100" height="140" fill="url(#SKY)"/><rect width="100" height="140" fill="url(#HAL)"/>${live ? '' : starStr}${moon(80, 18, 6, SKY[rar][0])}`), id);
+  const starBits = starStr.split('/>').filter(Boolean).map((x) => `${x}/>`);
+  const twinkle = live ? ['ktwA', 'ktwB'].map((c, k) => ({ d: 0, svg: svg('0 0 100 140', starBits.filter((_, i) => i % 2 === k).join('')), cls: c })) : [];
   const far = uniq(svg('0 0 100 140', `${defs(rar)}${hills(100, 98, 1.05, '#121a3e', atLeast(rar, 'epic') ? 'url(#DOME)' : '#121a3e')}`), id);
   // вивіска (неоновий текст із фільтром) — окремим шаром: квартали без тексту малюються в bitmap
   const lights = { win: '' };
@@ -159,7 +163,7 @@ function face(card, rar, opts = {}) {
   let center;
   if (card.kind === 'num') {
     const col = SUIT_COLOR[card.suit];
-    center = `${bigValue(card.value, rar, 50, 66, 46, id)}`
+    center = `${card.value > 9 ? bigValue(card.value, rar, 57, 64, 40, id) : bigValue(card.value, rar, 50, 66, 46, id)}`
       + suitG(card.suit, 85, 124, 12, col);
   } else {
     const col = { knife: '#d6dbe8', mirror: '#c8a8ff', double: '#ffcf55' }[card.kind];
@@ -167,11 +171,12 @@ function face(card, rar, opts = {}) {
   }
   const ink = svg('0 0 100 140', `${inkDefs(id)}${center}`, 'xMidYMid meet');
   const wins = live ? [{ d: 2, svg: svg('0 0 100 140', lights.win), wipe: true, cls: 'kwwipe' }] : [];
-  return { layers: [{ d: 0, svg: sky }, { d: 1, svg: far }, { d: 2, svg: near }, ...wins, { d: 2, svg: sign }, { d: 3, svg: front }], ink, live: live ? liveDust : null };
+  return { layers: [{ d: 0, svg: sky }, ...twinkle, { d: 1, svg: far }, { d: 2, svg: near }, ...wins, { d: 2, svg: sign }, { d: 3, svg: front }], ink, live: live ? liveDust : null };
 }
 
 /** Легендарна: золотий пил піднімається над містом (кількість обмежена). */
 function liveDust(el, n) {
+  n = Math.min(n, 14); // світіння — градієнтом (без box-shadow), частинок небагато
   let o = '';
   const R = rng(n * 7 + 3);
   for (let i = 0; i < n; i++) o += `<i class="pt" style="left:${f(R() * 100)}%;top:${f(70 + R() * 30)}%;--d:${f(4 + R() * 4)}s;--delay:-${f(R() * 8)}s;--dx:${f((R() - .5) * 30)}px;--c:${R() < .7 ? '#ffd27a' : '#ffe9c4'}"></i>`;

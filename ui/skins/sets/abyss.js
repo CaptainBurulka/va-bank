@@ -62,7 +62,7 @@ function plankton(R, w, y0, y1, n, rar, cls = '') {
 
 function bigValue(v, rar, id) {
   const fill = { common: '#a9cfda', rare: `url(#PRL${id})`, epic: `url(#LUM${id})`, legendary: `url(#LUM${id})` }[rar];
-  return `<text class="${rar === 'legendary' ? 'abglow' : ''}" x="50" y="70" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="800" font-size="${String(v).length > 1 ? 34 : 42}" fill="${fill}" ${atLeast(rar, 'epic') ? `filter="url(#BL${id})"` : ''}>${v}</text>`;
+  return `<text class="${rar === 'legendary' ? 'abglow' : ''}" x="${String(v).length > 1 ? 58 : 50}" y="70" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="800" font-size="${String(v).length > 1 ? 29 : 42}" fill="${fill}" ${atLeast(rar, 'epic') ? `filter="url(#BL${id})"` : ''}>${v}</text>`;
 }
 
 function face(card, rar, opts = {}) {

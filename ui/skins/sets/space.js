@@ -51,7 +51,7 @@ function orbitPlanet(cx, cy, rx, ry, rar, id, live) {
 }
 
 function bigValue(v, rar, id) {
-  return `<text x="50" y="72" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="600" font-size="${String(v).length > 1 ? 36 : 44}" fill="${rar === 'common' ? '#dfe4f2' : `url(#DG${id})`}" ${atLeast(rar, 'epic') ? `filter="url(#SG${id})"` : ''}>${v}</text>`
+  return `<text x="${String(v).length > 1 ? 58 : 50}" y="72" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="600" font-size="${String(v).length > 1 ? 31 : 44}" fill="${rar === 'common' ? '#dfe4f2' : `url(#DG${id})`}" ${atLeast(rar, 'epic') ? `filter="url(#SG${id})"` : ''}>${v}</text>`
     + (atLeast(rar, 'epic') ? `<path class="${rar === 'legendary' ? 'cstw' : ''}" d="M70 38l1 3 3 1-3 1-1 3-1-3-3-1 3-1Z" fill="#fff"/>` : '');
 }
 

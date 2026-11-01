@@ -155,7 +155,7 @@
 .sk-item.r-legendary .sk-gem { background: linear-gradient(135deg, #fff6cf, #e09a00 55%, #fff1b0); box-shadow: 0 0 0 1px rgba(0, 0, 0, .55), 0 0 10px var(--rar-legendary); }
 
 /* ───── Жива анімація легендарних: частинки (кількість обмежена в config.js) ───── */
-.sk-live .pt { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: var(--c, #ffe6a0); box-shadow: 0 0 6px var(--c, #ffe6a0); opacity: 0; animation: skRise var(--d, 4s) linear var(--delay, 0s) infinite; }
+.sk-live .pt { position: absolute; width: 9px; height: 9px; margin: -3px; border-radius: 50%; background: radial-gradient(circle, var(--c, #ffe6a0) 0 18%, color-mix(in srgb, var(--c, #ffe6a0) 45%, transparent) 30%, transparent 70%); opacity: 0; animation: skRise var(--d, 4s) linear var(--delay, 0s) infinite; }
 @keyframes skRise { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: .9; } 85% { opacity: .7; } 100% { transform: translate(var(--dx, 0), calc(var(--w) * -1.1)); opacity: 0; } }
 /* поза екраном або не в фокусі — анімації на паузі */
 .sk-item.sk-paused *, .sk-item.sk-paused { animation-play-state: paused !important; }
@@ -179,6 +179,9 @@
 @keyframes kwWipeIn { 0% { transform: translateX(100%); } 22%, 100% { transform: translateX(0); } }
 @keyframes kwOn { 0% { opacity: 0; } 3% { opacity: 1; } 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
 .sk-kyiv.sk-full .ktw { animation: ktw 3.2s ease-in-out infinite; }
+.sk-kyiv.sk-full .ktwA { animation: ktwL 3.2s ease-in-out infinite; }
+.sk-kyiv.sk-full .ktwB { animation: ktwL 3.2s ease-in-out -1.6s infinite; }
+@keyframes ktwL { 50% { opacity: .3; } }
 @keyframes ktw { 50% { opacity: .15; } }
 .sk-item.r-legendary.sk-kyiv.sk-full .kref { animation: kref 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
 @keyframes kref { 50% { opacity: .08; transform: scaleY(.6); } }
