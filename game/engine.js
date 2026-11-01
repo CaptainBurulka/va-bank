@@ -830,7 +830,11 @@ export function reduce(state, action, ctx) {
 function showdown(s, ctx) {
   if (isCombo(s)) return comboShowdown(s, ctx);
   const parts = participants(s);
-  if (parts.some((q) => s.players[q].played.kind === 'joker')) return jokerShowdown(s, ctx);
+  // «Класика (1 карта)» без джокерів; у збереженнях старих версій зіграний джокер доігрується як проста карта
+  for (const q of parts) {
+    const c = s.players[q].played;
+    if (c?.kind === 'joker') s.players[q].played = { id: c.id, kind: 'num', value: jokerSlot(c)?.v ?? 5, suit: null, joker: c.joker };
+  }
   if (parts.length === 2) {
     const [x, y] = parts;
     const d = compareDetail(s.players[x].played, s.players[y].played, s.cfg, s.trump);

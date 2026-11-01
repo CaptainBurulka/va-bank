@@ -10,7 +10,7 @@ const FONTS = ['oswald-cyrillic-700', 'oswald-latin-700', 'unbounded-cyrillic-80
   .map((f) => `fonts/${f}-normal.woff2`);
 const ASSETS = [
   './', 'index.html', 'styles.css', 'config.js', 'manifest.json',
-  'game/cards.js', 'game/engine.js', 'game/bot.js', 'game/jokers.js',
+  'game/cards.js', 'game/engine.js', 'game/combos.js', 'game/bot.js', 'game/jokers.js',
   'meta/profile.js', 'meta/catalog.js', 'meta/rivals.js',
   'net/host.js', 'net/online.js', 'net/protocol.js',
   'ui/app.js', 'ui/game.js', 'ui/cardview.js', 'ui/fx.js', 'ui/motion.js', 'ui/sound.js', 'ui/text.js', 'ui/settings.js', 'ui/tokens.css',

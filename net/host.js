@@ -114,8 +114,8 @@ export class GameHost {
     }
     // Клієнт не може надсилати системні дії.
     if (['pause', 'resume', 'timeout'].includes(action.type)) return false;
-    const { type, cardId, amount, guess, target } = action;
-    const r = reduce(this.state, { type, cardId, amount, guess, target, player: p }, this.ctx());
+    const { type, cardId, cards, open, amount, guess, target } = action;
+    const r = reduce(this.state, { type, cardId, cards, open, amount, guess, target, player: p }, this.ctx());
     if (!r.ok) {
       this.seats[p]?.error?.(r.error);
       this.sendTo(p);
