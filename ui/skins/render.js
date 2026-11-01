@@ -33,7 +33,7 @@ const io = typeof IntersectionObserver === 'function'
   : null;
 
 /**
- * @param {object} o { set, kind: 'card'|'back'|'felt'|'chip', card?, rarity, w?, live? }
+ * @param {object} o { set, kind: 'card'|'back'|'felt'|'chip', card?, rarity, w?, live?, observe? (false — без паузи поза екраном, для статичних) }
  * @returns HTMLElement .sk-item
  */
 export function renderItem(o) {
@@ -54,7 +54,7 @@ export function renderItem(o) {
     const stop = built.live(el.querySelector('.sk-live'), SKINS.particles.legendary);
     if (typeof stop === 'function') el._stop = stop;
   }
-  io?.observe(el);
+  if (o.observe !== false) io?.observe(el);
   el.dataset.rarity = rarity;
   el.dataset.set = o.set;
   return el;

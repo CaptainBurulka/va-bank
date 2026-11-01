@@ -1,6 +1,6 @@
 // Рендер ігрового екрана з view. Жодної ігрової логіки — лише показ і передача дій.
 // Принцип: у будь-якому стані за 2 секунди видно (1) чий хід, (2) що можна зробити, (3) що на кону.
-import { cardEl, fillFace, suitIcon } from './cardview.js';
+import { cardEl, fillFace, suitIcon, bindCardHold } from './cardview.js';
 import { animateNumber, setNumber, flyChips, floatEmoji, floatText } from './fx.js';
 import { sfx } from './sound.js';
 import { SUIT, SPECIAL, SCOUT, REACTIONS, logLine, explain } from './text.js';
@@ -72,6 +72,9 @@ export class GameScreen {
     });
     $('btn-menu').addEventListener('click', () => { sfx.tap(); this.onMenu(); });
 
+    // Утримання карти набору — огляд (рука і стіл)
+    bindCardHold(this.el.hand);
+    bindCardHold(this.el.table);
     // Рука: тап лише ВИБИРАЄ карту; покласти — окремою кнопкою (без випадкових ходів)
     this.el.hand.addEventListener('click', (ev) => {
       const c = ev.target.closest('.card');

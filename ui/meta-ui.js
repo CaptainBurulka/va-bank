@@ -1,9 +1,14 @@
 // Екрани клубу: гаманець, колекція, магазин, ігровий автомат, нагороди після партії.
 import { JOKERS, JOKER_BY_ID, RARITY_NAME, RARITIES } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID, SETS } from '../meta/catalog.js';
+import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID, SETS, SKIN_BY_ID, SKIN_KINDS, SKIN_SET_BY_ID } from '../meta/catalog.js';
 import {
   buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL, setProgress, completeSets, recordJokers, jokerStatsCsv,
+  publicLook, serialText, RANK,
 } from '../meta/profile.js';
+import { renderItem, disposeItem, playWinFx } from './skins/render.js';
+import { openViewer, playCeremony } from './skins/ceremony.js';
+import { bindPointer } from './skins/tilt.js';
+import { playAccent } from './skins/sound.js';
 import { META } from '../config.js';
 import { loadProfile, saveProfile, needsInstallHint } from './profile-store.js';
 import { applyMyLook, playWin } from './cosmetics.js';
@@ -27,7 +32,7 @@ const ERR = {
 
 export function initMeta(api) {
   ui = api;
-  applyMyLook(loadProfile().equipped);
+  applyMyLook(publicLook(loadProfile()));
   renderWallet();
   $('install-hint').classList.toggle('hidden', !needsInstallHint());
   for (const [tabs, fn] of [['col-tabs', renderCollection], ['shop-tabs', renderShop]]) {
@@ -49,7 +54,7 @@ function update(p) {
   p = q;
   for (const st of SETS) if (p.cosmetics[st.frame] && !before.cosmetics[st.frame]) setTimeout(() => ui?.toast(`${st.icon} Повний набір «${st.name}»! Рамка профілю — твоя`, 4200), 400);
   saveProfile(p);
-  applyMyLook(p.equipped);
+  applyMyLook(publicLook(p));
   renderWallet();
   return p;
 }
@@ -108,27 +113,94 @@ function renderCollection(tab) {
     }
     body.innerHTML = html;
     body.onclick = (e) => { const t = e.target.closest('[data-joker]'); if (t) jokerSheet(t.dataset.joker); };
-  } else {
-    // Тематичні набори: прогрес і рамка за повний набір
-    let html = `<div class="sec-title"><span>Набори</span><span>повний набір — рамка профілю</span></div><div class="sets">${setProgress(p).map((st) => `
-      <div class="set-card ${st.done ? 'done' : ''}"><b>${st.icon} ${esc(st.name)}</b><span class="meter"><i style="width:${Math.round((st.have / st.total) * 100)}%"></i></span><span>${st.done ? '✓ рамка отримана' : `${st.have} / ${st.total}`}</span></div>`).join('')}</div>`;
-    for (const [cat, name] of Object.entries(COSMETIC_CATS)) {
-      const items = COSMETICS.filter((c) => c.cat === cat);
-      html += `<div class="sec-title"><span>${name}</span><span>${items.filter((c) => p.cosmetics[c.id]).length} / ${items.length}</span></div><div class="grid-tiles">${items.map((c) => cosTile(c, { locked: !p.cosmetics[c.id], equipped: p.equipped[cat] === c.id })).join('')}</div>`;
-    }
-    body.innerHTML = html;
-    body.onclick = (e) => {
-      const t = e.target.closest('[data-cos]');
-      if (!t) return;
-      const c = COSMETIC_BY_ID[t.dataset.cos];
-      const q = loadProfile();
-      if (q.cosmetics[c.id]) {
-        sfx.tap(); update(equip(q, c.cat, c.id)); renderCollection('cosmetics');
-        if (c.cat === 'sound') { setAccent(c.accent); sfx.accent(); } // послухати
-      }
-      else ui.modal(`<h3>${esc(c.name)}</h3><p>${RARITY_NAME[c.rarity]} · ${COSMETIC_CATS[c.cat]}${c.set ? ` · набір «${esc(SETS.find((x) => x.id === c.set).name)}»` : ''}</p><p>Як отримати: ${sourceText(c)}.</p>${c.suits ? '<p>Власні іконки мастей; на великому банку карти світяться.</p>' : ''}`, [{ label: 'Зрозуміло', cls: 'primary' }]);
-    };
+  } else renderSkinCollection(p, body);
+}
+
+// ───────── предмети наборів: превʼю, колекція, огляд ─────────
+const KIND_UA = { deck: 'Колода', back: 'Сорочка', felt: 'Сукно', chips: 'Фішки', win: 'Перемога', sound: 'Звук' };
+const KIND_RENDER = { deck: 'card', back: 'back', felt: 'felt', chips: 'chip', win: 'felt', sound: 'chip' };
+const KIND_SHAPE = { deck: 'card', back: 'card', felt: 'wide', chips: 'round', win: 'wide', sound: 'round' };
+const PREVIEW_CARD = { kind: 'num', value: 7, suit: 'fire' };
+const KIND_OVERLAY = { win: '▶', sound: '♪' };
+
+/** Предмет набору → параметри для renderItem. */
+export function skinItem(id, rarity) {
+  const it = SKIN_BY_ID[id];
+  const kind = KIND_RENDER[it.cat];
+  return { set: it.set, kind, card: kind === 'card' ? PREVIEW_CARD : undefined, rarity };
+}
+const pvSize = (cat, small) => (KIND_SHAPE[cat] === 'wide' ? (small ? '56px' : '100px') : small ? '34px' : '62px');
+let mountedPv = [];
+/** Домалювати превʼю предметів у плейсхолдери [data-pv="id:рідкість"]. */
+function mountPreviews(root) {
+  mountedPv = mountedPv.filter((el) => { if (el.isConnected && !root.contains(el)) return true; disposeItem(el); return false; });
+  for (const ph of root.querySelectorAll('[data-pv]')) {
+    const [id, r] = ph.dataset.pv.split(':');
+    const el = renderItem({ ...skinItem(id, r), w: ph.dataset.w || pvSize(SKIN_BY_ID[id].cat), live: false });
+    ph.append(el);
+    mountedPv.push(el);
   }
+}
+
+function skinTile(p, id) {
+  const it = SKIN_BY_ID[id];
+  const own = p.skins[id];
+  const ov = KIND_OVERLAY[it.cat] ? `<i class="ov">${KIND_OVERLAY[it.cat]}</i>` : '';
+  if (!own) return `<button class="skt locked" data-skin="${id}"><div class="sil ${KIND_SHAPE[it.cat]}">?</div><span class="nm">${KIND_UA[it.cat]}</span><span class="rr">не відкрито</span></button>`;
+  return `<button class="skt r-${own.r} ${p.equipped[it.cat] === id ? 'equipped' : ''}" data-skin="${id}" style="--rc:var(--r-${own.r})"><div class="pv" data-pv="${id}:${own.r}"></div>${ov}<span class="nm">${KIND_UA[it.cat]}</span><span class="rr">${RARITY_NAME[own.r]}</span></button>`;
+}
+
+function renderSkinCollection(p, body) {
+  let html = '<p class="hint-text">Торкнись — вдягнути. Утримуй — огляд із нахилом і серійним номером. Повний набір (6 предметів будь-якої рідкості) — рамка профілю.</p>';
+  html += `<div class="sec-title"><span>Класика</span></div><div class="grid-tiles">${SKIN_KINDS.map((cat) => { const c = COSMETICS.find((x) => x.cat === cat && x.source === 'start'); return cosTile(c, { equipped: p.equipped[cat] === c.id }); }).join('')}</div>`;
+  for (const st of setProgress(p)) {
+    html += `<div class="skset"><div class="sec-title"><span>${st.icon} ${esc(st.name)}</span><span>${st.done ? '✓ рамка · ' : ''}${st.have} / ${st.total}</span></div>
+      <span class="meter"><i style="width:${Math.round((st.have / st.total) * 100)}%"></i></span><div class="sk-grid">${st.items.map((id) => skinTile(p, id)).join('')}</div></div>`;
+  }
+  for (const cat of ['emoji', 'frame']) {
+    const items = COSMETICS.filter((c) => c.cat === cat);
+    html += `<div class="sec-title"><span>${COSMETIC_CATS[cat]}</span><span>${items.filter((c) => p.cosmetics[c.id]).length} / ${items.length}</span></div><div class="grid-tiles">${items.map((c) => cosTile(c, { locked: !p.cosmetics[c.id], equipped: p.equipped[cat] === c.id })).join('')}</div>`;
+  }
+  body.innerHTML = html;
+  mountPreviews(body);
+  for (const b of body.querySelectorAll('.skt:not(.locked)')) b._hold = bindPointer(b.querySelector('.sk-item'), { onHold: () => openSkinViewer(b.dataset.skin) });
+  body.onclick = (e) => {
+    const t = e.target.closest('[data-skin]');
+    if (t) {
+      if (t._hold?.wasHeld()) return;
+      const it = SKIN_BY_ID[t.dataset.skin];
+      const q = loadProfile();
+      const own = q.skins[it.id];
+      if (!own) {
+        ui.modal(`<h3>${esc(it.name)}</h3><p>Ще не відкрито.</p><p>Як отримати: автомат — у будь-якій рідкості (дублікат вищої рідкості покращує предмет); магазин — звичайна, рідкісна чи епічна. Легендарна — лише з автомата.</p>`, [{ label: 'До магазину', cls: 'primary', onClick: () => openShop('cosmetics', it.set) }, { label: 'Зрозуміло', cls: 'tertiary' }]);
+        return;
+      }
+      sfx.tap();
+      update(equip(q, it.cat, it.id));
+      if (it.cat === 'sound') playAccent(SKIN_SET_BY_ID[it.set].accent, own.r);
+      if (it.cat === 'win') playWinFx($('scr-collection'), it.set, own.r);
+      ui.toast(`Вдягнуто: ${it.name}`);
+      renderCollection('cosmetics');
+      return;
+    }
+    const c = COSMETIC_BY_ID[e.target.closest('[data-cos]')?.dataset.cos];
+    if (!c) return;
+    const q = loadProfile();
+    if (q.cosmetics[c.id]) { sfx.tap(); update(equip(q, c.cat, c.id)); renderCollection('cosmetics'); }
+    else ui.modal(`<h3>${esc(c.name)}</h3><p>${RARITY_NAME[c.rarity]} · ${COSMETIC_CATS[c.cat]}</p><p>Як отримати: ${sourceText(c)}.</p>`, [{ label: 'Зрозуміло', cls: 'primary' }]);
+  };
+}
+
+/** Повноекранний огляд свого предмета набору: нахил, серійний номер, «Поділитися», «Вдягнути». */
+export function openSkinViewer(id) {
+  const p = loadProfile();
+  const it = SKIN_BY_ID[id];
+  const own = p.skins[id];
+  if (!own) return;
+  const extra = [{ label: p.equipped[it.cat] === id ? 'Вдягнуто ✓' : 'Вдягнути', onClick: () => { update(equip(loadProfile(), it.cat, id)); ui.toast(`Вдягнуто: ${it.name}`); if ($('scr-collection') && !$('scr-collection').classList.contains('hidden')) renderCollection('cosmetics'); } }];
+  if (it.cat === 'win') extra.push({ label: 'Програти', onClick: () => playWinFx(document.querySelector('.skv'), it.set, own.r) });
+  if (it.cat === 'sound') extra.push({ label: 'Послухати', onClick: () => playAccent(SKIN_SET_BY_ID[it.set].accent, own.r) });
+  openViewer({ item: skinItem(id, own.r), name: it.name, serial: serialText(own.n), extraButtons: extra });
 }
 
 function jokerSheet(id) {
@@ -145,7 +217,9 @@ function jokerSheet(id) {
 }
 
 // ───────── магазин ─────────
-export function openShop(tab = 'jokers') {
+let shopSet = 'kyiv';
+export function openShop(tab = 'jokers', set = null) {
+  if (set) shopSet = set;
   ui.show('shop');
   for (const x of $('shop-tabs').children) x.classList.toggle('on', x.dataset.tab === tab);
   renderShop(tab);
@@ -156,12 +230,33 @@ function shopRow(kind, item, price, currency) {
   const owned = kind === 'joker' ? p.jokers[item.id] : p.cosmetics[item.id];
   const have = currency === 'points' ? p.points : p.shards;
   const sym = currency === 'points' ? '★' : '◆';
-  const icon = kind === 'joker' ? `<span class="big">${item.icon}</span>` : swatch(item).replace('class="sw"', 'class="sw"').replace('class="big"', 'class="big"');
+  const icon = kind === 'joker' ? `<span class="big">${item.icon}</span>` : swatch(item);
   const desc = kind === 'joker' ? item.desc : `${COSMETIC_CATS[item.cat]} · ${RARITY_NAME[item.rarity]}`;
   const btn = owned
     ? '<button class="btn secondary" disabled>Є</button>'
     : `<button class="btn ${have >= price ? 'primary' : 'secondary'}" data-buy="${kind}:${item.id}:${currency}" ${have >= price ? '' : 'disabled'}>${sym} ${price}</button>`;
   return `<div class="shop-row r-${item.rarity}" style="--rc:var(--r-${item.rarity})">${icon}<div class="info"><b>${esc(item.name)}</b><span>${esc(desc)}</span></div>${btn}</div>`;
+}
+
+/** Рядок предмета набору: купити наступну рідкість (звичайна → рідкісна → епічна). */
+function skinShopRow(id, currency) {
+  const p = loadProfile();
+  const it = SKIN_BY_ID[id];
+  const own = p.skins[id];
+  const next = RARITIES[own ? RANK[own.r] + 1 : 0];
+  const price = next ? (currency === 'points' ? priceOf('skin', id, next) : shardPriceOf('skin', id, next)) : null;
+  const have = currency === 'points' ? p.points : p.shards;
+  const sym = currency === 'points' ? '★' : '◆';
+  const r = next && price != null ? next : own?.r || 'common';
+  const btn = price == null
+    ? `<button class="btn secondary" disabled>${own?.r === 'legendary' ? 'Максимум' : 'Автомат'}</button>`
+    : `<button class="btn ${have >= price ? 'primary' : 'secondary'}" data-buy="skin:${id}:${currency}:${next}" ${have >= price ? '' : 'disabled'}>${sym} ${price}</button>`;
+  const what = own ? (price == null ? `є: ${RARITY_NAME[own.r]}${own.r === 'epic' ? ' · легендарна — лише автомат' : ''}` : `покращити: ${RARITY_NAME[own.r]} → ${RARITY_NAME[next]}`) : RARITY_NAME[next];
+  return `<div class="shop-row r-${r}" style="--rc:var(--r-${r})"><div class="pv-s" data-pv="${id}:${r}" data-w="${pvSize(it.cat, true)}"></div><div class="info"><b>${esc(KIND_UA[it.cat])}</b><span>${esc(what)}</span></div>${btn}</div>`;
+}
+
+function shopSetPicker() {
+  return `<div class="set-pick">${SETS.map((st) => `<button data-shopset="${st.id}" class="${st.id === shopSet ? 'on' : ''}">${st.icon} ${esc(st.name)}</button>`).join('')}</div>`;
 }
 
 function renderShop(tab) {
@@ -174,38 +269,42 @@ function renderShop(tab) {
       html += JOKERS.filter((j) => j.rarity === r).map((j) => shopRow('joker', j, priceOf('joker', j.id), 'points')).join('');
     }
   } else if (tab === 'cosmetics') {
-    html += `<p class="hint-text">Напряму дорожче, ніж у середньому з автомата (спін — ★ ${META.spin.cost}).</p>`;
-    for (const [cat, name] of Object.entries(COSMETIC_CATS)) {
-      const items = COSMETICS.filter((c) => c.cat === cat && priceOf('cosmetic', c.id) != null);
-      if (items.length) html += `<div class="sec-title"><span>${name}</span></div>` + items.map((c) => shopRow('cosmetic', c, priceOf('cosmetic', c.id), 'points')).join('');
-    }
+    html += `<p class="hint-text">Предмет набору купується в потрібній рідкості або покращується до вищої. Легендарні — лише з автомата (спін — ★ ${META.spin.cost}).</p>${shopSetPicker()}`;
+    html += SETS.find((x) => x.id === shopSet).items.map((id) => skinShopRow(id, 'points')).join('');
+    const extra = COSMETICS.filter((c) => priceOf('cosmetic', c.id) != null);
+    if (extra.length) html += '<div class="sec-title"><span>Емодзі й рамки</span></div>' + extra.map((c) => shopRow('cosmetic', c, priceOf('cosmetic', c.id), 'points')).join('');
   } else {
-    html += '<p class="hint-text">Уламки ◆ — з дублікатів в автоматі. Обмінюються на будь-що, крім легендарних джокерів.</p>';
+    html += `<p class="hint-text">Уламки ◆ — з дублікатів в автоматі. Обмінюються на будь-що, крім легендарних джокерів і легендарних предметів наборів.</p>${shopSetPicker()}`;
+    html += SETS.find((x) => x.id === shopSet).items.map((id) => skinShopRow(id, 'shards')).join('');
     html += '<div class="sec-title"><span>Джокери</span></div>' + JOKERS.filter((j) => shardPriceOf('joker', j.id) != null).map((j) => shopRow('joker', j, shardPriceOf('joker', j.id), 'shards')).join('');
-    html += '<div class="sec-title"><span>Косметика</span></div>' + COSMETICS.filter((c) => shardPriceOf('cosmetic', c.id) != null).map((c) => shopRow('cosmetic', c, shardPriceOf('cosmetic', c.id), 'shards')).join('');
+    html += '<div class="sec-title"><span>Емодзі й рамки</span></div>' + COSMETICS.filter((c) => shardPriceOf('cosmetic', c.id) != null).map((c) => shopRow('cosmetic', c, shardPriceOf('cosmetic', c.id), 'shards')).join('');
   }
   body.innerHTML = html;
+  mountPreviews(body);
   body.onclick = (e) => {
+    const sp = e.target.closest('[data-shopset]');
+    if (sp) { sfx.tap(); shopSet = sp.dataset.shopset; renderShop(tab); return; }
     const b = e.target.closest('[data-buy]');
     if (!b || b.disabled) return;
-    const [kind, id, currency] = b.dataset.buy.split(':');
-    tryBuy(kind, id, () => renderShop(tab), currency);
+    const [kind, id, currency, rarity] = b.dataset.buy.split(':');
+    tryBuy(kind, id, () => renderShop(tab), currency, rarity);
   };
 }
 
-function tryBuy(kind, id, after, currency = 'points') {
-  const item = kind === 'joker' ? JOKER_BY_ID[id] : COSMETIC_BY_ID[id];
-  const price = currency === 'points' ? priceOf(kind, id) : shardPriceOf(kind, id);
+function tryBuy(kind, id, after, currency = 'points', rarity = null) {
+  const item = kind === 'joker' ? JOKER_BY_ID[id] : kind === 'skin' ? SKIN_BY_ID[id] : COSMETIC_BY_ID[id];
+  const price = currency === 'points' ? priceOf(kind, id, rarity) : shardPriceOf(kind, id, rarity);
   const sym = currency === 'points' ? '★' : '◆';
-  ui.modal(`<h3>${esc(item.name)}</h3><p>${currency === 'points' ? 'Купити' : 'Обміняти'} за ${sym} ${price}?</p>`, [
+  const title = kind === 'skin' ? `${item.name} · ${RARITY_NAME[rarity]}` : item.name;
+  ui.modal(`<h3>${esc(title)}</h3><p>${currency === 'points' ? 'Купити' : 'Обміняти'} за ${sym} ${price}?</p>`, [
     { label: currency === 'points' ? 'Купити' : 'Обміняти', cls: 'primary', onClick: () => {
-      const r = (currency === 'points' ? buy : exchange)(loadProfile(), kind, id);
+      const r = (currency === 'points' ? buy : exchange)(loadProfile(), kind, id, rarity);
       if (!r.ok) { ui.toast(ERR[r.error] || 'Не вдалося', 2600, 'error'); return; }
       let p = r.profile;
       const ach = checkAchievements(p, null);
       p = update(ach.profile);
-      sfx.jackpot(item.rarity);
-      ui.toast(`${item.name} — у колекції!${ach.unlocked.length ? ` Досягнення: ${ach.unlocked.map((a) => ACH_BY_ID[a].name).join(', ')}` : ''}`);
+      sfx.jackpot(kind === 'skin' ? rarity : item.rarity);
+      ui.toast(`${title} — у колекції!${r.serial ? ` ${serialText(r.serial)}` : ''}${ach.unlocked.length ? ` Досягнення: ${ach.unlocked.map((a) => ACH_BY_ID[a].name).join(', ')}` : ''}`);
       after();
     } },
     { label: 'Скасувати', cls: 'tertiary' },
@@ -255,6 +354,11 @@ function doSpin() {
   const fast = reducedMotion();
   const syms = [...REEL_SYMBOLS, SPECIAL_SYMBOL];
   const tick = setInterval(() => sfx.reelTick(), 70);
+  // передчуття: коли зупиняється другий барабан, вогні машини підказують рідкість кольором;
+  // для епічної і легендарної — пауза «майже» перед останнім барабаном
+  const rank = RANK[r.result.rarity];
+  machine.classList.remove('hint-common', 'hint-rare', 'hint-epic', 'hint-legendary', 'near');
+  if (!fast) setTimeout(() => { machine.classList.add(`hint-${r.result.rarity}`); if (rank >= 2) { machine.classList.add('near'); sfx.drumroll?.(); } }, 1100 + 550);
   const stops = r.result.reels.map((target, i) => {
     const reel = $(`reel${i}`);
     reel.classList.remove('win');
@@ -266,7 +370,7 @@ function doSpin() {
     strip.style.transition = 'none';
     strip.style.transform = 'translateY(0)';
     void strip.offsetHeight;
-    const dur = fast ? 150 : 1100 + i * 550; // поступова зупинка барабанів
+    const dur = fast ? 150 : 1100 + i * 550 + (i === 2 && rank >= 2 ? 1100 : 0); // поступова зупинка барабанів (+ пауза «майже»)
     strip.style.transition = `transform ${dur}ms cubic-bezier(.15,.85,.25,1.04)`;
     strip.style.transform = `translateY(-${(list.length - 1) * reel.clientHeight}px)`;
     return new Promise((res) => setTimeout(() => { sfx.reelStop(i); res(); }, dur));
@@ -280,9 +384,31 @@ function doSpin() {
     let p = r.profile;
     const ach = checkAchievements(p, null);
     p = update(ach.profile);
+    machine.classList.remove('near');
+    if (r.result.kind === 'skin') { skinPrize(r.result, ach.unlocked); return; }
     sfx.jackpot(r.result.rarity);
     if (['epic', 'legendary'].includes(r.result.rarity)) playWin(document.getElementById('scr-slot'), r.result.rarity === 'legendary' ? 'goldrain' : 'confetti', fast);
     setTimeout(() => { showPrize(r.result, ach.unlocked); spinning = false; renderPity(); }, fast ? 0 : 450);
+  });
+}
+
+/** Предмет набору з автомата: церемонія за рідкістю, потім — вдягнути / ще раз. */
+function skinPrize(res, ach) {
+  const it = SKIN_BY_ID[res.id];
+  const own = loadProfile().skins[res.id];
+  const note = res.duplicate ? `Уже є (${RARITY_NAME[own.r]}) → +${res.shards} уламків ◆` : res.upgraded ? `Покращено: ${RARITY_NAME[res.from]} → ${RARITY_NAME[res.rarity]}` : '';
+  playCeremony({
+    item: skinItem(res.id, res.rarity), name: it.name, serial: res.duplicate ? '' : serialText(res.serial),
+    dupe: res.duplicate, dupeText: note, note,
+    onClose: () => {
+      spinning = false;
+      renderPity();
+      const extra = [res.pityHit ? `<p>Спрацювала гарантія ${res.pityHit === 'legendary' ? 'легендарного' : 'епічного'}!</p>` : '', ach.length ? `<p>Досягнення: ${ach.map((a) => esc(ACH_BY_ID[a].name)).join(', ')}</p>` : '', res.completed?.length ? `<p>Повний набір — рамка профілю твоя!</p>` : ''].join('');
+      const btns = [{ label: 'Ще раз', cls: 'primary', onClick: () => setTimeout(doSpin, 50) }];
+      if (!res.duplicate && loadProfile().equipped[it.cat] !== res.id) btns.push({ label: 'Вдягнути', cls: 'secondary', onClick: () => { update(equip(loadProfile(), it.cat, res.id)); ui.toast(`Вдягнуто: ${it.name}`); } });
+      btns.push({ label: 'Закрити', cls: 'tertiary' });
+      if (extra || btns.length > 2) ui.modal(`<div class="prize"><h3>${esc(it.name)}</h3><p>${RARITY_NAME[own.r]}${own.n ? ` · ${serialText(own.n)}` : ''}</p>${extra}</div>`, btns);
+    },
   });
 }
 

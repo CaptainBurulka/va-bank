@@ -97,8 +97,12 @@ function chord(freqs, { delay = 0, step = 0.07, dur = 0.5, vol = 0.12 } = {}) {
 export const synth = { tone, noise, chord, clink, ready: () => !!ac && !muted };
 
 let accentId = null;
-/** Звуковий акцент із косметики («Звук»): null — класика. */
-export function setAccent(id) { accentId = id || null; }
+let accentRarity = 'common';
+let accentPlayer = null;
+/** Звуковий акцент із косметики («Звук»): null — класика. rarity — рідкість предмета набору (додає шари звуку). */
+export function setAccent(id, rarity = 'common') { accentId = id || null; accentRarity = rarity; }
+/** Програвач акцентів наборів (ui/skins/sound.js) — реєструється з ui/cosmetics.js. */
+export function setAccentPlayer(fn) { accentPlayer = fn; }
 
 export const sfx = {
   tap: () => noise({ dur: 0.03, vol: 0.12, freq: 1800, q: 3 }),
@@ -153,6 +157,7 @@ export const sfx = {
   /** Звуковий акцент тематичного набору (на перемогу і великі моменти). */
   accent: (big = false) => {
     if (!ac || muted || !accentId) return;
+    if (accentPlayer) { accentPlayer(accentId, accentRarity, big); return; }
     const v = big ? 1.3 : 1;
     switch (accentId) {
       case 'bells': // церковні дзвони: низький удар + обертони

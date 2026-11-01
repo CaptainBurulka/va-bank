@@ -448,8 +448,14 @@ export function importCode(code) {
 /** Дані профілю для суперника (онлайн): лише вибрана косметика і рідкість вдягнутих предметів наборів. */
 export function publicLook(p) {
   const rar = {};
-  for (const cat of SKIN_KINDS) if (SKIN_BY_ID[p.equipped[cat]]) rar[cat] = p.skins?.[p.equipped[cat]]?.r || 'common';
-  return { ...p.equipped, rar };
+  const ser = {};
+  for (const cat of SKIN_KINDS) {
+    const x = SKIN_BY_ID[p.equipped[cat]] && p.skins?.[p.equipped[cat]];
+    if (!x) continue;
+    rar[cat] = x.r;
+    ser[cat] = x.n;
+  }
+  return { ...p.equipped, rar, ser };
 }
 
 /**
@@ -457,7 +463,7 @@ export function publicLook(p) {
  * Старі клієнти надсилають id старої косметики — вони перекладаються в предмети наборів.
  */
 export function sanitizeLook(look) {
-  const out = { ...DEFAULT_EQUIPPED, rar: {} };
+  const out = { ...DEFAULT_EQUIPPED, rar: {}, ser: {} };
   if (!look || typeof look !== 'object') return out;
   for (const cat of Object.keys(COSMETIC_CATS)) {
     let id = look[cat];
@@ -468,6 +474,8 @@ export function sanitizeLook(look) {
       out[cat] = id;
       const r = look.rar?.[cat];
       out.rar[cat] = RANK[r] !== undefined ? r : legacyR || 'common';
+      const n = look.ser?.[cat];
+      if (Number.isInteger(n) && n >= 1 && n <= 9999) out.ser[cat] = n;
     }
   }
   return out;

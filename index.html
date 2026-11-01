@@ -22,6 +22,7 @@
   <link rel="preload" href="fonts/playfair-display-cyrillic-900-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="ui/tokens.css">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="ui/skins/skins.css">
   <script src="vendor/peerjs.min.js" defer></script>
   <script>
   // Страховка: якщо гра не стартувала за 8 с (напр. після невдалого оновлення), пропонуємо перезапуск начисто.
@@ -238,14 +239,14 @@
     <!-- Колекція -->
     <section class="screen hidden meta-screen" id="scr-collection">
       <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Колекція</h2><span class="wallet mini" data-wallet></span></div>
-      <div class="tabs" id="col-tabs"><button data-tab="jokers" class="on">Джокери</button><button data-tab="cosmetics">Косметика</button><button data-tab="stats">Статистика</button></div>
+      <div class="tabs" id="col-tabs"><button data-tab="jokers" class="on">Джокери</button><button data-tab="cosmetics">Набори</button><button data-tab="stats">Статистика</button></div>
       <div class="meta-body" id="col-body"></div>
     </section>
 
     <!-- Магазин -->
     <section class="screen hidden meta-screen" id="scr-shop">
       <div class="meta-head"><button class="btn tertiary back" data-go="menu">← Меню</button><h2>Магазин</h2><span class="wallet mini" data-wallet></span></div>
-      <div class="tabs" id="shop-tabs"><button data-tab="jokers" class="on">Джокери</button><button data-tab="cosmetics">Косметика</button><button data-tab="shards">Уламки</button></div>
+      <div class="tabs" id="shop-tabs"><button data-tab="jokers" class="on">Джокери</button><button data-tab="cosmetics">Набори</button><button data-tab="shards">Уламки</button></div>
       <div class="meta-body" id="shop-body"></div>
     </section>
 

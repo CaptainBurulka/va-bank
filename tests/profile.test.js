@@ -163,7 +163,7 @@ test('чужа косметика валідується', () => {
   assert.equal(look.rar.deck, 'epic');
   assert.equal(look.back, 'back_burgundy', 'id не тієї категорії відкидається');
   assert.equal(look.frame, 'frame_basic');
-  assert.equal(Object.keys(look).length, 9);
+  assert.equal(Object.keys(look).length, 10);
 });
 
 test('каталог: класика, емодзі, рамки + 8 наборів × 6 предметів', () => {

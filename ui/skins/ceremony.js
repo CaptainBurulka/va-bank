@@ -58,7 +58,7 @@ export function playCeremony(o) {
   ov.style.setProperty('--cer', `${total}ms`);
   ov.innerHTML = `<div class="skc-dark"></div><div class="skc-rays"></div><div class="skc-light"></div><div class="skc-flash"></div><div class="skc-burst"></div>
     <div class="skc-stage"><div class="skc-flip"><div class="skc-front"></div><div class="skc-back"></div></div></div>
-    <div class="skc-title"><span class="skc-rar">${legendary ? 'ЛЕГЕНДАРНА' : RAR[rar].name}</span><b>${esc(o.name)}</b><span class="skc-sub">${esc(set.name)}${o.serial ? ` · ${esc(o.serial)}` : ''}</span>${o.dupe ? `<span class="skc-dupe">${esc(o.dupeText || 'Дублікат — перетворено на уламки')}</span>` : ''}</div>
+    <div class="skc-title"><span class="skc-rar">${legendary ? 'ЛЕГЕНДАРНА' : RAR[rar].name}</span><b>${esc(o.name)}</b><span class="skc-sub">${esc(set.name)}${o.serial ? ` · ${esc(o.serial)}` : ''}</span>${o.dupe || o.note ? `<span class="skc-dupe">${esc(o.dupeText || o.note || 'Дублікат — перетворено на уламки')}</span>` : ''}</div>
     <div class="skc-skip">торкнись, щоб пропустити</div>`;
   // запечатана сорочка і сам предмет
   const sealed = renderItem({ set: item.set, kind: 'back', rarity: 'common', w: 'min(56vw, 250px)', live: false });

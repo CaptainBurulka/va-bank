@@ -503,3 +503,29 @@
 @keyframes csWarp { 0% { opacity: 0; width: 3px; transform: rotate(var(--a)) translateX(10px); } 20% { opacity: 1; } 100% { opacity: 0; width: 160px; transform: rotate(var(--a)) translateX(60vmax); } }
 .skwin .csfw { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, transparent, #fff); transform: rotate(-30deg); opacity: 0; animation: csFw 1.2s ease-in both; }
 @keyframes csFw { 0% { opacity: 0; translate: 0 0; } 20% { opacity: 1; } 100% { opacity: 0; translate: -220px 130px; } }
+
+/* ═════════ У грі: карти, сорочки, сукно, фішки ═════════ */
+.card .face .sk-item, .card .back .sk-item { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; touch-action: auto; }
+.card .face .sk-tilt, .card .back .sk-tilt { box-shadow: none; transform: none; transition: none; }
+.card.skinned .face { background: #111; }
+.card .back.skinned::after, .card .back.skinned > span { display: none; }
+/* рука: легендарна карта ледь світиться (лише opacity — дешево), епічна — тонкий фіолетовий ореол */
+.hand .card[data-skr="legendary"]::after, .hand .card[data-skr="epic"]::after { content: ""; position: absolute; inset: -3px; border-radius: calc(var(--r-card) + 3px); pointer-events: none; z-index: -1; opacity: .35; }
+.hand .card[data-skr="legendary"]::after { box-shadow: 0 0 12px 3px rgba(255, 194, 61, .7); animation: skHandGlow 3.4s ease-in-out infinite; }
+.hand .card[data-skr="epic"]::after { box-shadow: 0 0 9px 2px rgba(181, 108, 255, .55); opacity: .45; }
+@keyframes skHandGlow { 50% { opacity: .85; } }
+/* відкрита карта суперника — повний блиск рідкості: світло трохи збоку */
+.slot .card .face .sk-item { --px: 64%; --py: 34%; --hyp: .5; }
+/* сукно набору під столом */
+.table.skinned { border-color: var(--rc, var(--brass)); background: #05060c; }
+.table > .felt-skin { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0; }
+.table > .felt-skin .sk-item { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; touch-action: auto; }
+.table > .felt-skin .sk-tilt { border-radius: 0; box-shadow: none; transform: none; }
+.table > .felt-skin :is(.sk-frame, .sk-bevel, .sk-gem, .sk-glare, .sk-foil) { display: none; }
+.table > .felt-skin::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, .1), rgba(0, 0, 0, .45)); }
+.table.skinned > .tbar, .table.skinned > .arena { position: relative; z-index: 1; }
+/* фішка набору в стосі гравця */
+.stack .stack-chip { flex-shrink: 0; }
+.stack .stack-chip :is(.sk-gem, .sk-bevel, .sk-glare) { display: none; }
+.stack .stack-chip .sk-tilt { box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .hand .card[data-skr]::after { animation: none; } }
