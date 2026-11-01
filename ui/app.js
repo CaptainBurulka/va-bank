@@ -4,9 +4,10 @@ import { GameScreen } from './game.js';
 import { cardEl } from './cardview.js';
 import { unlockAudio, sfx, isMuted, setMuted, getVolume, setVolume } from './sound.js';
 import { RULES_HTML, TUTORIAL } from './text.js';
-import { tutorial } from './settings.js';
+import { tutorial, botLang } from './settings.js';
 import { CONFIG, APP_VERSION, MODES, MODE_IDS, META } from '../config.js';
 import { ALL_BOT_STYLES } from '../game/bot.js';
+import { PERSONAS, PERSONA_BY_ID } from '../game/banter.js';
 const BOT_STYLES = ['smart', 'greedy', ...ALL_BOT_STYLES.filter((k) => !['smart', 'greedy'].includes(k))];
 import { buildDeck } from '../game/cards.js';
 import { upgradeState } from '../game/engine.js';
@@ -61,7 +62,15 @@ function prepareLooks3(looks, you) {
 }
 
 /** Бот: випадковий набір із 3 джокерів (зрідка — легендарний) і випадкова косметика. */
+// Профілювання: ?perfskin=cyber — боти завжди в повному легендарному наборі (на гру не впливає)
+const PERF_SKIN = new URLSearchParams(location.search).get('perfskin');
 function botLoadout() {
+  if (PERF_SKIN) {
+    const look = { ...DEFAULT_EQUIPPED, rar: {} };
+    for (const cat of SKIN_KINDS) { look[cat] = `${cat}_${PERF_SKIN}`; look.rar[cat] = 'legendary'; }
+    look.frame = 'frame_cosmic';
+    return { set: ['storm', 'boom', 'mirrorworld'], look };
+  }
   const pool = JOKERS.filter((j) => j.rarity !== 'legendary' || Math.random() < 0.15).map((j) => j.id);
   const set = [];
   while (set.length < 3 && pool.length) set.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -177,15 +186,26 @@ const PLAYER_OPTS = {
 
 const roundOptions = () => CONFIG.roundOptions.map((r) => ({ value: r, label: `${r}`, sub: r === 8 ? 'швидка' : r === 16 ? 'довга' : 'звичайна' }));
 let prefRounds = CONFIG.maxRounds;
-let prefStyle = 'aggressive';
+let prefStyle = 'vitok'; // персонаж бота (game/banter.js PERSONAS)
 try { prefRounds = Number(localStorage.getItem('vabank-rounds')) || prefRounds; prefStyle = localStorage.getItem('vabank-style') || prefStyle; } catch {}
-if (!STYLE_INFO[prefStyle]) prefStyle = 'smart';
-const rememberPrefs = () => { try { localStorage.setItem('vabank-rounds', prefRounds); localStorage.setItem('vabank-style', prefStyle); localStorage.setItem('vabank-players', prefPlayers); localStorage.setItem('vabank-mode', prefMode); } catch {} };
+if (!PERSONA_BY_ID[prefStyle]) prefStyle = 'vitok';
+// Швидкість: множник таймерів кожного кроку (CONFIG.timerSpeeds), «без таймера» — 0
+let prefSpeed = 'normal';
+try { prefSpeed = localStorage.getItem('vabank-speed') || prefSpeed; } catch {}
+if (!(prefSpeed in CONFIG.timerSpeeds)) prefSpeed = 'normal';
+const speedOptions = () => [
+  { value: 'fast', label: 'Швидко', sub: `${Math.round(CONFIG.timers.open * CONFIG.timerSpeeds.fast)}+${Math.round(CONFIG.timers.closed * CONFIG.timerSpeeds.fast)} с` },
+  { value: 'normal', label: 'Нормально', sub: `${CONFIG.timers.open}+${CONFIG.timers.closed} с` },
+  { value: 'slow', label: 'Повільно', sub: `${Math.round(CONFIG.timers.open * CONFIG.timerSpeeds.slow)}+${Math.round(CONFIG.timers.closed * CONFIG.timerSpeeds.slow)} с` },
+  { value: 'off', label: 'Без таймера' },
+];
+const speedScale = () => CONFIG.timerSpeeds[prefSpeed] ?? 1;
+const rememberPrefs = () => { try { localStorage.setItem('vabank-speed', prefSpeed); localStorage.setItem('vabank-rounds', prefRounds); localStorage.setItem('vabank-style', prefStyle); localStorage.setItem('vabank-players', prefPlayers); localStorage.setItem('vabank-mode', prefMode); } catch {} };
 
 function gameSetupModal({ withStyle, title, onStart, players = null }) {
   const opts = players ? PLAYER_OPTS[players] : null;
   let pl = opts?.some((o) => o.value === prefPlayers) ? prefPlayers : 2;
-  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg modes" id="m-style"></div></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>`, [
+  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg modes" id="m-style"></div><p class="hint-text" id="m-style-desc"></p></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Швидкість (час на хід)</div><div class="seg" id="m-speed"></div></div>' : ''}`, [
     { label: 'Почати', cls: 'primary', onClick: () => { prefPlayers = pl; rememberPrefs(); onStart({ maxRounds: prefRounds, style: prefStyle, players: pl, mode: prefMode }); } },
     { label: 'Скасувати', cls: 'tertiary' },
   ]);
@@ -193,8 +213,13 @@ function gameSetupModal({ withStyle, title, onStart, players = null }) {
   const blitzRounds = () => $('m-rounds-field').classList.toggle('hidden', prefMode === 'blitz'); // у бліці завжди 8
   segmented($('m-mode'), modeOptions(), prefMode, (v) => { prefMode = v; $('m-mode-desc').textContent = MODES[v].desc; blitzRounds(); });
   blitzRounds();
-  if (withStyle) segmented($('m-style'), BOT_STYLES.map((k) => ({ value: k, label: STYLE_INFO[k].name, sub: STYLE_INFO[k].sub })), prefStyle, (v) => (prefStyle = v));
+  if (withStyle) {
+    const desc = () => { const x = PERSONA_BY_ID[prefStyle]; $('m-style-desc').textContent = `${x.name}: ${x.blurb}`; };
+    segmented($('m-style'), PERSONAS.map((x) => ({ value: x.id, label: `${x.avatar} ${x.name}`, sub: x.short })), prefStyle, (v) => { prefStyle = v; desc(); });
+    desc();
+  }
   segmented($('m-rounds'), roundOptions(), prefRounds, (v) => (prefRounds = v));
+  if (withStyle) segmented($('m-speed'), speedOptions(), prefSpeed, (v) => { prefSpeed = v; rememberPrefs(); });
 }
 
 // ───────── налаштування ─────────
@@ -202,6 +227,8 @@ function openSettings(back = null) {
   modal(`<h3>Налаштування</h3>
     <label class="setting">Звук <input type="checkbox" class="switch" id="set-sound" ${isMuted() ? '' : 'checked'}></label>
     <label class="setting col">Гучність <input type="range" id="set-vol" min="0" max="100" value="${Math.round(getVolume() * 100)}" aria-label="Гучність"></label>
+    <label class="setting">Мова ботів: 18+ <input type="checkbox" class="switch" id="set-botlang" ${botLang.clean() ? '' : 'checked'}></label>
+    <p class="hint-text">Увімкнено — боти лаються, як друзі за картами. Вимкнено — ті самі підколки без матів.</p>
     <label class="setting">Ефекти нахилу <input type="checkbox" class="switch" id="set-tilt" ${tiltEnabled() ? 'checked' : ''}></label>
     <p class="hint-text" id="set-tilt-hint">Світло й блиск карт рухаються, коли нахиляєш телефон. Без нього — за пальцем.</p>
     <p>Версія ${APP_VERSION}</p>`, [
@@ -211,6 +238,7 @@ function openSettings(back = null) {
     { label: 'Готово', cls: 'primary', onClick: () => back?.() },
   ]);
   $('set-sound').addEventListener('change', (e) => { setMuted(!e.target.checked); sfx.tap(); });
+  $('set-botlang').addEventListener('change', (e) => { botLang.set(!e.target.checked); sfx.tap(); });
   $('set-vol').addEventListener('input', (e) => setVolume(e.target.value / 100));
   $('set-vol').addEventListener('change', () => sfx.chip(3));
   // iOS просить дозвіл на датчики лише з тапу — тому вмикаємо саме тут
@@ -472,21 +500,31 @@ $('btn-rematch').addEventListener('click', () => { sfx.tap(); session?.rematch()
 $('btn-end-menu').addEventListener('click', () => { sfx.tap(); leave(true); });
 
 // ───────── проти бота ─────────
-const BOT3_NAMES = ['Мирко 🤖', 'Ліза 🤖'];
-const BOT3_STYLES = { aggressive: 'cautious', cautious: 'bluffer', bluffer: 'aggressive', smart: 'aggressive', greedy: 'smart' };
+/** Персонажі для ботів: перший — обраний (або збережений), решта — випадкові інші. */
+function pickPersonas(count, first = null) {
+  const out = [];
+  if (first && PERSONA_BY_ID[first]) out.push(PERSONA_BY_ID[first]);
+  const rest = PERSONAS.filter((x) => !out.includes(x));
+  while (out.length < count && rest.length) out.push(rest.splice(Math.floor(Math.random() * rest.length), 1)[0]);
+  return out;
+}
 
 function startBot(resume = false, opts = {}) {
   const saved = resume && GameHost.load(BOT_KEY);
-  const style = (saved && saved.style) || opts.style || 'aggressive';
+  const style = (saved && saved.style) || opts.style || 'vitok';
   const players = (saved?.state?.players?.length || opts.players) === 3 ? 3 : 2;
   const prof = loadProfile();
   // Збереження старої версії тримало одного бота як об'єкт
   const savedLoad = saved?.botLoadout ? [].concat(saved.botLoadout) : null;
   const loads = savedLoad && savedLoad.length === players - 1 ? savedLoad : Array.from({ length: players - 1 }, () => botLoadout());
-  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style, botLoadout: players === 2 ? loads[0] : loads }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, mode: (saved?.state?.cfg?.mode) || opts.mode || 'classic', jokerSets: [prof.set, ...loads.map((l) => l.set)] } });
-  const names = players === 2 ? ['Ти', `Бот · ${STYLE_INFO[style].name}`] : ['Ти', ...BOT3_NAMES];
-  const bots = loads.map((_, i) => new BotSeat(host, i + 1, Math.random, i === 0 ? style : BOT3_STYLES[style]));
+  const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style, botLoadout: players === 2 ? loads[0] : loads }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds, timerScale: speedScale() }, gameOpts: { players, mode: (saved?.state?.cfg?.mode) || opts.mode || 'classic', jokerSets: [prof.set, ...loads.map((l) => l.set)] } });
+  // персонажі: збережені, або обраний + випадкові (старі збереження зі стилем замість персонажа — випадкові)
+  const pers = saved?.personas?.length === players - 1 ? saved.personas.map((id) => PERSONA_BY_ID[id] || PERSONAS[0]) : pickPersonas(players - 1, style);
+  host.extra = { ...host.extra, personas: pers.map((x) => x.id) };
+  const names = ['Ти', ...pers.map((x) => x.name)];
+  const bots = pers.map((x, i) => new BotSeat(host, i + 1, Math.random, x.style, x.id));
   host.names = names.slice();
+  host.avatars = [null, ...pers.map((x) => x.avatar)];
   host.looks = [null, ...loads.map((l) => l.look)];
   session = {
     mode: 'bot',
@@ -505,7 +543,7 @@ function startBot(resume = false, opts = {}) {
   lastLooksKey = '';
   if (players === 2) prepareLooks(loads[0].look);
   $('btn-react').classList.remove('hidden');
-  host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e, from) => game.showReaction(e, false, from) });
+  host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e, from) => game.showReaction(e, false, from), say: (key, from) => game.showBotLine(from, key) });
   bots.forEach((b, i) => host.attach(i + 1, b));
   if (saved && saved.state?.phase !== 'over') {
     if (!host.restore(saved)) {
@@ -535,7 +573,8 @@ function startTutorial() {
       clearTimeout(t1);
       if (view.round > 1 || !view.legal.length) return;
       let a = null;
-      if (view.phase === 'play') a = { type: 'playSet', cards: ['w4', 'f5', 's6'], open: 's6' };
+      if (view.phase === 'play' && view.legal.some((x) => x.type === 'playOpen')) a = { type: 'playOpen', cardId: 's6' };
+      else if (view.phase === 'play' && view.legal.some((x) => x.type === 'playClosed')) a = { type: 'playClosed', cards: ['w4', 'f5'] };
       else if (view.phase === 'scout') a = { type: 'skipScout' };
       else if (view.phase === 'bet') a = view.bet.toCall ? { type: 'call' } : view.bet.raises === 0 ? { type: 'raise', amount: 5 } : { type: 'check' };
       else if (view.phase === 'result') a = view.legal.find((x) => x.type === 'ready');
@@ -556,9 +595,11 @@ function startTutorial() {
   const trio = ['f7', 'w7', 's7'];
   const coachFor = (v) => {
     const L = v.legal;
-    if (v.phase === 'play' && L.some((a) => a.type === 'playSet')) {
-      const all3 = trio.every((id) => game.picks.includes(id));
-      return all3 ? { ...TUTORIAL.open, spot: `cards:${trio.join(',')}` } : { ...TUTORIAL.pick, spot: `cards:${trio.join(',')}` };
+    // покроково: спершу одна відкрита сімка, потім — бачачи відкриту суперника — дві інші сімки закритими
+    if (v.phase === 'play' && L.some((a) => a.type === 'playOpen')) return { ...TUTORIAL.pick, spot: 'cards:f7' };
+    if (v.phase === 'play' && L.some((a) => a.type === 'playClosed')) {
+      const rest = trio.filter((id) => v.me.hand.some((c) => c.id === id));
+      return { ...TUTORIAL.open, spot: `cards:${rest.join(',')}` };
     }
     if (v.phase === 'scout' && L.length) return { ...TUTORIAL.scout, spot: 'btn:skipScout' };
     if (v.phase === 'bet' && L.length) return { ...TUTORIAL.bet, spot: L.some((a) => a.type === 'call') ? 'btn:call' : 'btn:check' };
@@ -616,10 +657,12 @@ function startHotseat(opts = {}) {
   const prof = prepareLooks(null);
   const withBot = opts.players === '2b';
   const players = opts.players === 3 || withBot ? 3 : 2;
+  const hsBot = pickPersonas(1)[0];
   const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, mode: opts.mode || 'classic', jokerSets: Array(players).fill(prof.set) } });
-  const names = players === 2 ? ['Гравець 1', 'Гравець 2'] : withBot ? ['Гравець 1', 'Гравець 2', BOT3_NAMES[0]] : ['Гравець 1', 'Гравець 2', 'Гравець 3'];
+  const names = players === 2 ? ['Гравець 1', 'Гравець 2'] : withBot ? ['Гравець 1', 'Гравець 2', hsBot.name] : ['Гравець 1', 'Гравець 2', 'Гравець 3'];
   const humans = Array.from({ length: players }, (_, q) => q).filter((q) => !(withBot && q === 2));
-  const bot = withBot ? new BotSeat(host, 2, Math.random, 'aggressive') : null;
+  const bot = withBot ? new BotSeat(host, 2, Math.random, hsBot.style, hsBot.id) : null;
+  if (withBot) host.avatars[2] = hsBot.avatar;
   if (bot) bot.reaction = () => {};
   host.names = names.slice();
   const msgs = Array(players).fill(null);
@@ -644,7 +687,8 @@ function startHotseat(opts = {}) {
     const vs = msgs.map((m) => m?.view);
     const live = humans.filter((q) => !vs[q].me.out);
     switch (v.phase) {
-      case 'play': return live.find((q) => !vs[q].me.played) ?? null;
+      // покроково: на кроці «відкрита» черга тих, хто ще не поклав відкриту; далі — закриті
+      case 'play': return live.find((q) => vs[q].legal.some((x) => ['play', 'playSet', 'playOpen', 'playClosed'].includes(x.type))) ?? null;
       case 'scout': return live.find((q) => !vs[q].me.scoutDecided) ?? null;
       case 'bet': return humans.includes(v.bet.toAct) ? v.bet.toAct : null;
       case 'result': {
@@ -698,7 +742,7 @@ function startHotseat(opts = {}) {
   };
   for (let q = 0; q < players; q++) {
     if (bot && q === 2) { host.attach(2, bot); continue; }
-    host.attach(q, { deliver: (m) => { msgs[q] = m; queueMicrotask(render); } });
+    host.attach(q, { deliver: (m) => { msgs[q] = m; queueMicrotask(render); }, say: (key, from) => { if (q === humans[0]) game.showBotLine(from, key); } });
   }
   host.start();
 }
@@ -717,9 +761,12 @@ async function startCreate(resumeSave = null) {
   setLine('create-status', 'Відкриваю кімнату…');
   $('btn-share').disabled = true;
   const names = ['Ти', 'Суперник'];
-  const gameConfig = { maxRounds: prefRounds };
+  const gameConfig = { maxRounds: prefRounds, timerScale: speedScale() };
   let players = resumeSave?.players === 3 ? 3 : prefPlayers === 3 ? 3 : 2;
   segmented($('create-rounds'), roundOptions(), prefRounds, (v) => { gameConfig.maxRounds = v; prefRounds = v; rememberPrefs(); });
+  // хост обирає швидкість, доки партія не почалась
+  segmented($('create-speed'), speedOptions(), prefSpeed, (v) => { prefSpeed = v; rememberPrefs(); gameConfig.timerScale = speedScale(); if (session?.host && !session.host.state) session.host.gameConfig = { ...session.host.gameConfig, timerScale: gameConfig.timerScale }; });
+  $('create-speed-field').classList.toggle('hidden', !!resumeSave);
   $('create-rounds-field').classList.toggle('hidden', !!resumeSave);
   $('create-players-field').classList.toggle('hidden', !!resumeSave);
   $('create-mode-field').classList.toggle('hidden', !!resumeSave);
@@ -760,12 +807,18 @@ async function startCreate(resumeSave = null) {
           if (st.error) setLine('create-status', st.error, 'error');
           if (st.versionMismatch) { toast(st.versionMismatch, 7000, 'error'); setLine('create-status', st.versionMismatch, 'error'); }
           if (st.left) toast(players === 3 ? 'Гість вийшов з кімнати' : 'Суперник вийшов з кімнати', 3500);
+          const h = session?.host;
+          if (st.proxy) toast(`${h?.names?.[st.proxy] || 'Гравець'} довго не повертається — поки за нього грає бот`, 4500);
           const off = st.connected ? st.connected.map((c, q) => (!c ? q : -1)).filter((q) => q > 0) : [];
-          game.setOffline(st.started && !st.oppConnected, players === 3 && off.length ? `${session?.host?.names?.[off[0]] || 'Гість'} не на зв'язку` : "Суперник не на зв'язку");
+          const away = h ? h.away.map((a, q) => (a ? q : -1)).filter((q) => q > 0) : [];
+          const who = (q) => (players === 3 ? h?.names?.[q] || 'Гість' : 'Суперник');
+          const text = off.length ? `${who(off[0])} не на зв'язку — пауза` : away.length ? `${who(away[0])} згорнув гру — пауза` : '';
+          game.setOffline(st.started && !!text, text);
           if (st.started && !st.oppConnected && current === 'create') show('game');
         },
         onMessage: (m) => deliverToUi(m, { names }),
         onReaction: (e, from) => game.showReaction(e, false, from),
+        onSay: (key, from) => game.showBotLine(from, key),
       });
       session = await opening;
     } catch (e) {
@@ -812,11 +865,13 @@ async function startJoin(code, resumeSave = null) {
       onStatus: (st) => {
         if (st.error) { setLine('join-status', st.error, 'error'); if (current === 'game') toast(st.error, 3000, 'error'); }
         if (st.joined) setLine('join-status', 'Підключено!', 'ok');
-        game.setOffline(st.joined && !st.hostConnected, game.view && game.view.n > 2 ? "Господар не на зв'язку — гра на паузі" : "Суперник не на зв'язку");
+        game.setOffline(st.joined && !st.hostConnected, game.view && game.view.n > 2 ? "Господар не на зв'язку — пауза, чекаємо" : "Суперник не на зв'язку — пауза, чекаємо");
       },
       onMessage: (m) => deliverToUi(m, { names }),
       onReaction: (e, from) => game.showReaction(e, false, from),
+      onSay: (key, from) => game.showBotLine(from, key),
       onFatal: (text) => { leave(true); toast(text, 8000, 'error'); },
+      onReject: (code) => { if (!['already-played', 'wrong-phase', 'not-your-turn'].includes(code)) toast('Хід не прийнято — обери ще раз', 2500, 'error'); },
     });
   } catch (e) {
     setLine('join-status', e.message, 'error');
@@ -884,8 +939,8 @@ function refreshResume() {
   const g = loadGuestSave();
   let b = GameHost.load(BOT_KEY);
   if (b?.state && !ok(b)) { GameHost.clear(BOT_KEY); b = null; }
-  if (h && h.state?.phase !== 'over') { btn.textContent = `Продовжити кімнату ${h.code}`; btn.onclick = () => startCreate(h); }
-  else if (g) { btn.textContent = `Повернутися в кімнату ${g.code}`; btn.onclick = () => startJoin(g.code, g); }
+  if (h && h.state?.phase !== 'over') { btn.textContent = `↩ Повернутися в партію (${h.code})`; btn.onclick = () => startCreate(h); }
+  else if (g && g.phase !== 'over') { btn.textContent = `↩ Повернутися в партію (${g.code})`; btn.onclick = () => startJoin(g.code, g); }
   else if (b && b.state?.phase !== 'over') { btn.textContent = 'Продовжити партію з ботом'; btn.onclick = () => startBot(true); }
   else { btn.classList.add('hidden'); return; }
   btn.classList.remove('hidden');
@@ -897,6 +952,18 @@ document.addEventListener('visibilitychange', () => {
   session?.onVisibility?.(document.hidden);
 });
 window.addEventListener('pageshow', () => session?.onVisibility?.(false));
+// Мережа повернулась (LTE ↔ Wi-Fi) — не чекаємо серцебиття
+window.addEventListener('online', () => session?.onVisibility?.(false));
+
+/** Застосунок перезапустився посеред онлайн-партії (iOS вивантажила сторінку) — повертаємось автоматично. */
+function autoResume() {
+  const fresh = (t) => t && Date.now() - t < CONFIG.net.resumeWindowSec * 1000;
+  const h = loadHostSave();
+  if (h?.state && h.state.phase !== 'over' && fresh(h.savedAt) && upgradeState(h.state)) { startCreate(h); return true; }
+  const g = loadGuestSave();
+  if (g?.code && g.phase !== 'over' && fresh(g.at)) { startJoin(g.code, g); return true; }
+  return false;
+}
 
 // Запрошення ?room=ABCD (і старе #join=ABCD) — одразу приєднуємось
 function boot() {
@@ -913,7 +980,7 @@ function boot() {
   const valid = code && code.length === 4 && [...code].every((c) => ROOM_ALPHABET.includes(c));
   if (q) history.replaceState(null, '', location.pathname + (location.search.includes('debug') ? '?debug' : ''));
   if (valid) startJoin(code);
-  else show('menu');
+  else if (!autoResume()) show('menu');
   window.__vbBooted = true; // гра стартувала (див. страховку в index.html)
   const sp = $('splash');
   setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, 350);

@@ -90,3 +90,24 @@ test('протокол: привітання гостя несе набір дж
   assert.equal(p.m.look.felt, 'felt_wine');
   assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'hello', look: [1, 2] }).m.look, null);
 });
+
+test('протокол 6: номер дії (aid), «згорнув гру», епохи ID хоста', async () => {
+  const { peerIdFor, HOST_EPOCHS } = await import('../net/protocol.js');
+  const a = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'check' }, aid: 1730000000123 });
+  assert.equal(a.m.aid, 1730000000123);
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'check' }, aid: 'x' }).m.aid, null);
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'away', hidden: true }).m.hidden, true);
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'away', hidden: 'yes' }).m.hidden, false);
+  // епоха 0 — старий формат ID (сумісність), далі — з суфіксом; усі різні
+  assert.equal(peerIdFor('ABCD'), 'vabank-ua-v1-ABCD');
+  const ids = Array.from({ length: HOST_EPOCHS }, (_, k) => peerIdFor('ABCD', k));
+  assert.equal(new Set(ids).size, HOST_EPOCHS);
+});
+
+test('протокол 7: покроковий раунд — відкрита (зокрема джокер) і дві закриті', () => {
+  const o = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'playOpen', cardId: 'J1-mirrorworld' } });
+  assert.equal(o.ok, true);
+  assert.equal(o.m.action.cardId, 'J1-mirrorworld');
+  const c = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'playClosed', cards: ['w1', 'J2-storm'] } });
+  assert.deepEqual(c.m.action.cards, ['w1', 'J2-storm']);
+});

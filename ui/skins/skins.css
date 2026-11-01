@@ -530,7 +530,8 @@
 .card .back.skinned::after, .card .back.skinned > span { display: none; }
 /* рука: легендарна карта ледь світиться (лише opacity — дешево), епічна — тонкий фіолетовий ореол */
 .hand .card[data-skr="legendary"]::after, .hand .card[data-skr="epic"]::after { content: ""; position: absolute; inset: -3px; border-radius: calc(var(--r-card) + 3px); pointer-events: none; z-index: -1; opacity: .35; }
-.hand .card[data-skr="legendary"]::after { box-shadow: 0 0 12px 3px rgba(255, 194, 61, .7); animation: skHandGlow 3.4s ease-in-out infinite; }
+.hand .card[data-skr="legendary"]::after { box-shadow: 0 0 12px 3px rgba(255, 194, 61, .7); }
+.hand .card.focus[data-skr="legendary"]::after { animation: skHandGlow 3.4s ease-in-out infinite; }
 .hand .card[data-skr="epic"]::after { box-shadow: 0 0 9px 2px rgba(181, 108, 255, .55); opacity: .45; }
 @keyframes skHandGlow { 50% { opacity: .85; } }
 /* відкрита карта суперника — повний блиск рідкості: світло трохи збоку */
@@ -579,3 +580,11 @@
 .sk-glare, .sk-glare::before, .sk-glare::after, .sk-frame, .sk-frame::before, .sk-frame::after, .sk-bevel, .sk-bevel::after {
   --px: inherit; --py: inherit; --rx: inherit; --ry: inherit; --hyp: inherit; --nx: inherit; --ny: inherit;
 }
+
+/* Матч: полегшена статична версія того самого вигляду. Анімації — лише в карти, яку зараз обираєш (.focus);
+   повний ефект із частинками — в огляді (утримання карти). Сукно — статичне, растеризоване один раз. */
+.felt-skin .sk-item *, .felt-skin .sk-item *::before, .felt-skin .sk-item *::after,
+.table .card .sk-item *, .table .card .sk-item *::before, .table .card .sk-item *::after,
+.hand .card:not(.focus) .sk-item *, .hand .card:not(.focus) .sk-item *::before, .hand .card:not(.focus) .sk-item *::after,
+.player .sk-item *, .player .sk-item *::before, .player .sk-item *::after { animation: none !important; }
+.felt-skin .felt-mark { display: none; } /* водяний знак сукна не накладається на банк */

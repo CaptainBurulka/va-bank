@@ -51,7 +51,8 @@ const os = require('os');
     for (const want of ['Чек', 'Колл', 'Далі без розвідки', 'Далі', 'Забрати']) for (const b of btns) if ((await b.textContent().catch(() => '')).includes(want)) { await b.click({ timeout: 1500 }).catch(() => {}); return; }
     const cards = await p.$$('#hand .card'); const hint = await p.textContent('#actions');
     if (cards.length && hint.includes('спершу торкнись')) { await cards[0].click().catch(() => {}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(() => {}); }
-    if (cards.length && hint.includes('торкайся карт')) { const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, 3)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500 }).catch(() => {}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(() => {}); }
+    // покроково: «Покласти відкриту» — 1 карта, «Покласти 2 закриті» — 2 (у віялі тиснемо на видиму ліву смугу)
+    if (cards.length && /відкриту|закриті|торкайся карт/i.test(hint)) { const need = /закриті/i.test(hint) ? 2 : /відкриту/i.test(hint) ? 1 : 3; const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, need)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500, position: { x: 14, y: 40 } }).catch(()=>{}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(()=>{}); }
   };
   const play = async (n) => { for (let i = 0; i < n; i++) { for (const P of [A, B, C]) await step(P); await A.waitForTimeout(120); } };
   await play(30);
@@ -77,7 +78,8 @@ const os = require('os');
   check(after[0] === after[2], 'C повернувся в ту саму партію');
   // перезавантаження гостя B
   await B.reload(); await B.waitForTimeout(600);
-  await B.click('#btn-resume'); await B.waitForTimeout(1800);
+  // автоповернення в партію (без кнопки)
+  await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {}); await B.waitForTimeout(1800);
   check(await B.isVisible('#scr-game') && (await B.textContent('#round-tag')) === (await A.textContent('#round-tag')), 'B відновився після перезавантаження');
   // четвертий не зайде
   const D = await ctx.newPage(); await D.goto('http://localhost:8080/'); await D.evaluate(() => localStorage.setItem('vabank-tutorial', 'done'));
@@ -86,7 +88,8 @@ const os = require('os');
   check(/немає вільних місць/.test(await D.textContent('#join-status')), 'четвертий гравець отримує «немає місць»');
 
   // ── двоє + бот ──
-  for (const P of [A, B, C, D]) await P.goto('http://localhost:8080/');
+  // нова партія: прибираємо збереження старої кімнати, інакше гра сама повернеться в неї
+  for (const P of [A, B, C, D]) { await P.evaluate(() => { localStorage.removeItem('vabank-host'); localStorage.removeItem('vabank-guest'); }); await P.goto('http://localhost:8080/'); await P.waitForFunction(() => window.__vbBooted); }
   await friend(A, 'Хост'); await A.click('#modal-btns .btn.primary');
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-players button:nth-child(2)');
@@ -99,7 +102,9 @@ const os = require('os');
   await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 });
   const nb = await B.$$eval('.opps .who b', (e) => e.map((x) => x.textContent));
   console.log('двоє + бот, B бачить:', nb);
-  check(nb.some((x) => x.includes('🤖')), 'бот сидить за столом');
+  const PERSONA_NAMES = ['Вітьок', 'Ігор Олегович', 'Стасик', 'Дід Панас', 'Кіра_UA', 'Валєра'];
+  check(nb.some((x) => PERSONA_NAMES.includes(x)), 'бот-персонаж сидить за столом');
+  check(await A.evaluate(() => [...document.querySelectorAll('.opps .ava span')].some((e) => e.classList.contains('emoji'))), 'бот-персонаж з емодзі-аватаром');
   for (let i = 0; i < 60; i++) { await step(A); await step(B); await A.waitForTimeout(200); }
   console.log('A:', await A.textContent('#phase-title'), '|', await A.textContent('#phase-sub'), '| B:', await B.textContent('#phase-title'));
   check(!(await A.textContent('#round-tag')).includes('Раунд 1/'), 'гра з ботом іде');

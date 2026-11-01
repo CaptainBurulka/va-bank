@@ -2,6 +2,11 @@
 // гравцю лише його view. Однаково працює для бота, «передай телефон» і онлайну.
 import { createGame, reduce, viewFor, upgradeState } from '../game/engine.js';
 import { botDecide } from '../game/bot.js';
+import { pickLine, detectEvent, PERSONA_BY_ID } from '../game/banter.js';
+import { strengthOf, evaluate, slotsOf, slotOf } from '../game/combos.js';
+import { jokerSlot } from '../game/jokers.js';
+
+const comboOf = (cards, trump) => evaluate(slotsOf(cards.map((c) => slotOf(c, jokerSlot))), trump);
 
 export function cryptoRng() {
   const a = new Uint32Array(1);
@@ -26,12 +31,16 @@ export class GameHost {
     this.seats = Array(this.n).fill(null);
     this.connected = Array(this.n).fill(false);
     this.hidden = false;
+    this.away = Array(this.n).fill(false); // гість згорнув гру (на зв'язку, але не бачить екрана)
     this.rematch = Array(this.n).fill(false);
     this.names = Array(this.n).fill(null); // публічні імена за місцями (для журналу й столу)
     this.looks = Array(this.n).fill(null); // косметика за місцями (лише для показу)
     this.pids = Array(this.n).fill(null); // постійні ID гравців (для рахунку зустрічей)
     this.titles = Array(this.n).fill(null); // титули біля ніків
     this.bots = Array(this.n).fill(false); // місця, які займає бот (бот завжди «на зв'язку» й погоджується на реванш)
+    this.avatars = Array(this.n).fill(null); // емодзі-аватар (персонажі ботів)
+    this.personas = Array(this.n).fill(null); // id персонажа бота за місцями
+    this._sayAt = 0; // остання репліка будь-якого бота — щоб не галасували всі разом
     this.state = null;
     this._timer = null;
   }
@@ -63,12 +72,14 @@ export class GameHost {
     saved = { ...saved, state: st };
     this.state = saved.state;
     if (saved.state?.cfg?.maxRounds) this.gameConfig = { ...this.gameConfig, maxRounds: saved.state.cfg.maxRounds };
+    if (saved.state?.cfg?.timerScale !== undefined) this.gameConfig = { ...this.gameConfig, timerScale: saved.state.cfg.timerScale };
     if (saved.state?.jokerSets) this.gameOpts = { ...this.gameOpts, jokerSets: saved.state.jokerSets };
     if (saved.state?.cfg?.mode) this.gameOpts = { ...this.gameOpts, mode: saved.state.cfg.mode };
     if (saved.names) this.names = saved.names;
     if (saved.looks) this.looks = saved.looks;
     if (saved.pids) this.pids = saved.pids;
     if (saved.titles) this.titles = saved.titles;
+    if (saved.avatars) this.avatars = saved.avatars;
     this.rematch = saved.rematch || Array(this.n).fill(false);
     if (this.state.timer && !this.state.timer.paused) {
       // Після перезавантаження час, що минув, не рахуємо — відновлюємо з паузи.
@@ -97,7 +108,7 @@ export class GameHost {
     try {
       localStorage.setItem(
         this.persistKey,
-        JSON.stringify({ state: this.state, rematch: this.rematch, names: this.names, looks: this.looks, pids: this.pids, titles: this.titles, savedAt: Date.now(), ...this.extra }),
+        JSON.stringify({ state: this.state, rematch: this.rematch, names: this.names, looks: this.looks, pids: this.pids, titles: this.titles, avatars: this.avatars, savedAt: Date.now(), ...this.extra }),
       );
     } catch {}
   }
@@ -132,6 +143,12 @@ export class GameHost {
     this.refresh();
   }
 
+  setAway(p, value) {
+    if (this.away[p] === value) return;
+    this.away[p] = value;
+    this.refresh();
+  }
+
   setHidden(value) {
     if (this.hidden === value) return;
     this.hidden = value;
@@ -142,7 +159,7 @@ export class GameHost {
   syncPause() {
     if (!this.state) return;
     // Пауза, якщо хтось із тих, хто ще грає, не на зв'язку (глядачі, що вибули, гру не зупиняють)
-    const pause = this.hidden || this.connected.some((c, p) => !c && !this.state.players[p]?.out);
+    const pause = this.hidden || this.connected.some((c, p) => (!c || this.away[p]) && !this.state.players[p]?.out);
     const r = reduce(this.state, { type: pause ? 'pause' : 'resume' }, this.ctx());
     this.state = r.state;
   }
@@ -179,10 +196,12 @@ export class GameHost {
       meta: {
         oppConnected: others.every((q) => this.connected[q]),
         connected: this.connected.slice(),
+        away: this.away.slice(),
         names: this.names.slice(),
         looks: this.looks.slice(),
         pids: this.pids.slice(),
         titles: this.titles.slice(),
+        avatars: this.avatars.slice(),
         paused: !!this.state.timer?.paused,
         rematch: { me: this.rematch[p], opp: others.some((q) => this.rematch[q]), all: this.rematch.slice() },
       },
@@ -197,6 +216,11 @@ export class GameHost {
     for (let p = 0; p < this.n; p++) this.sendTo(p);
   }
 
+  /** Репліка бота (ключ фрази) — усім за столом; текст кожен клієнт показує за своїм налаштуванням мови. */
+  say(from, key) {
+    for (let q = 0; q < this.n; q++) if (q !== from) this.seats[q]?.say?.(key, from);
+  }
+
   /** Реакції бачать усі за столом, зокрема глядачі, що вибули. */
   relayReaction(from, emoji) {
     for (let q = 0; q < this.n; q++) if (q !== from) this.seats[q]?.reaction?.(emoji, from);
@@ -209,25 +233,62 @@ export class GameHost {
 }
 
 /** Місце для бота: отримує view і через паузу відповідає діями. */
+// Ймовірність репліки на подію (щоб боти не коментували кожен чих)
+const SAY_P = { allin: 0.85, raise: 0.4, bluff: 0.9, win: 0.5, lose: 0.55, joker: 0.7 };
+
 export class BotSeat {
-  constructor(host, p, rng = Math.random, style = 'aggressive') {
+  constructor(host, p, rng = Math.random, style = 'aggressive', persona = null) {
     this.host = host;
     this.p = p;
+    this.persona = persona && PERSONA_BY_ID[persona] ? persona : null;
     this.style = style;
     this.rng = rng;
     this._t = null;
     this._lastRound = 0;
+    this._prev = null;
+    this._mem = {};
+    this._sayAt = 0;
+    this._streak = 0; // програші поспіль (для «тілту»)
+  }
+
+  /** Стиль на зараз: «таксист» після двох програшів поспіль грає агресивно. */
+  styleNow() {
+    if (this.style === 'tilter') return this._streak >= 2 ? 'aggressive' : 'smart';
+    return this.style;
+  }
+
+  /** Коментар до події — з характером персонажа. */
+  banter(view) {
+    const prev = this._prev;
+    this._prev = view;
+    if (!this.persona || !prev) return;
+    let weak = false;
+    if (view.phase === 'result' && view.me.played) { try { weak = strengthOf(comboOf([].concat(view.me.played), view.trump)) < 0.4; } catch {} }
+    const ev = detectEvent(prev, view, this.p, weak);
+    if (view.phase === 'result' && prev.phase !== 'result' && view.result?.reason === 'showdown' && (view.result.parts || []).includes(this.p)) {
+      this._streak = view.result.winner === this.p ? 0 : this._streak + 1;
+    }
+    if (!ev) return;
+    const now = Date.now();
+    if (now - this._sayAt < 4500 || now - this.host._sayAt < 1800) return;
+    if (this.rng() > SAY_P[ev]) return;
+    const key = pickLine(this.persona, ev, this.rng, this._mem);
+    if (!key) return;
+    this._sayAt = now;
+    this.host._sayAt = now;
+    setTimeout(() => this.host.say(this.p, key), 500 + this.rng() * 900);
   }
 
   deliver({ view, meta }) {
+    this.banter(view);
     if (view.phase === 'over') {
       clearTimeout(this._t); this._t = null;
       if (!meta.rematch.me && meta.rematch.opp) this._t = setTimeout(() => { this._t = null; this.host.dispatch(this.p, { type: 'rematch' }); }, 700);
       return;
     }
     if (view.me.out) return; // вибув — лише дивиться
-    // Іноді реакція на результат раунду
-    if (view.phase === 'result' && view.round !== this._lastRound && view.result) {
+    // Іноді реакція на результат раунду (персонажі коментують словами — емодзі не дублюємо)
+    if (!this.persona && view.phase === 'result' && view.round !== this._lastRound && view.result) {
       this._lastRound = view.round;
       if (this.rng() < (this.host.n > 2 ? 0.3 : 0.45)) {
         const won = view.result.winner === this.p;
@@ -251,7 +312,7 @@ export class BotSeat {
       if (!this.host.state || this.host.state.phase === 'over') return;
       const m = this.host.message(this.p);
       if (m.meta.paused && m.view.timer) return;
-      const action = botDecide(m.view, this.rng, this.style);
+      const action = botDecide(m.view, this.rng, this.styleNow());
       if (action) this.host.dispatch(this.p, action);
     }, delay);
   }

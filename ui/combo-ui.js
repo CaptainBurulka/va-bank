@@ -19,6 +19,17 @@ export function liveCombo(cards, trump, hand) {
   return { combo, strength: cards.length === 3 ? strengthOf(combo) : null };
 }
 
+/** Найкраща комбінація, яку можна скласти з картою card і рукою (для кроку «відкрита»). */
+export function bestWith(card, hand, trump) {
+  const rest = hand.filter((c) => c !== card);
+  let best = null;
+  for (let i = 0; i < rest.length; i++) for (let j = i + 1; j < rest.length; j++) {
+    const combo = comboOf([card, rest[i], rest[j]], trump, hand);
+    if (!best || combo.rank > best.rank || (combo.rank === best.rank && strengthOf(combo) > strengthOf(best))) best = combo;
+  }
+  return best;
+}
+
 /** Найслабша з карт за значенням (відкрита за замовчуванням). */
 export function weakestId(cards, hand = null) {
   const jf = (c) => jokerSlot(c, hand ? { hand } : null);

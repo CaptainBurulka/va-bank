@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '6.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '7.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 3,             // версія правил (для бота і симуляцій): 3 — комбінації з 3 карт
@@ -35,10 +35,21 @@ export const CONFIG = Object.freeze({
     secondFromRound: 6, // з якого раунду дозволена друга спроба поспіль
   }),
   // Таймери у секундах (у режимі «передай телефон» вимкнені)
-  timers: Object.freeze({ play: 20, scout: 12, bet: 25, result: 20 }),
-  // WebRTC: STUN безкоштовні; TURN потрібен лише для «важких» мобільних мереж.
-  // Приклад: { urls: 'turn:turn.example.com:3478', username: 'user', credential: 'pass' }
+  // Комбінації — окремий таймер на кожен крок: open — відкрита карта, closed — дві закриті (бачачи відкриті суперників)
+  timers: Object.freeze({ play: 20, open: 15, closed: 30, scout: 12, bet: 25, result: 20 }),
+  // Швидкість гри (хост обирає в лобі): множник таймерів; 0 — без таймера
+  timerSpeeds: Object.freeze({ fast: 0.6, normal: 1, slow: 1.6, off: 0 }),
+  // WebRTC: STUN безкоштовні; TURN — ретранслятор для мобільних мереж (LTE/5G часто за «симетричним» NAT,
+  // де пряме з'єднання без TURN не встановлюється). Можна вказати кілька серверів масивом, напр.:
+  // turn: [{ urls: ['turn:a.relay.example.com:80', 'turn:a.relay.example.com:443?transport=tcp', 'turns:a.relay.example.com:443?transport=tcp'], username: 'user', credential: 'pass' }],
   turn: null,
+  // Онлайн: перепідключення
+  net: Object.freeze({
+    pingMs: 2000,          // серцебиття
+    deadMs: 7000,          // без відповіді стільки — з'єднання вважаємо мертвим
+    holdSec: 300,          // хост тримає місце гравця, що зник; далі за нього грає бот, доки не повернеться
+    resumeWindowSec: 900,  // після перезапуску застосунку автоматично повертаємось у партію, якщо минуло не більше
+  }),
   logSize: 40,
   // Гра на трьох: власні числа (режим на двох їх не бачить). Підібрано симуляціями tools/simulate3.js:
   // перший гравець вибуває в середньому не раніше ~2/3 партії, перемоги за місцями 28–38%.
@@ -55,6 +66,8 @@ export const CONFIG = Object.freeze({
     greedy: Object.freeze({ jokerPlay: 1, raiseAt: 0.7, reraiseAt: 0.85, allinAt: 0.95, callSlack: 0.1, bluff: 0, scoutProb: 0, donStart: 0.5, donMinP: 0.6, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0 }),
     greedyPick: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0.3 }),
     smart: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
+    gambler: Object.freeze({ jokerPlay: 0.8, raiseAt: 0.45, reraiseAt: 0.62, allinAt: 0.78, callSlack: 0.05, bluff: 0.18, scoutProb: 0.2, donStart: 0.92, donMinP: 0.5, swapMax: 3, swapProb: 0.5, playStrong: 0.5, playWeak: 0.15, showProb: 0.5 }),
+    tilter: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.55, reraiseAt: 0.75, allinAt: 0.9, callSlack: 0.15, bluff: 0.08, scoutProb: 0.35, donStart: 0.4, donMinP: 0.65, swapMax: 3, swapProb: 0.6, playStrong: 0.35, playWeak: 0.15, showProb: 0.2 }),
     bluffer: Object.freeze({ jokerPlay: 0.5, raiseAt: 0.6, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.2, bluff: 0.3, scoutProb: 0.3, donStart: 0.5, donMinP: 0.6, swapMax: 2, swapProb: 0.4, playStrong: 0.25, playWeak: 0.35, showProb: 0.8 }),
   }),
 });
@@ -66,28 +79,28 @@ export const JOKER_TUNING = Object.freeze({
   roulette: { k: 8 },
   thief: { max: 3, loseTie: false },     // Дикун
   fist: { v: 8, fee: 10 },
-  insurance: { v: 2 },                   // Чет-нечет
+  insurance: { v: 1 },                   // Чет-нечет
   twin: {},
-  chameleon: { v: 6 },
-  modest: { alt: 8 },                    // Підробка
+  chameleon: { v: 7 },
+  modest: { alt: 6 },                    // Підробка
   tax: { v: 6, fee: 5 },
   dice: { d: 2 },                        // Стрибок
-  counter: { v: 1, ranks: 1, loseTie: true },           // Сходинка
+  counter: { v: null, ranks: 1, bonusP: 0.5, loseTie: false }, // +1 сходинка, з шансом 50% — ще +1           // Сходинка
   brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
   magnet: { v: 6 },
-  temptation: { v: 3, gap: 60 },         // Аутсайдер
+  temptation: { v: 1, gap: 60 },         // Аутсайдер
   storm: { v: 5 },
   swap: {},
-  shadow: { v: 4 },
+  shadow: { v: 2 },
   trap: { v: 2, ranks: 1 },
-  highroller: { v: 7 },
+  highroller: { v: 6 },
   pocket: { v: 6 },
-  sharper: { v: 4, alt: 8 },
+  sharper: { v: 4, alt: 7 },
   luck: { v: 5, up: 1 },
   brave: { v: 6, perRaise: 1 },
-  antitrump: { ranks: 3 },               // Ламач
+  antitrump: { ranks: 2 },               // Ламач
   echo: { v: 7 },
-  quake: { v: 6 },
+  quake: { v: 7 },
   castling: { v: 6, myTie: true },
   frenzy: { v: 6 },
   mirrorworld: { v: 7 },
@@ -120,7 +133,7 @@ export const SKINS = Object.freeze({
     legendary: Object.freeze({ name: 'Легендарна', color: '#ffc23d', material: 'жива голографія' }),
   }),
   ceremony: Object.freeze({ common: 900, rare: 1900, epic: 3400, legendary: 7200, legendaryDupe: 3600 }),
-  particles: Object.freeze({ epic: 8, legendary: 26, win: 40 }),
+  particles: Object.freeze({ epic: 8, legendary: 26, win: 40, matchWin: 18 }), // matchWin — перемога в матчі (полегшено заради 60 fps)
   tiltMaxDeg: 16, // максимальний 3D-нахил карти
 });
 

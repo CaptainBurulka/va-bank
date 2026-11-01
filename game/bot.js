@@ -236,6 +236,7 @@ function unseen(view) {
   const seen = new Set();
   for (const c of view.me.hand) seen.add(c.id);
   for (const c of [].concat(view.me.played || [])) seen.add(c.id);
+  if (view.me.openPick) seen.add(view.me.openPick.id);
   for (const x of view.players || []) if (x.open) seen.add(x.open.id);
   return FULL_DECK.filter((c) => !seen.has(c.id));
 }
@@ -286,6 +287,42 @@ function comboWin(view, rng, P) {
   return { my, win: w };
 }
 
+/**
+ * Закриті карти до вже покладеної відкритої. Розумний зважує шанс побити кожного суперника з урахуванням
+ * його ВІДКРИТОЇ карти (Монте-Карло: winVs) і потенціал залишку руки; жадібний — найсильніша комбінація.
+ */
+function closedDecide(view, rng, P) {
+  const open = view.me.openPick;
+  const hand = view.me.hand;
+  const k = Math.min((view.cfg.playCount || 3) - 1, hand.length);
+  const trump = view.trump;
+  let best = null;
+  const keepJoker = !P.greedy && !P.greedyPick && hand.some((c) => c.kind === 'joker') && rng() > (P.jokerPlay ?? 0.6) && view.round < view.maxRounds;
+  const rivals = (view.players || []).filter((x) => x.seat !== view.you && !x.out && !x.folded);
+  const late = view.round >= view.maxRounds;
+  const pool = P.mc ? unseen(view) : null;
+  for (const idx of subsets(hand.length, k)) {
+    const cards = idx.map((i) => hand[i]);
+    if (keepJoker && cards.some((c) => c.kind === 'joker')) continue;
+    if (P.forceJoker && hand.some((c) => c.kind === 'joker') && !cards.some((c) => c.kind === 'joker')) continue;
+    const rest = hand.filter((c) => !cards.includes(c));
+    const set = [open, ...cards];
+    const combo = evaluate(slotsOf(set.map((c) => slotOf(c, handSlot(rest)))), trump);
+    let sc;
+    if (P.greedy || P.greedyPick) sc = strengthOf(combo);
+    else {
+      // шанс побити всіх, з огляду на їхні відкриті карти
+      let w = 1;
+      if (P.mc) for (const x of rivals) w *= winVs(view, combo, x.seat, rng, P.closedSamples || 16);
+      else w = strengthOf(combo);
+      const fut = late ? 0 : P.mc ? futureMC(rest, pool, rng, Math.max(4, P.mc >> 1), view.cfg.handSize || 6) : potential(rest);
+      sc = w + (late ? 0 : P.future * fut * 0.8) + (rng() - 0.5) * P.noise;
+    }
+    if (!best || sc > best.sc) best = { sc, cards };
+  }
+  return { type: 'playClosed', cards: (best ? best.cards : hand.slice(0, k)).map((c) => c.id) };
+}
+
 function comboDecide(view, rng, style, over) {
   const base = COMBO_STYLES[style] || COMBO_STYLES.smart;
   const P = over ? { ...base, ...over } : base;
@@ -299,7 +336,7 @@ function comboDecide(view, rng, style, over) {
       const hand = view.me.hand;
       const k = Math.min(view.cfg.playCount || 3, hand.length);
       // Обмін: найменш корисна карта, якщо рука слабка
-      if (has('swap') && !P.greedy && view.me.chips > 20) {
+      if (has('swap') && (has('playOpen') || has('playSet')) && !P.greedy && view.me.chips > 20) {
         const best = bestSet(hand, trump, { k, joker: jokerSlot });
         if (strengthOf(best.combo) < P.swapBelow && rng() < P.swapProb) {
           // карта, без якої потенціал руки найменше страждає (не джокер)
@@ -313,6 +350,9 @@ function comboDecide(view, rng, style, over) {
           if (worst) return { type: 'swap', cardId: worst.c.id };
         }
       }
+      // Крок 2: відкрита вже лежить — дві закриті, бачачи відкриті карти суперників
+      if (has('playClosed')) return closedDecide(view, rng, P);
+      if (!has('playOpen') && !has('playSet')) return null; // відкрита покладена — чекаємо на інших
       let pick;
       if (P.greedy || P.greedyPick) {
         const jk = P.forceJoker && hand.findIndex((c) => c.kind === 'joker');
@@ -345,6 +385,7 @@ function comboDecide(view, rng, style, over) {
         else if (st > 0.7 && r < P.trapOpen) open = bySlot[0]; // сильно — ховаємо силу
         else if (r < P.randomOpen) open = pick[Math.floor(rng() * pick.length)];
       }
+      if (has('playOpen')) return { type: 'playOpen', cardId: open.id }; // крок 1: лише відкрита
       return { type: 'playSet', cards: pick.map((c) => c.id), open: open.id };
     }
     case 'scout': {
@@ -403,4 +444,8 @@ export const COMBO_STYLES = {
   cautious: { ...SMART, raiseAt: 0.7, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.2, bluff: 0.04, scoutProb: 0.6, resultStyle: 'cautious' },
   aggressive: { ...SMART, raiseAt: 0.5, reraiseAt: 0.72, allinAt: 0.88, callSlack: 0.06, bluff: 0.14, scoutProb: 0.3, resultStyle: 'aggressive' },
   bluffer: { ...SMART, raiseAt: 0.58, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.1, bluff: 0.3, bluffOpen: 0.6, scoutProb: 0.35, resultStyle: 'bluffer' },
+  // Дід Панас: азарт — легко йде ва-банк і в «Подвій або нічого»
+  gambler: { ...SMART, raiseAt: 0.45, reraiseAt: 0.66, allinAt: 0.78, callSlack: 0.04, bluff: 0.18, scoutProb: 0.2, resultStyle: 'gambler' },
+  // Валєра: спокійний (як Розумний); після двох програшів поспіль BotSeat перемикає на агресивний — «тілт»
+  tilter: { ...SMART, resultStyle: 'cautious' },
 };

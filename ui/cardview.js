@@ -132,13 +132,14 @@ export function suitIcon(suit) {
 export function bindCardHold(root, holdMs = 450) {
   let t = null, sx = 0, sy = 0, fired = false;
   root.addEventListener('pointerdown', (e) => {
-    const c = e.target.closest('.card.skinned');
+    const c = e.target.closest('.card');
     fired = false;
     clearTimeout(t);
-    if (!c?._skin) return;
+    if (!c || c.classList.contains('back-up') || !c.dataset.id) return;
     sx = e.clientX; sy = e.clientY;
     t = setTimeout(() => {
       fired = true;
+      if (!c._skin) { peekCard(c); return; } // звичайна карта або джокер — збільшений огляд з описом
       const { set, rarity, serial, card } = c._skin;
       const nm = card.kind === 'num' ? `${card.value} ${SUIT[card.suit].gen}` : SPECIAL[card.kind].name;
       navigator.vibrate?.(12);
@@ -148,5 +149,22 @@ export function bindCardHold(root, holdMs = 450) {
   root.addEventListener('pointermove', (e) => { if (Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clearTimeout(t); });
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) root.addEventListener(ev, () => clearTimeout(t));
   root.addEventListener('click', (e) => { if (fired) { fired = false; e.stopPropagation(); e.preventDefault(); } }, true);
-  root.addEventListener('contextmenu', (e) => { if (e.target.closest('.card.skinned')) e.preventDefault(); });
+  root.addEventListener('contextmenu', (e) => { if (e.target.closest('.card')) e.preventDefault(); });
+}
+
+/** Огляд карти без скіна: велика копія і підпис (для джокера — його ефект). Тап — закрити. */
+export function peekCard(c) {
+  navigator.vibrate?.(12);
+  document.querySelector('.card-peek')?.remove();
+  const box = document.createElement('div');
+  box.className = 'card-peek';
+  const big = c.cloneNode(true);
+  big.classList.remove('selected', 'open-pick', 'focus', 'deal', 'drop', 'win', 'lose');
+  big.querySelector('.eye-tog')?.remove();
+  big.style.cssText = '--cw: min(56vw, 230px)';
+  const cap = document.createElement('p');
+  cap.textContent = c.title ? `${c.getAttribute('aria-label')?.split(':')[0] || ''}: ${c.title}` : c.getAttribute('aria-label') || '';
+  box.append(big, cap);
+  box.addEventListener('click', () => box.remove());
+  document.body.append(box);
 }

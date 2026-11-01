@@ -1,6 +1,6 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 5; // 5 — комбінації з 3 карт (playSet)
+export const PROTOCOL_VERSION = 7; // 5 — комбінації з 3 карт (playSet); 6 — «away», епохи ID хоста; 7 — покроковий раунд (playOpen/playClosed)
 
 /** Порівняння версій «2.0.1» → -1 / 0 / 1. */
 export function compareVersions(a, b) {
@@ -32,6 +32,7 @@ export const PEER_PREFIX = 'vabank-ua-v1-';
 
 import { COSMETICS } from '../meta/catalog.js';
 import { PHRASES, isPid, cleanTitle } from '../meta/rivals.js';
+import { isLineKey } from '../game/banter.js';
 // Дозволені реакції — усі емодзі з усіх наборів косметики
 export const REACTIONS = [...new Set(COSMETICS.filter((c) => c.cat === 'emoji').flatMap((c) => c.set))];
 /** Реакція — емодзі з наборів або швидка фраза. */
@@ -47,7 +48,13 @@ export function isValidCode(code) {
   return typeof code === 'string' && code.length === 4 && [...code].every((c) => ROOM_ALPHABET.includes(c));
 }
 
-export const peerIdFor = (code) => PEER_PREFIX + code;
+/**
+ * ID хоста на сервері сигналізації. Після обриву мобільної мережі сервер ще до ~60 с тримає
+ * старе з'єднання і відповідає «ID taken», тож хост переходить на наступну «епоху» ID,
+ * а гість шукає кімнату одразу за всіма епохами. Епоха 0 — старий формат (сумісність).
+ */
+export const HOST_EPOCHS = 8;
+export const peerIdFor = (code, epoch = 0) => PEER_PREFIX + code + (epoch ? `-${epoch}` : '');
 
 export function randomToken(rng) {
   let s = '';
@@ -64,7 +71,7 @@ export function cleanName(x) {
   return t || null;
 }
 
-const ACTION_TYPES = new Set(['play', 'playSet', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
+const ACTION_TYPES = new Set(['play', 'playSet', 'playOpen', 'playClosed', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
 
 /**
  * Перевірка повідомлення від гостя на боці хоста.
@@ -93,18 +100,22 @@ export function parseGuestMessage(m) {
       const a = m.action;
       if (!a || typeof a !== 'object' || !ACTION_TYPES.has(a.type)) return { ok: false, error: 'bad-action' };
       const clean = { type: a.type };
-      if (typeof a.cardId === 'string' && a.cardId.length <= 10) clean.cardId = a.cardId;
+      if (typeof a.cardId === 'string' && a.cardId.length <= 24) clean.cardId = a.cardId; // id джокера довший за звичайну карту
       // комбінації: 3 карти одним кроком (id джокерів довші за id звичайних карт)
       if (Array.isArray(a.cards) && a.cards.length <= 3 && a.cards.every((x) => typeof x === 'string' && x.length <= 24)) clean.cards = a.cards.slice();
       if (typeof a.open === 'string' && a.open.length <= 24) clean.open = a.open;
       if (a.amount === 'allin' || (Number.isInteger(a.amount) && a.amount > 0 && a.amount < 1e6)) clean.amount = a.amount;
       if (a.guess === 'higher' || a.guess === 'lower') clean.guess = a.guess;
       if (Number.isInteger(a.target) && a.target >= 0 && a.target < 3) clean.target = a.target;
-      return { ok: true, m: { type: 'action', action: clean } };
+      // aid — номер дії гостя: хост підтверджує його в стані й відкидає повтори
+      const aid = Number.isSafeInteger(m.aid) && m.aid > 0 ? m.aid : null;
+      return { ok: true, m: { type: 'action', action: clean, aid } };
     }
     case 'react':
       if (!isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
       return { ok: true, m: { type: 'react', emoji: m.emoji } };
+    case 'away':
+      return { ok: true, m: { type: 'away', hidden: m.hidden === true } };
     case 'ping':
     case 'pong':
     case 'bye':
@@ -119,7 +130,9 @@ export function parseHostMessage(m) {
   // Повідомлення про різні версії приймаємо з будь-якою версією протоколу
   if (m.type === 'error' && m.code === 'version') return { ok: true, m: { type: 'error', code: 'version', app: typeof m.app === 'string' ? m.app : null } };
   if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version', app: typeof m.app === 'string' ? m.app : null };
-  if (!['welcome', 'state', 'react', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
+  if (!['welcome', 'state', 'react', 'say', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
+  // репліка бота — лише ключ відомої фрази (текст і варіант «без матів» — на боці гостя)
+  if (m.type === 'say' && (!isLineKey(m.key) || !Number.isInteger(m.from))) return { ok: false, error: 'bad-say' };
   if (m.type === 'react' && !isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
   return { ok: true, m };
 }

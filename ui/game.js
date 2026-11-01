@@ -5,12 +5,16 @@ import { animateNumber, setNumber, flyChips, floatEmoji, floatText } from './fx.
 import { sfx } from './sound.js';
 import { SUIT, SPECIAL, SCOUT, REACTIONS, logLine, explain } from './text.js';
 import { ms, reducedMotion } from './motion.js';
-import { JOKER_BY_ID, RARITIES, RARITY_NAME, jokerDesc } from '../game/jokers.js';
+import { JOKER_BY_ID, RARITIES, RARITY_NAME, JOKER_ROLES, jokerDesc } from '../game/jokers.js';
+const jkLine = (id, n) => `${JOKER_ROLES[JOKER_BY_ID[id].role]?.icon || ''} ${jokerDesc(id, n)}`;
 import { playWin } from './cosmetics.js';
 import { PHRASES, isPhrase } from '../meta/rivals.js';
 import { MODES, FEEL } from '../config.js';
-import { liveCombo, weakestId, possibleCombos, comboOf, cheatSheetHTML } from './combo-ui.js';
+import { liveCombo, weakestId, possibleCombos, comboOf, cheatSheetHTML, bestWith } from './combo-ui.js';
 import { COMBO_NAME } from '../game/combos.js';
+import { setGlyph } from './glyph.js';
+import { lineText } from '../game/banter.js';
+import { botLang } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -27,6 +31,11 @@ export function cardTitle(c) {
 
 /** Розвідка в комбінаціях: чи є висока серед закритих. */
 const SCOUT_COMBO = { high: { name: 'є висока 8+', short: '↑ є 8+' }, low: { name: 'закриті до 7', short: '↓ до 7' } };
+/** Кільце таймера: оновлюємо стиль лише коли видимо змінилось (не щокадру) — менше перерахунків стилю й перемальовок. */
+function setDash(el, v) {
+  const q = (Math.round(v * 2) / 2).toFixed(1);
+  if (el._dash !== q) { el._dash = q; el.style.strokeDashoffset = q; }
+}
 const arr = (x) => (Array.isArray(x) ? x : x ? [x] : []);
 
 export class GameScreen {
@@ -110,6 +119,19 @@ export class GameScreen {
     this.el.don.addEventListener('click', (ev) => { if (!ev.target.closest('button')) this.skipDon(); });
     this.el.coach.addEventListener('click', (ev) => { if (ev.target.closest('[data-skip]')) this.onCoachSkip?.(); });
 
+    // ⓘ біля раунду: анте і склад колоди — за тапом, щоб не захаращувати стіл
+    $('btn-tinfo')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sfx.tap();
+      document.querySelector('.tinfo-pop')?.remove();
+      const pop = document.createElement('div');
+      pop.className = 'tinfo-pop';
+      pop.textContent = this.deckText || '';
+      pop.addEventListener('click', () => pop.remove());
+      this.el.table.append(pop);
+      setTimeout(() => pop.remove(), 4500);
+    });
+    window.addEventListener('resize', () => { if (this.view) this.layoutHand(); });
     const cheat = document.createElement('button');
     cheat.className = 'cheat-btn hidden'; cheat.id = 'btn-cheat'; cheat.type = 'button'; cheat.textContent = 'Комбінації';
     cheat.addEventListener('click', (e) => { e.stopPropagation(); sfx.tap(); this.showCheatSheet(); });
@@ -125,14 +147,28 @@ export class GameScreen {
   /** Комбінації: тап по карті — вибрати/зняти (до 3); тап по 👁 на вибраній — зробити її відкритою. */
   pickCombo(id, eye) {
     const v = this.view;
-    if (!v.legal.some((a) => a.type === 'playSet' || a.type === 'swap')) return;
+    if (!v.legal.some((a) => ['playSet', 'playOpen', 'playClosed', 'swap'].includes(a.type))) return;
     sfx.tap();
     const i = this.picks.indexOf(id);
+    // покроково: на кроці «відкрита» — одна карта, на кроці «закриті» — до двох
+    const stepMax = v.legal.some((a) => a.type === 'playOpen') ? 1 : v.legal.some((a) => a.type === 'playClosed') ? Math.min(2, (v.cfg.playCount || 3) - 1) : 0;
+    if (stepMax) {
+      if (i >= 0) this.picks.splice(i, 1);
+      else if (this.picks.length < stepMax) this.picks.push(id);
+      else this.picks[this.picks.length - 1] = id;
+      this.openPick = null;
+      this.focusId = this.picks.includes(id) ? id : null;
+      this.renderHandSelection();
+      this.renderActions();
+      this.onPick?.();
+      return;
+    }
     if (eye && i >= 0) { this.openPick = id; this.openManual = true; }
     else if (i >= 0) { this.picks.splice(i, 1); if (this.openPick === id) { this.openPick = null; this.openManual = false; } }
     else if (this.picks.length < (v.cfg.playCount || 3)) this.picks.push(id);
     else this.picks[this.picks.length - 1] = id;
     this.fixOpenPick();
+    this.focusId = this.picks.includes(id) ? id : null;
     this.renderHandSelection();
     this.renderActions();
     this.onPick?.();
@@ -179,14 +215,14 @@ export class GameScreen {
     this.seatNames = null;
     this.el.meName.textContent = me;
     this.el.oppName.textContent = opp;
-    this.el.oppInitial.textContent = (opp.replace(/^Бот · /, '')[0] || 'С').toUpperCase();
-    document.querySelector('#me .ava span').textContent = (me[0] || 'Т').toUpperCase();
+    setGlyph(this.el.oppInitial, opp, 'С');
+    setGlyph(document.querySelector('#me .ava span'), me, 'Т');
   }
 
   /** Імена за місцями (гра втрьох, онлайн): names[seat]; своє місце підписується names[you] або «Ти». */
   setSeatNames(names, meLabel = null) {
     this.seatNames = names.slice();
-    if (meLabel) { this.names[0] = meLabel; this.el.meName.textContent = meLabel; document.querySelector('#me .ava span').textContent = (meLabel[0] || 'Т').toUpperCase(); }
+    if (meLabel) { this.names[0] = meLabel; this.el.meName.textContent = meLabel; setGlyph(document.querySelector('#me .ava span'), meLabel, 'Т'); }
   }
 
   /** Місця суперників: удвох — [інший], утрьох — [наступний за годинниковою, ще наступний]. */
@@ -212,13 +248,16 @@ export class GameScreen {
   /** Стан «не на зв'язку» показується в банері фази, нічого не перекриваючи. */
   setOffline(show, text = "Суперник не на зв'язку") {
     this.offline = show ? text : null;
+    // Пауза для всіх: локальний відлік зупиняємо, доки хост не пришле свіжий стан
+    const t = this.timer;
+    if (show && t && !t.paused) this.timer = { ...t, paused: true, remaining: Math.max(0, t.deadline - performance.now()) };
     if (this.view) { this.renderPhase(this.view); this.renderPlayers(this.view); }
   }
 
   act(a) {
     if (this.pending) return;
     sfx.tap();
-    if (a.type === 'play' || a.type === 'playSet') { this.selected = null; this.picks = []; this.openPick = null; this.openManual = false; sfx.place(); }
+    if (['play', 'playSet', 'playOpen', 'playClosed'].includes(a.type)) { this.selected = null; this.picks = []; this.openPick = null; this.openManual = false; sfx.place(); }
     if (a.type === 'swap') { this.selected = null; this.picks = this.picks.filter((id) => id !== a.cardId); this.fixOpenPick(); }
     this.pending = true;
     setTimeout(() => (this.pending = false), 250);
@@ -246,6 +285,39 @@ export class GameScreen {
     else b.style.top = `${a.bottom - l.top + 8}px`;
     layer.append(b);
     setTimeout(() => b.remove(), 2700);
+  }
+
+  /**
+   * Репліка бота — бульбашка біля його аватара (поверх імені й статусу, не над столом і фішками).
+   * key — ключ фрази; текст з урахуванням «Мови ботів» цього пристрою.
+   */
+  showBotLine(from, key) {
+    const text = lineText(key, botLang.clean());
+    const v = this.view;
+    if (!text || !v || from === v.you) return;
+    const i = this.oppSeats(v).indexOf(from);
+    if (i < 0) return;
+    const pn = this.panels[i];
+    const layer = this.el.fx;
+    pn.root.querySelector('.bot-say')?.remove();
+    const a = pn.ava.getBoundingClientRect();
+    const r = pn.root.getBoundingClientRect();
+    const l = layer.getBoundingClientRect();
+    const b = document.createElement('div');
+    b.className = 'bot-say';
+    b.textContent = text;
+    b.style.left = `${a.right - l.left + 6}px`;
+    b.style.top = `${r.top - l.top + 3}px`;
+    // між аватаром і фішками цього бота: фішки й сусідня панель лишаються видимими
+    const stack = pn.root.querySelector('.stack')?.getBoundingClientRect();
+    const room = (stack ? stack.left : r.right) - a.right - 10;
+    b.style.maxWidth = `${Math.max(90, room)}px`;
+    if (room < 140) b.classList.add('narrow');
+    layer.querySelectorAll(`.bot-say[data-seat="${from}"]`).forEach((x) => x.remove());
+    b.dataset.seat = from;
+    layer.append(b);
+    sfx.pop();
+    setTimeout(() => b.remove(), Math.min(5200, 2200 + text.length * 45));
   }
 
   /** Великий рахунок зустрічей перед партією. rows: [{ me, them, name, line }]. Тап — закрити. */
@@ -289,7 +361,7 @@ export class GameScreen {
       const pn = this.panels[i];
       const nm = this.nameOf(q, view);
       if (pn.name.textContent !== nm) pn.name.textContent = nm;
-      pn.initial.textContent = (nm.replace(/^Бот · /, '')[0] || 'С').toUpperCase();
+      setGlyph(pn.initial, this.meta?.avatars?.[q] || nm, 'С'); // персонаж бота — його емодзі-аватар
     });
 
     this.renderNumbers(prev, view);
@@ -409,7 +481,10 @@ export class GameScreen {
     switch (v.phase) {
       case 'play':
         if (this.isCombo(v)) {
-          if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери 3 карти'; sub = `Одна з них — відкрита 👁, її побачать до торгів${v.trump ? ` · козир ${SUIT[v.trump].name} вирішує нічиї` : ''}`; }
+          if (v.legal.some((a) => a.type === 'playOpen')) { kind = 'act'; title = 'Обери відкриту карту 👁'; sub = 'Її побачать усі. Потім — 2 закриті'; }
+          else if (v.legal.some((a) => a.type === 'playClosed')) { kind = 'act'; title = 'Обери 2 закриті карти'; sub = 'Відкриті карти суперників уже на столі'; }
+          else if (v.step === 'open' && v.me.openPick) { const w = three ? this.waitingNames(v, (x) => !x.hasOpen) : 'суперник'; title = 'Відкриту покладено'; sub = w ? `Обирає відкриту: ${w}` : ''; }
+          else if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери 3 карти'; sub = 'Одна з них — відкрита 👁, її побачать усі'; }
           else { const w = three ? this.waitingNames(v, (x) => !x.hasPlayed) : (v.opp.hasPlayed ? '' : 'Суперник'); title = w ? `Обирають карти: ${w}` : 'Карти на столі'; sub = v.me.out ? '' : 'Твої карти покладено'; }
           break;
         }
@@ -420,8 +495,8 @@ export class GameScreen {
       case 'scout':
         if (this.isCombo(v)) {
           const sc = v.me.scoutSeen ? SCOUT_COMBO[v.me.scoutSeen].name : '';
-          if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Відкриті карти на столі'; sub = three ? `Розвідка: торкнись суперника — чи є в нього висока 8+ серед закритих (${v.cfg.scoutCost})` : `Розвідка за ${v.cfg.scoutCost}: чи є висока 8+ серед закритих`; }
-          else { const w = three ? this.waitingNames(v, (x) => !x.scoutDecided) : ''; title = w ? `Вирішують щодо розвідки: ${w}` : three ? 'Розвідку завершено' : 'Суперник вирішує щодо розвідки'; sub = sc ? `${three ? `У ${this.nameOf(v.me.scoutTarget)}` : 'У суперника'}: ${sc}` : ''; }
+          if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Відкриті карти на столі'; sub = three ? `Розвідка (${v.cfg.scoutCost}): торкнись суперника` : `Розвідка за ${v.cfg.scoutCost}: чи є 8+ серед закритих`; }
+          else { const w = three ? this.waitingNames(v, (x) => !x.scoutDecided) : ''; title = w ? `Розвідка: чекаємо ${w}` : three ? 'Розвідку завершено' : 'Суперник думає'; sub = sc ? `${three ? `У ${this.nameOf(v.me.scoutTarget)}` : 'У суперника'}: ${sc}` : ''; }
           break;
         }
         if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Розвідка?'; sub = three ? `Торкнись суперника, до якого підглянути — за ${v.cfg.scoutCost}` : `Висока чи низька в суперника — за ${v.cfg.scoutCost}`; }
@@ -491,21 +566,23 @@ export class GameScreen {
       const offline = (!three && this.offline) || (conn ? conn[q] === false : (this.meta && !this.meta.oppConnected)) || (three && this.offline && false);
       const parts = [];
       if (o.out) parts.push('<span>💀 вибув</span>');
-      else if (offline) parts.push(`<span class="warn">${ico('wifi-off')}не на зв'язку</span>`);
+      else if (offline) parts.push(`<span class="warn">${ico('wifi-off')}офлайн</span>`);
+      else if (this.meta?.away?.[q]) parts.push('<span class="warn">💤 згорнув</span>');
       else {
         // значки без тексту, щоб статус уміщався: 👁 — підглядав, ⇄ — міняв карту
         if (o.scouted && v.phase !== 'result') parts.push(`<span class="ic" title="Зробив розвідку${three && o.scoutTarget !== undefined ? `: ${this.nameOf(o.scoutTarget)}` : ''}" aria-label="розвідка">${ico('eye')}${three && o.scoutTarget === v.you ? '→ти' : ''}</span>`);
         if (o.swapped && v.phase === 'play') parts.push(`<span class="ic" title="Обміняв карту" aria-label="обмін">${ico('swap')}</span>`);
         let s = '';
         switch (v.phase) {
-          case 'play': s = this.isCombo(v) ? (o.hasPlayed ? 'карти на столі' : 'обирає карти…') : o.hasPlayed ? 'карта на столі' : 'обирає карту…'; break;
-          case 'scout': s = o.scoutDecided ? (o.scouted ? '' : 'без розвідки') : 'думає про розвідку…'; break;
+          // коротко, щоб ніколи не обрізалось: значок + 1 слово
+          case 'play': s = (v.step === 'open' ? o.hasOpen : o.hasPlayed) ? '✓ готово' : '⏳ обирає'; break;
+          case 'scout': s = o.scoutDecided ? '' : '⏳ думає'; break;
           case 'bet':
-            if (o.folded) s = 'пас';
-            else if (three) s = v.bet.toAct === q ? 'думає над ставкою…' : '';
-            else s = v.bet.toAct !== v.you ? 'думає над ставкою…' : (v.bet.toCall ? `підняття +${v.bet.toCall}` : 'чекає на тебе');
+            if (o.folded) s = '✋ пас';
+            else if (three) s = v.bet.toAct === q ? '⏳ ставка' : '';
+            else s = v.bet.toAct !== v.you ? '⏳ ставка' : (v.bet.toCall ? `↑ +${v.bet.toCall}` : '');
             break;
-          case 'result': s = o.folded && three ? 'пас' : v.result.don?.pending && v.result.winner === q ? 'ризикує виграшем…' : o.ready ? 'готово' + (three ? '' : ' до наступного') : ''; break;
+          case 'result': s = o.folded && three ? '✋ пас' : v.result.don?.pending && v.result.winner === q ? '🎲 ризикує' : o.ready ? '✓ далі' : ''; break;
         }
         if (s) parts.push(`<span>${s}</span>`);
         if (o.jokerInHand) parts.unshift('<span class="jk-badge" title="Джокер ще не зіграно">🃏</span>');
@@ -575,18 +652,20 @@ export class GameScreen {
   renderTable(prev, v) {
     const e = this.el;
     const md = v.cfg.mode && v.cfg.mode !== 'classic' ? MODES[v.cfg.mode] : null;
-    e.roundTag.textContent = `${md ? `${md.icon} ` : ''}${this.isCombo(v) ? '' : 'Раунд '}${v.round}/${v.maxRounds} · анте ${v.ante}`;
+    e.roundTag.textContent = `${md ? `${md.icon} ` : ''}Раунд ${v.round}/${v.maxRounds}`;
     e.cheat?.classList.toggle('hidden', !this.isCombo(v));
     e.roundTag.title = md ? `${md.name}: ${md.desc}` : '';
     if (v.trump) {
-      e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b><span class="tb-plus">${this.isCombo(v) ? 'нічиї' : `+${v.cfg.trumpBonus}`}</span>`;
+      e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b>`;
+      e.trump.title = this.isCombo(v) ? 'Козир вирішує нічиї: козирна карта на 1 старша' : `Козирна карта +${v.cfg.trumpBonus} до сили`;
       e.trump.dataset.suit = v.trump;
       e.trump.classList.remove('hidden');
       if (prev && prev.round !== v.round) { e.trump.classList.remove('pop'); void e.trump.offsetWidth; e.trump.classList.add('pop'); }
     } else e.trump.classList.add('hidden');
     const d = v.deck;
-    e.deckInfo.innerHTML = `${ico('deck')}${d.total} <span class="hi">↑${d.high}</span> <span class="lo">↓${d.low}</span> <span>✦${d.special}</span>`;
-    e.deckInfo.setAttribute('aria-label', `У колоді ${d.total}: високих ${d.high}, низьких ${d.low}, спецкарт ${d.special}`);
+    // склад колоди — не на столі, а за тапом (кнопка «ⓘ» біля раунду)
+    this.deckText = `Раунд ${v.round} з ${v.maxRounds} · анте ${v.ante}. У колоді ${d.total} карт: високих (8+) ${d.high}, низьких ${d.low}, спецкарт ${d.special}.`;
+    e.deckInfo.textContent = '';
     // банк і джекпот
     const jp = v.jackpot && v.pot ? v.jackpot : 0;
     const carry = !jp && v.carry && v.round > 1 && v.phase !== 'result' ? v.carry : 0;
@@ -599,9 +678,9 @@ export class GameScreen {
     const oppHot = facing && v.bet.toAct === v.you;
     const meHot = facing && v.bet.toAct !== v.you;
     const pill = (amt, hot, label) => `<span class="pill ${hot ? 'hot' : ''}">${chipIco()}${hot ? `+${v.bet.toCall}` : `${label}${amt}`}</span>`;
-    const showPot = ['scout', 'bet'].includes(v.phase);
-    e.infoOpp.innerHTML = oppHot ? pill(0, true) : showPot ? pill(v.opp.inPot, false, 'у банку ') : '';
-    e.infoMe.innerHTML = meHot ? pill(0, true) : showPot ? pill(v.me.inPot, false, 'у банку ') : '';
+    // «у банку N» не показуємо — лише те, що треба для рішення: скільки докласти
+    e.infoOpp.innerHTML = oppHot ? pill(0, true) : '';
+    e.infoMe.innerHTML = meHot ? pill(0, true) : '';
     if (v.phase === 'result' && v.result.winner !== null && !v.result.don?.pending) {
       const won = v.result.don ? v.result.won + v.result.don.attempts.reduce((s, a) => s + a.delta, 0) : v.result.won;
       const target = v.result.winner === v.you ? e.infoMe : e.infoOpp;
@@ -615,10 +694,10 @@ export class GameScreen {
     const showPot = ['scout', 'bet'].includes(v.phase);
     const pill = (txt, cls = '') => `<span class="pill ${cls}">${chipIco()}${txt}</span>`;
     const owe = v.phase === 'bet' ? v.bet.owe ?? 0 : 0;
-    e.infoMe.innerHTML = owe > 0 && !v.me.folded ? pill(`+${owe}`, 'hot') : showPot ? pill(`у банку ${v.me.inPot}`) : '';
+    e.infoMe.innerHTML = owe > 0 && !v.me.folded ? pill(`+${owe}`, 'hot') : '';
     this.oppSeats(v).forEach((q, i) => {
       const x = this.seat(v, q);
-      this.panels[i].info.innerHTML = x.out ? '' : x.folded && showPot ? '<span class="pill">пас</span>' : showPot ? pill(`у банку ${x.inPot}`) : '';
+      this.panels[i].info.innerHTML = x.out ? '' : x.folded && showPot ? '<span class="pill">✋ пас</span>' : '';
     });
     if (v.phase === 'result' && v.result.winner !== null && !v.result.don?.pending) {
       const won = v.result.don ? v.result.won + v.result.don.attempts.reduce((s, a) => s + a.delta, 0) : v.result.won;
@@ -743,9 +822,12 @@ export class GameScreen {
       const o = list.find((c) => c.id === openId);
       return [...(o ? [o] : []), ...list.filter((c) => c !== o)].map((c) => ({ card: c, open: c.id === openId }));
     }
-    if (mine || !x.hasPlayed) return [];
+    // покроково: моя відкрита вже лежить, а закриті ще ні
+    if (mine) return v.me.openPick ? [{ card: v.me.openPick, open: true }] : [];
+    if (!x.hasPlayed && !x.hasOpen) return [];
     const n = v.cfg.playCount || 3;
-    return [{ card: x.open || null, open: !!x.open }, ...Array.from({ length: n - 1 }, () => ({ card: null, open: false }))];
+    const backs = x.hasPlayed ? n - 1 : 0;
+    return [{ card: x.open || null, open: !!x.open }, ...Array.from({ length: backs }, () => ({ card: null, open: false }))];
   }
 
   slotOfSeat(v, q) {
@@ -808,13 +890,13 @@ export class GameScreen {
     }
     if (q === v.you) {
       const played = arr(v.me.played);
-      if (!played.length) return '';
+      if (!played.length) return v.me.openPick ? '<span class="combo-tag mine">👁 відкрита</span>' : '';
       const c = comboOf(played, v.trump, v.me.hand);
       const peeked = three ? v.players.some((x) => x.seat !== v.you && x.scouted && x.scoutTarget === v.you) : v.opp.scouted;
       return `<span class="combo-tag mine">${esc(c.label)}${peeked && v.phase !== 'result' ? ` · ${ico('eye')}` : ''}</span>`;
     }
     const x = this.seat(v, q);
-    if (!x.hasPlayed || x.folded) return x.folded && x.hasPlayed ? '<span class="combo-tag">пас</span>' : '';
+    if (!(x.hasPlayed || x.hasOpen) || x.folded) return x.folded && x.hasPlayed ? '<span class="combo-tag">пас</span>' : '';
     const sc = v.me.scoutSeen && (three ? v.me.scoutTarget === q : true) && v.phase !== 'result' ? v.me.scoutSeen : null;
     const scTxt = sc ? `<span class="pill ${sc === 'high' ? 'hi' : 'lo'}">${SCOUT_COMBO[sc].short}</span>` : '';
     if (!x.open) return scTxt ? `<span class="combo-tag">${scTxt}</span>` : '';
@@ -846,19 +928,49 @@ export class GameScreen {
         el.style.animationDelay = `${dealt * 70}ms`;
         if (prev || dealt < 4) sfx.deal(dealt);
         dealt++;
-        el.addEventListener('animationend', () => { el.classList.remove('deal'); el.style.animationDelay = ''; }, { once: true });
+        const done = (e) => { if (e.target !== el) return; el.classList.remove('deal'); el.style.animationDelay = ''; el.removeEventListener('animationend', done); };
+        el.addEventListener('animationend', done); // анімації всередині джокера теж спливають — чекаємо саме на роздачу
       } else if (!prev || prev.trump !== v.trump) fillFace(el, card, opt);
       if (hand.children[i] !== el) hand.insertBefore(el, hand.children[i] || null);
     });
-    hand.classList.toggle('five', v.me.hand.length > 4);
-    hand.classList.toggle('many', v.me.hand.length > 5);
-    // комбінації: уся рука (6–8 карт із джокерами) — в один ряд без прокрутки
-    const n = Math.max(6, v.me.hand.length);
-    if (this.isCombo(v)) hand.style.setProperty('--card-w-hand', `min(calc((100vw - 2 * var(--gutter) - ${n - 1} * 3px) / ${n}), 54px)`);
-    else hand.style.removeProperty('--card-w-hand');
     hand.classList.toggle('passive', !v.legal.some((a) => a.type === 'play' || a.type === 'playSet'));
+    this.layoutHand();
     hand.classList.toggle('concealed', this.conceal);
     this.renderHandSelection();
+  }
+
+  /**
+   * Рука — віяло: великі карти з перекриттям, що ЗАВЖДИ вміщаються в ширину екрана (будь-яка кількість карт).
+   * Позиція — властивостями left/rotate/translate, а transform лишається для підйому вибраної карти й анімацій.
+   */
+  layoutHand() {
+    const hand = this.el.hand;
+    const cards = [...hand.children].filter((c) => c.classList.contains('card'));
+    const n = cards.length;
+    const full = hand.clientWidth || (window.innerWidth - 32);
+    // і за висотою: на невисоких екранах (Safari з панелями) карти менші, щоб стіл і кнопки вмістилися;
+    // поза вибором карт (торги, розкриття) рука ще менша — головне тоді стіл
+    const byH = (window.innerHeight * 0.17) / 1.42;
+    const choosing = !hand.classList.contains('passive');
+    const cw = Math.round(Math.min(92, full * 0.25, byH) * (choosing ? 1 : window.innerHeight < 760 ? 0.52 : 0.78));
+    hand.style.setProperty('--card-w-hand', `${cw}px`);
+    if (!n) return;
+    // поля під нахил крайніх карт і підйом вибраної (scale 1.06) — щоб нічого не виходило за екран
+    const tiltMax = n > 3 ? Math.min(2.4, 14 / n) : 0;
+    const edge = Math.ceil(cw * 0.04 + Math.sin(((n - 1) / 2) * tiltMax * Math.PI / 180) * cw * 1.42 * 0.7) + 2;
+    const W = full - edge * 2;
+    const step = n > 1 ? Math.min(cw + 8, (W - cw) / (n - 1)) : 0;
+    const total = cw + step * (n - 1);
+    const x0 = edge + (W - total) / 2;
+    const mid = (n - 1) / 2;
+    const tilt = step < cw ? tiltMax : 0; // віяло лише коли карти перекриваються
+    cards.forEach((c, i) => {
+      const d = i - mid;
+      c.style.left = `${Math.round(x0 + step * i)}px`;
+      c.style.rotate = `${(d * tilt).toFixed(1)}deg`;
+      c.style.translate = `0 ${Math.round(d * d * (tilt ? 1.2 : 0))}px`;
+      c.style.zIndex = String(i + 1);
+    });
   }
 
   renderHandSelection() {
@@ -866,8 +978,10 @@ export class GameScreen {
       for (const c of this.el.hand.children) {
         const on = this.picks.includes(c.dataset.id);
         c.classList.toggle('selected', on);
+        c.classList.toggle('focus', on && c.dataset.id === this.focusId); // повна анімація скіна — лише тут
         c.classList.toggle('open-pick', on && c.dataset.id === this.openPick);
         let eye = c.querySelector('.eye-tog');
+        if (this.view.legal.some((a) => a.type === 'playOpen' || a.type === 'playClosed')) { eye?.remove(); continue; } // покроково 👁 не потрібен
         if (on && !eye) { eye = document.createElement('button'); eye.className = 'eye-tog'; eye.type = 'button'; c.append(eye); }
         if (!on) eye?.remove();
         if (eye) {
@@ -938,8 +1052,8 @@ export class GameScreen {
         const limit = v.bet.raises >= v.cfg.maxRaises;
         const rivals = this.oppSeats(v).map((q) => this.seat(v, q)).filter((x) => !x.out && !x.folded);
         const minOpp = Math.min(...rivals.map((x) => x.chips));
-        const reason = limit ? 'ліміт піднять' : minOpp === 0 ? 'у суперника 0' : me.chips - toCall <= 0 ? 'немає фішок' : 'недоступно';
-        const verb = call ? 'Ре-рейз ' : '';
+        const reason = limit ? 'ліміт' : minOpp === 0 ? 'у суперника 0' : me.chips - toCall <= 0 ? 'нема фішок' : 'недоступно';
+        const verb = '';
         let row = '';
         for (const size of v.cfg.raiseSizes) {
           const a = raises.find((x) => x.amount === size);
@@ -948,9 +1062,10 @@ export class GameScreen {
         const allin = raises.find((x) => x.amount === 'allin');
         const capped = allin && allin.value < me.chips - toCall;
         const capWhy = allin && v.round < (v.cfg.allinFreeFromRound || 4) && allin.value < Math.min(me.chips - toCall, minOpp) ? 'ліміт = банк' : 'ліміт = найменший стек';
-        row += btn(allin ? `Ва-банк +${allin.value}` : 'Ва-банк', { type: 'raise', amount: 'allin' }, 'allin', !!allin, allin ? (capped ? capWhy : `лишиться ${me.chips - toCall - allin.value}`) : reason);
-        html += `<div class="row">${row}</div>`;
-        html += btn(this.isThree(v) ? 'Пас — вийти з раунду' : `Пас — віддати банк ${v.pot}`, { type: 'fold' }, 'link');
+        row += btn(allin ? `Ва-банк +${allin.value}` : 'Ва-банк', { type: 'raise', amount: 'allin' }, 'allin', !!allin, allin ? (capped ? (capWhy === 'ліміт = банк' ? 'ліміт: банк' : 'ліміт: стек') : `лишиться ${me.chips - toCall - allin.value}`) : reason);
+        // пас — у тому ж ряду: компактно, щоб на невисоких екранах усе вміщалось
+        row += btn('Пас', { type: 'fold' }, 'secondary fold', true, this.isThree(v) ? 'вийти' : 'віддати банк');
+        html += `<div class="row" style="--n:4">${row}</div>`;
         break;
       }
       case 'result': {
@@ -980,14 +1095,50 @@ export class GameScreen {
   comboActions(v, btn, waitCard) {
     const me = v.me, L = v.legal;
     const need = v.cfg.playCount || 3;
-    if (!L.some((a) => a.type === 'playSet')) return waitCard('Карти покладено', this.isThree(v) ? 'Чекаємо на інших' : v.opp.hasPlayed ? '' : 'Суперник ще обирає');
+    const swapRow = (sel) => {
+      const canSwap = !!sel && L.some((a) => a.type === 'swap' && a.cardId === sel.id);
+      const why = sel?.kind === 'joker' ? 'джокера не обміняти' : me.swapped ? 'вже використано' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'вибери 1 карту' : `нова замість ${cardTitle(sel)}`;
+      return `<div class="row" style="--n:1">${btn(`${ico('swap', 'ico')} Обмін −${v.cfg.swapCost}`, { type: 'swap', cardId: sel?.id }, 'secondary', canSwap, why)}</div>`;
+    };
+    // Крок 1: відкрита карта
+    if (L.some((a) => a.type === 'playOpen')) {
+      const card = me.hand.find((c) => c.id === this.picks[0]);
+      const best = card ? bestWith(card, me.hand, v.trump) : null;
+      let html = `<div class="combo-live${card ? '' : ' empty'}"><b>${card ? `👁 ${esc(cardTitle(card))}` : 'Обери відкриту карту'}</b><span class="pc">${best ? `найкраще з нею: ${esc(best.label)}` : 'її побачать усі'}</span></div>`;
+      html += swapRow(card || null);
+      html += card
+        ? btn('Покласти відкриту 👁', { type: 'playOpen', cardId: card.id }, 'primary stack-label', true, card.kind === 'joker' ? jkLine(card.joker, v.n || 2) : 'далі — 2 закриті, бачачи відкриті суперників')
+        : btn('Покласти відкриту 👁', { type: 'playOpen' }, 'primary stack-label', false, 'торкнись карти в руці');
+      return html;
+    }
+    // Крок 2: дві закриті до вже покладеної відкритої
+    if (L.some((a) => a.type === 'playClosed')) {
+      const k = L.find((a) => a.type === 'playClosed').count;
+      const cards = this.picks.map((id) => me.hand.find((c) => c.id === id)).filter(Boolean);
+      const live = liveCombo([me.openPick, ...cards], v.trump, me.hand);
+      const left = k - cards.length;
+      const meter = cards.length === k && live?.strength != null
+        ? `<span class="meter" title="Яку частку типових комбінацій суперника б'є"><i style="width:${Math.round(live.strength * 100)}%"></i></span><span class="pc">сила ${pct(live.strength)}</span>`
+        : `<span class="pc">ще ${left} ${left === 1 ? 'карта' : 'карти'}</span>`;
+      let html = `<div class="combo-live"><b>${esc(live?.combo.label || '')}</b>${meter}</div>`;
+      html += swapRow(cards.length === 1 ? cards[0] : null);
+      const jk = cards.find((c) => c.kind === 'joker');
+      html += cards.length === k
+        ? btn(`Покласти ${k} закриті`, { type: 'playClosed', cards: this.picks.slice() }, 'primary stack-label', true, jk ? jkLine(jk.joker, v.n || 2) : `разом із 👁 ${cardTitle(me.openPick)}`)
+        : btn(`Покласти ${k} закриті`, { type: 'playClosed' }, 'primary stack-label', false, 'торкнись карт у руці');
+      return html;
+    }
+    if (!L.some((a) => a.type === 'playSet')) {
+      const waitingOpen = v.step === 'open' && me.openPick;
+      return waitCard(waitingOpen ? 'Відкриту покладено' : 'Карти покладено', this.isThree(v) ? 'Чекаємо на інших' : waitingOpen ? 'Суперник обирає відкриту' : v.opp.hasPlayed ? '' : 'Суперник ще обирає');
+    }
     const cards = this.picks.map((id) => me.hand.find((c) => c.id === id)).filter(Boolean);
     const live = liveCombo(cards, v.trump, me.hand);
     const left = need - cards.length;
     const meter = live?.strength != null
       ? `<span class="meter" title="Яку частку типових комбінацій суперника б'є"><i style="width:${Math.round(live.strength * 100)}%"></i></span><span class="pc">сила ${pct(live.strength)}</span>`
       : `<span class="pc">ще ${left} ${left === 1 ? 'карта' : 'карти'}</span>`;
-    let html = `<div class="combo-live${live ? '' : ' empty'}"><b>${live ? esc(live.combo.label) : `Обери ${need} карти`}</b>${meter}<button class="cs-btn" type="button" data-cheat aria-label="Комбінації">Комбінації</button></div>`;
+    let html = `<div class="combo-live${live ? '' : ' empty'}"><b>${live ? esc(live.combo.label) : `Обери ${need} карти`}</b>${meter}</div>`;
     const sel = cards.length === 1 ? cards[0] : null;
     const canSwap = !!sel && L.some((a) => a.type === 'swap' && a.cardId === sel.id);
     const swapWhy = sel?.kind === 'joker' ? 'джокера не обміняти' : me.swapped ? 'вже використано цього раунду' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'вибери рівно 1 карту' : `нова замість ${cardTitle(sel)}`;
@@ -1062,21 +1213,50 @@ export class GameScreen {
       } else if (r.reason === 'fold' && r.winner === v.you && this.weak(v.me.played, FEEL.bluffCard)) {
         setTimeout(() => this.stamp('Блеф пройшов! 😎', 'win'), 350);
       }
-      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion());
+      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion(), true);
       const el = this.el.verdict;
-      el.className = `verdict ${cls}`;
-      let lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
       const cd = r.detail?.combos;
-      if (this.isCombo(v) && cd && r.reason === 'showdown') {
-        const who = [v.you, ...this.oppSeats(v)].filter((q) => cd[q]);
-        lines = `<div class="vs-combos">${who.map((q) => `<span class="${q === r.winner ? 'w' : ''}"><small>${esc(q === v.you ? 'Ти' : this.nameOf(q))}</small>${esc(cd[q].label)}</span>`).join('<i>vs</i>')}</div>${lines}`;
-      }
-      el.innerHTML = `<b>${esc(title)}</b>${lines}${why && r.reason === 'showdown' ? `<div class="why">${esc(why)}</div>` : ''}<div class="amt">${esc(amt)}</div><small>торкнись, щоб закрити</small>`;
       clearTimeout(this.st.timers.verdictHide);
+      if (this.isCombo(v) && cd && r.reason === 'showdown') {
+        // Окремий чистий екран розкриття: карти кожного в ряд, над ними — комбінація, переможець підсвічений
+        el.className = `verdict reveal-screen ${cls}`;
+        el.innerHTML = this.revealHTML(v, r, title, amt);
+        for (const row of el.querySelectorAll('.rv-cards')) {
+          const q = Number(row.dataset.q);
+          const fin = r.jokers?.cards?.[q] || this.playedOf(v, q);
+          for (const c of arr(fin)) { const ce = cardEl(c, { trump: v.trump, bonus: v.cfg.trumpBonus }); row.append(ce); }
+        }
+        this.st.timers.verdictHide = setTimeout(() => this.hideVerdict(), 5200 + (jk ? 1500 : 0));
+        return;
+      }
+      el.className = `verdict ${cls}`;
+      const lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
+      el.innerHTML = `<b>${esc(title)}</b>${lines}${why && r.reason === 'showdown' ? `<div class="why">${esc(why)}</div>` : ''}<div class="amt">${esc(amt)}</div><small>торкнись, щоб закрити</small>`;
       this.st.timers.verdictHide = setTimeout(() => this.hideVerdict(), ms('--t-banner') + (jk ? 800 : 0));
     };
     this.st.showVerdict = showV;
+    if (this.isCombo(v) && r.detail?.combos && r.reason === 'showdown') this.st.revealPending = true;
     this.st.timers.verdict = setTimeout(showV, delay);
+  }
+
+  /** Екран розкриття: рядок на кожного учасника (спершу суперники, внизу — ти), пояснення, що змінив джокер. */
+  revealHTML(v, r, title, amt) {
+    const cd = r.detail.combos;
+    const seats = [...this.oppSeats(v), v.you].filter((q) => cd[q]);
+    const rows = seats.map((q) => {
+      const st = r.winner === null ? 'tie' : q === r.winner ? 'win' : 'lose';
+      const name = q === v.you ? 'Ти' : this.nameOf(q);
+      const cut = r.detail.cuts?.[q] ? ' <span class="rv-note">🔪 старша не рахується</span>' : '';
+      return `<div class="rv-row ${st}"><div class="rv-head"><span class="rv-name">${esc(name)}</span><b class="rv-combo">${st === 'win' ? '🏆 ' : ''}${esc(cd[q].label)}</b>${cut}</div><div class="rv-cards" data-q="${q}"></div></div>`;
+    }).join('');
+    const jk = r.jokers;
+    const jkLines = (jk?.notes || []).map((n) => `<li>${JOKER_BY_ID[n.joker]?.icon || '🃏'} ${esc(n.text)}</li>`).join('');
+    const changed = jk?.changed ? '<li class="rv-changed">Джокер змінив переможця раунду</li>' : '';
+    return `<div class="rv-title"><b>${esc(title)}</b><span class="rv-amt">${esc(amt)}</span></div>
+<div class="rv-rows">${rows}</div>
+<div class="rv-why">${esc(r.detail.text || '')}</div>
+${jkLines || changed ? `<ul class="rv-jokers"><li class="rv-jh">Що зробили джокери</li>${jkLines}${changed}</ul>` : ''}
+<small>торкнись, щоб продовжити</small>`;
   }
 
   /** Драматичне розкриття джокерів: анімація за рідкістю, пояснення в один рядок, тап — пропустити. */
@@ -1138,11 +1318,16 @@ export class GameScreen {
 
   hideVerdict() {
     this.el.verdict.classList.add('hidden');
+    this.st.revealPending = false;
+    // «Подвій або нічого» чекав, доки гравець роздивиться розкриття
+    if (this.st.donDeferred && this.view) { this.st.donDeferred = false; this.renderDon(null, this.view); }
   }
 
   // ───────── «Подвій або нічого» ─────────
   renderDon(prev, v) {
     const d = v.phase === 'result' ? v.result?.don : null;
+    // поки відкритий екран розкриття — «Подвій або нічого» не перекриває його
+    if (d && (this.st.revealPending || this.el.verdict.classList.contains('reveal-screen') && !this.el.verdict.classList.contains('hidden'))) { this.st.donDeferred = true; return; }
     const st = this.st;
     const n = d?.attempts.length || 0;
     const el = this.el;
@@ -1322,7 +1507,7 @@ export class GameScreen {
     const low = !t.paused && rem < 5000;
     const mine = this.myTurn(v) && !this.offline;
     if (mine) {
-      ring.querySelector('.val').style.strokeDashoffset = String(94.25 * (1 - k));
+      setDash(ring.querySelector('.val'), 94.25 * (1 - k));
       this.el.phaseSec.textContent = t.paused ? '⏸' : sec;
       ring.classList.toggle('low', low);
       if (low && sec !== this.lastTick) { this.lastTick = sec; sfx.tick(); }
@@ -1332,16 +1517,16 @@ export class GameScreen {
       this.oppSeats(v).forEach((q, i) => {
         const x = this.seat(v, q);
         const a = this.panels[i].ava;
-        const w = !x.out && !x.folded && (v.phase === 'play' ? !x.hasPlayed : v.phase === 'scout' ? !x.scoutDecided : v.phase === 'bet' ? v.bet.toAct === q : v.phase === 'result' ? !x.ready : false);
+        const w = !x.out && !x.folded && (v.phase === 'play' ? (v.step === 'open' ? !x.hasOpen : !x.hasPlayed) : v.phase === 'scout' ? !x.scoutDecided : v.phase === 'bet' ? v.bet.toAct === q : v.phase === 'result' ? !x.ready : false);
         a.classList.toggle('ticking', w);
         a.classList.toggle('low', w && low);
-        if (w) a.querySelector('.tring .val').style.strokeDashoffset = String(160.2 * (1 - k));
+        if (w) setDash(a.querySelector('.tring .val'), 160.2 * (1 - k));
       });
       return;
     }
     const waitingOpp = !mine && v.phase !== 'over' && !(v.phase === 'result' && v.opp.ready);
     ava.classList.toggle('ticking', waitingOpp);
     ava.classList.toggle('low', waitingOpp && low);
-    if (waitingOpp) ava.querySelector('.tring .val').style.strokeDashoffset = String(160.2 * (1 - k));
+    if (waitingOpp) setDash(ava.querySelector('.tring .val'), 160.2 * (1 - k));
   }
 }

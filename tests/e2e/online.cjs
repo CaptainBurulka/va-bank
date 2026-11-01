@@ -43,7 +43,8 @@ const fs = require('fs');
     const cards = await p.$$('#hand .card'); const hint = await p.textContent('#actions');
     if (cards.length && hint.includes('спершу торкнись')) { await cards[0].click(); await p.click('#actions .btn.primary').catch(()=>{}); }
     // комбінації: вибрати 3 карти (не джокери) і покласти
-    if (cards.length && hint.includes('торкайся карт')) { const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, 3)) await p.click(`#hand .card[data-id="${id}"]`).catch(()=>{}); await p.click('#actions .btn.primary').catch(()=>{}); }
+    // покроково: «Покласти відкриту» — 1 карта, «Покласти 2 закриті» — 2 (у віялі тиснемо на видиму ліву смугу)
+    if (cards.length && /відкриту|закриті|торкайся карт/i.test(hint)) { const need = /закриті/i.test(hint) ? 2 : /відкриту/i.test(hint) ? 1 : 3; const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, need)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500, position: { x: 14, y: 40 } }).catch(()=>{}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(()=>{}); }
   };
   for (let i=0;i<30;i++){ await step(A); await step(B); await A.waitForTimeout(150); }
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
@@ -63,15 +64,15 @@ const fs = require('fs');
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   // Перезавантаження гостя (iOS вивантажила сторінку)
   await B.reload(); await B.waitForTimeout(500);
-  console.log('B resume btn:', await B.textContent('#btn-resume'), await B.isVisible('#btn-resume'));
-  await B.click('#btn-resume'); await B.waitForTimeout(1500);
-  console.log('B back in game:', await B.isVisible('#scr-game'), await B.textContent('#round-tag'));
+  // застосунок сам повертається в партію (автоповернення), кнопка — лише запасний шлях
+  await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {});
+  console.log('B back in game (auto):', await B.isVisible('#scr-game'), await B.textContent('#round-tag'));
   // Перезавантаження хоста
   await A.reload(); await A.waitForTimeout(500);
-  console.log('A resume btn:', await A.textContent('#btn-resume'));
-  await A.click('#btn-resume'); await A.waitForTimeout(12000);
+  await A.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {});
+  await A.waitForTimeout(6000);
   console.log('A in game:', await A.isVisible('#scr-game'), await A.textContent('#round-tag'), 'A:', await A.textContent('#phase-title'), 'B:', await B.textContent('#phase-title'));
-  for (let i=0;i<40;i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
+  for (let i=0;i<120 && !(await A.isVisible('#scr-end'));i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   await A.click('#btn-rematch'); await B.waitForTimeout(500);
   console.log('рахунок у профілі A:', await A.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vabank-profile')).rivals).map((r) => `${r.name} ${r.wins}:${r.losses}`)));

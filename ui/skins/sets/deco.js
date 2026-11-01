@@ -111,9 +111,10 @@ function felt(rar, opts = {}) {
   const L = LINE(rar, id);
   const bg = svg('0 0 320 180', `${defs(id)}${marble(R, 320, 180, rar, id, '<rect width="320" height="180" fill="#0d3a2e" opacity=".55"/>')}`);
   const lines = svg('0 0 320 180', `${defs(id)}${stepped(10, 10, 300, 160, 6, L, 1.2, live)}${stepped(16, 16, 288, 148, 4, L, .5, false)}${fan(160, 170, 70, 22, L, .5, live ? 'dkfan' : '')}
-${fan(16, 16, 30, 8, L, .5).replace('<g class="">', '<g transform="rotate(135 16 16)">')}${fan(304, 16, 30, 8, L, .5).replace('<g class="">', '<g transform="rotate(-135 304 16)">')}
-<text x="160" y="96" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="${rar === 'common' ? '#cfc9bb' : `url(#GO${id})`}" opacity=".85">ВА·БАНК</text>`);
-  return { layers: [{ d: 0, svg: bg }, { d: 2, svg: lines }], ink: '', live: live ? glints : null, cls: 'dk' };
+${fan(16, 16, 30, 8, L, .5).replace('<g class="">', '<g transform="rotate(135 16 16)">')}${fan(304, 16, 30, 8, L, .5).replace('<g class="">', '<g transform="rotate(-135 304 16)">')}`);
+  // напис — окремим шаром .felt-mark (у матчі ховається: під ним банк)
+  const mark = svg('0 0 320 180', `${defs(id)}<text x="160" y="96" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="18" letter-spacing="8" fill="${rar === 'common' ? '#cfc9bb' : `url(#GO${id})`}" opacity=".85">ВА·БАНК</text>`);
+  return { layers: [{ d: 0, svg: bg }, { d: 2, svg: lines }, { d: 2, svg: mark, cls: 'felt-mark' }], ink: '', live: live ? glints : null, cls: 'dk' };
 }
 
 // ── фішка: чорна емаль, золоті ступінчасті сегменти ──

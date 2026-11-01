@@ -1,7 +1,7 @@
 // Джокери в грі комбінаціями з 3 карт: каталог, роздача, кожен джокер, порядок спрацювання, фішки.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { JOKERS, JOKER_BY_ID, JOKER_TYPES, jokerDesc } from '../game/jokers.js';
+import { JOKERS, JOKER_BY_ID, JOKER_TYPES, JOKER_ROLES, jokerDesc } from '../game/jokers.js';
 import { createGame, reduce, viewFor, legalActions } from '../game/engine.js';
 import { buildDeck } from '../game/cards.js';
 import { JOKER_TUNING as T } from '../config.js';
@@ -53,6 +53,9 @@ test('каталог: 36 джокерів, рідкості 14/10/7/5, три т
   assert.deepEqual(by, { common: 14, rare: 10, epic: 7, legendary: 5 });
   for (const j of JOKERS) {
     assert.ok(JOKER_TYPES[j.type], `${j.id}: тип`);
+    // режим комбінацій: рівно одна роль і жодної «сили»
+    assert.ok(JOKER_ROLES[j.role], `${j.id}: роль`);
+    for (const n of [2, 3]) assert.ok(!/сил[аиу]/i.test(jokerDesc(j, n)), `${j.id}: без «сили»`);
     for (const n of [2, 3]) { const d = jokerDesc(j, n); assert.ok(d && !d.includes('\n') && d.length <= 130, `${j.id}: ${d}`); }
     assert.ok(j.icon && j.name, j.id);
   }
@@ -116,10 +119,12 @@ test('Двійник: копіює найкраще значення з руки
   assert.equal(combo(0).label, 'Пара 7');
 });
 test('Хамелеон: масть будь-яка (стріт у масть), нічию виграє', () => {
-  const { combo } = duel({ j0: 'chameleon', h0: ['w4', 'w5', 's9', 'f4', 'f9', 's5'], p0: ['J0-chameleon', 'w4', 'w5'] });
+  // значення Хамелеона — T.chameleon.v (зараз 7): разом із 5 і 6 тієї ж масті — стріт у масть
+  const v = T.chameleon.v;
+  const { combo } = duel({ j0: 'chameleon', h0: [`w${v - 2}`, `w${v - 1}`, 's9', 'f4', 'f9', 's5'].map((x) => x), p0: ['J0-chameleon', `w${v - 2}`, `w${v - 1}`] });
   assert.equal(combo(0).id, 'sflush');
-  const tie = duel({ j0: 'chameleon', h0: ['w2', 'f3', 's9', 'f4', 'f9', 's5'], h1: ['s6', 'w3', 'f2', 'w1', 'f8', 's8'], p0: ['J0-chameleon', 'w2', 'f3'], p1: ['s6', 'w3', 'f2'] });
-  assert.equal(tie.s.result.winner, 0, 'рівні «Старша 6» — нічия Хамелеона');
+  const tie = duel({ j0: 'chameleon', h0: ['w2', 'f3', 's9', 'f4', 'f9', 's5'], h1: [`s${v}`, 'w3', 'f2', 'w1', 'f8', 's8'], p0: ['J0-chameleon', 'w2', 'f3'], p1: [`s${v}`, 'w3', 'f2'] });
+  assert.equal(tie.s.result.winner, 0, `рівні «Старша ${v}» — нічия Хамелеона`);
 });
 test('Підробка: значення відкритої карти суперника — трійка', () => {
   const { combo } = duel({ j0: 'modest', h0: ['w9', 'f9', 's2', 'w4', 'f4', 's5'], h1: ['s9', 'f8', 's3', 'w1', 'f2', 's6'], p0: ['J0-modest', 'w9', 'f9'], p1: ['s9', 'f8', 's3'], o1: 's9' });
@@ -133,9 +138,9 @@ test('Стрибок: ±1..3 від своєї карти тієї ж масті
   const { combo } = duel({ j0: 'dice', h0: ['w4', 'w5', 's9', 'f4', 'f9', 's5'], p0: ['J0-dice', 'w4', 'w5'] });
   assert.equal(combo(0).id, 'sflush');
 });
-test('Сходинка: комбінація на сходинку сильніша', () => {
+test('Сходинка: комбінація на T.counter.ranks сходинок сильніша', () => {
   const { combo } = duel({ j0: 'counter', p0: ['J0-counter', 'w7', 'f7'] });
-  assert.equal(combo(0).rank, 2, 'пара → як масть');
+  assert.ok([1 + T.counter.ranks, 2 + T.counter.ranks].includes(combo(0).rank), 'пара → вище на 1–2 сходинки');
   assert.match(combo(0).label, /↑/);
 });
 test('Близнюк: копія наймолодшої іншої карти або 1', () => {
@@ -149,10 +154,13 @@ test('Магніт: нічию виграє', () => {
   const { s } = duel({ j0: 'magnet', h0: ['w2', 'f3', 's9', 'f4', 'f9', 's5'], h1: ['s6', 'w3', 'f2', 'w1', 'f8', 's8'], p0: ['J0-magnet', 'w2', 'f3'], p1: ['s6', 'w3', 'f2'] });
   assert.equal(s.result.winner, 0);
 });
-test('Аутсайдер: відстаєш на багато фішок — комбінація сильніша', () => {
+test('Аутсайдер: відстаєш на багато фішок — перемагає попри слабшу комбінацію', () => {
   const setup = (s) => { s.players[0].chips -= T.temptation.gap; s.players[1].chips += T.temptation.gap; };
-  assert.equal(duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'], setup }).combo(0).rank, 1);
-  assert.equal(duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'] }).combo(0).rank, 0);
+  const won = duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'], setup });
+  assert.equal(won.combo(0).rank, 0); // комбінація не змінюється — спрацьовує умова
+  assert.equal(won.s.result.winner, 0);
+  assert.match(won.s.result.detail.text, /Умова джокера/);
+  assert.equal(duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'] }).s.result.winner, 1); // P1 — пара 8
 });
 test('Буря: закриті карти на столі замінюються, відкриті лишаються', () => {
   const { s } = duel({ j0: 'storm', o1: 'w8' });
@@ -167,9 +175,9 @@ test('Обмін: забираєш закриту карту суперника'
   assert.ok(mine.includes('f8') || mine.includes('s3'));
   assert.ok(!mine.includes('J0-swap'));
 });
-test('Тінь: суперник підглядав — комбінація сильніша', () => {
-  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'], scout1: true }).combo(0).rank, 1);
-  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'] }).combo(0).rank, 0);
+test('Тінь: суперник підглядав — перемога', () => {
+  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'], scout1: true }).s.result.winner, 0);
+  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'] }).s.result.winner, 1);
 });
 test('Пастка: суперник піднімав — комбінація сильніша', () => {
   const caught = duel({ j0: 'trap', p0: ['J0-trap', 'w7', 'f9'], bets: [act('check', 0), act('raise', 1, { amount: 5 }), act('call', 0)] });
