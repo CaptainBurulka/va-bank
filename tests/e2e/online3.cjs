@@ -77,7 +77,8 @@ const os = require('os');
   check(after[0] === after[2], 'C повернувся в ту саму партію');
   // перезавантаження гостя B
   await B.reload(); await B.waitForTimeout(600);
-  await B.click('#btn-resume'); await B.waitForTimeout(1800);
+  // автоповернення в партію (без кнопки)
+  await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {}); await B.waitForTimeout(1800);
   check(await B.isVisible('#scr-game') && (await B.textContent('#round-tag')) === (await A.textContent('#round-tag')), 'B відновився після перезавантаження');
   // четвертий не зайде
   const D = await ctx.newPage(); await D.goto('http://localhost:8080/'); await D.evaluate(() => localStorage.setItem('vabank-tutorial', 'done'));
@@ -86,7 +87,8 @@ const os = require('os');
   check(/немає вільних місць/.test(await D.textContent('#join-status')), 'четвертий гравець отримує «немає місць»');
 
   // ── двоє + бот ──
-  for (const P of [A, B, C, D]) await P.goto('http://localhost:8080/');
+  // нова партія: прибираємо збереження старої кімнати, інакше гра сама повернеться в неї
+  for (const P of [A, B, C, D]) { await P.evaluate(() => { localStorage.removeItem('vabank-host'); localStorage.removeItem('vabank-guest'); }); await P.goto('http://localhost:8080/'); await P.waitForFunction(() => window.__vbBooted); }
   await friend(A, 'Хост'); await A.click('#modal-btns .btn.primary');
   await A.waitForFunction(() => !document.getElementById('room-code').textContent.includes('·'), null, { timeout: 15000 });
   await A.click('#create-players button:nth-child(2)');

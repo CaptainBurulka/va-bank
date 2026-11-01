@@ -149,10 +149,13 @@ test('Магніт: нічию виграє', () => {
   const { s } = duel({ j0: 'magnet', h0: ['w2', 'f3', 's9', 'f4', 'f9', 's5'], h1: ['s6', 'w3', 'f2', 'w1', 'f8', 's8'], p0: ['J0-magnet', 'w2', 'f3'], p1: ['s6', 'w3', 'f2'] });
   assert.equal(s.result.winner, 0);
 });
-test('Аутсайдер: відстаєш на багато фішок — комбінація сильніша', () => {
+test('Аутсайдер: відстаєш на багато фішок — перемагає попри слабшу комбінацію', () => {
   const setup = (s) => { s.players[0].chips -= T.temptation.gap; s.players[1].chips += T.temptation.gap; };
-  assert.equal(duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'], setup }).combo(0).rank, 1);
-  assert.equal(duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'] }).combo(0).rank, 0);
+  const won = duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'], setup });
+  assert.equal(won.combo(0).rank, 0); // комбінація не змінюється — спрацьовує умова
+  assert.equal(won.s.result.winner, 0);
+  assert.match(won.s.result.detail.text, /Умова джокера/);
+  assert.equal(duel({ j0: 'temptation', p0: ['J0-temptation', 'w4', 'f9'] }).s.result.winner, 1); // P1 — пара 8
 });
 test('Буря: закриті карти на столі замінюються, відкриті лишаються', () => {
   const { s } = duel({ j0: 'storm', o1: 'w8' });
@@ -167,9 +170,9 @@ test('Обмін: забираєш закриту карту суперника'
   assert.ok(mine.includes('f8') || mine.includes('s3'));
   assert.ok(!mine.includes('J0-swap'));
 });
-test('Тінь: суперник підглядав — комбінація сильніша', () => {
-  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'], scout1: true }).combo(0).rank, 1);
-  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'] }).combo(0).rank, 0);
+test('Тінь: суперник підглядав — перемога', () => {
+  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'], scout1: true }).s.result.winner, 0);
+  assert.equal(duel({ j0: 'shadow', p0: ['J0-shadow', 'w7', 'f9'] }).s.result.winner, 1);
 });
 test('Пастка: суперник піднімав — комбінація сильніша', () => {
   const caught = duel({ j0: 'trap', p0: ['J0-trap', 'w7', 'f9'], bets: [act('check', 0), act('raise', 1, { amount: 5 }), act('call', 0)] });

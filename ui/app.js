@@ -760,8 +760,13 @@ async function startCreate(resumeSave = null) {
           if (st.error) setLine('create-status', st.error, 'error');
           if (st.versionMismatch) { toast(st.versionMismatch, 7000, 'error'); setLine('create-status', st.versionMismatch, 'error'); }
           if (st.left) toast(players === 3 ? 'Гість вийшов з кімнати' : 'Суперник вийшов з кімнати', 3500);
+          const h = session?.host;
+          if (st.proxy) toast(`${h?.names?.[st.proxy] || 'Гравець'} довго не повертається — поки за нього грає бот`, 4500);
           const off = st.connected ? st.connected.map((c, q) => (!c ? q : -1)).filter((q) => q > 0) : [];
-          game.setOffline(st.started && !st.oppConnected, players === 3 && off.length ? `${session?.host?.names?.[off[0]] || 'Гість'} не на зв'язку` : "Суперник не на зв'язку");
+          const away = h ? h.away.map((a, q) => (a ? q : -1)).filter((q) => q > 0) : [];
+          const who = (q) => (players === 3 ? h?.names?.[q] || 'Гість' : 'Суперник');
+          const text = off.length ? `${who(off[0])} не на зв'язку — пауза` : away.length ? `${who(away[0])} згорнув гру — пауза` : '';
+          game.setOffline(st.started && !!text, text);
           if (st.started && !st.oppConnected && current === 'create') show('game');
         },
         onMessage: (m) => deliverToUi(m, { names }),
@@ -812,11 +817,12 @@ async function startJoin(code, resumeSave = null) {
       onStatus: (st) => {
         if (st.error) { setLine('join-status', st.error, 'error'); if (current === 'game') toast(st.error, 3000, 'error'); }
         if (st.joined) setLine('join-status', 'Підключено!', 'ok');
-        game.setOffline(st.joined && !st.hostConnected, game.view && game.view.n > 2 ? "Господар не на зв'язку — гра на паузі" : "Суперник не на зв'язку");
+        game.setOffline(st.joined && !st.hostConnected, game.view && game.view.n > 2 ? "Господар не на зв'язку — пауза, чекаємо" : "Суперник не на зв'язку — пауза, чекаємо");
       },
       onMessage: (m) => deliverToUi(m, { names }),
       onReaction: (e, from) => game.showReaction(e, false, from),
       onFatal: (text) => { leave(true); toast(text, 8000, 'error'); },
+      onReject: (code) => { if (!['already-played', 'wrong-phase', 'not-your-turn'].includes(code)) toast('Хід не прийнято — обери ще раз', 2500, 'error'); },
     });
   } catch (e) {
     setLine('join-status', e.message, 'error');
@@ -884,8 +890,8 @@ function refreshResume() {
   const g = loadGuestSave();
   let b = GameHost.load(BOT_KEY);
   if (b?.state && !ok(b)) { GameHost.clear(BOT_KEY); b = null; }
-  if (h && h.state?.phase !== 'over') { btn.textContent = `Продовжити кімнату ${h.code}`; btn.onclick = () => startCreate(h); }
-  else if (g) { btn.textContent = `Повернутися в кімнату ${g.code}`; btn.onclick = () => startJoin(g.code, g); }
+  if (h && h.state?.phase !== 'over') { btn.textContent = `↩ Повернутися в партію (${h.code})`; btn.onclick = () => startCreate(h); }
+  else if (g && g.phase !== 'over') { btn.textContent = `↩ Повернутися в партію (${g.code})`; btn.onclick = () => startJoin(g.code, g); }
   else if (b && b.state?.phase !== 'over') { btn.textContent = 'Продовжити партію з ботом'; btn.onclick = () => startBot(true); }
   else { btn.classList.add('hidden'); return; }
   btn.classList.remove('hidden');
@@ -897,6 +903,18 @@ document.addEventListener('visibilitychange', () => {
   session?.onVisibility?.(document.hidden);
 });
 window.addEventListener('pageshow', () => session?.onVisibility?.(false));
+// Мережа повернулась (LTE ↔ Wi-Fi) — не чекаємо серцебиття
+window.addEventListener('online', () => session?.onVisibility?.(false));
+
+/** Застосунок перезапустився посеред онлайн-партії (iOS вивантажила сторінку) — повертаємось автоматично. */
+function autoResume() {
+  const fresh = (t) => t && Date.now() - t < CONFIG.net.resumeWindowSec * 1000;
+  const h = loadHostSave();
+  if (h?.state && h.state.phase !== 'over' && fresh(h.savedAt) && upgradeState(h.state)) { startCreate(h); return true; }
+  const g = loadGuestSave();
+  if (g?.code && g.phase !== 'over' && fresh(g.at)) { startJoin(g.code, g); return true; }
+  return false;
+}
 
 // Запрошення ?room=ABCD (і старе #join=ABCD) — одразу приєднуємось
 function boot() {
@@ -913,7 +931,7 @@ function boot() {
   const valid = code && code.length === 4 && [...code].every((c) => ROOM_ALPHABET.includes(c));
   if (q) history.replaceState(null, '', location.pathname + (location.search.includes('debug') ? '?debug' : ''));
   if (valid) startJoin(code);
-  else show('menu');
+  else if (!autoResume()) show('menu');
   window.__vbBooted = true; // гра стартувала (див. страховку в index.html)
   const sp = $('splash');
   setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 400); }, 350);

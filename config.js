@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '6.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '6.1.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 3,             // версія правил (для бота і симуляцій): 3 — комбінації з 3 карт
@@ -36,9 +36,17 @@ export const CONFIG = Object.freeze({
   }),
   // Таймери у секундах (у режимі «передай телефон» вимкнені)
   timers: Object.freeze({ play: 20, scout: 12, bet: 25, result: 20 }),
-  // WebRTC: STUN безкоштовні; TURN потрібен лише для «важких» мобільних мереж.
-  // Приклад: { urls: 'turn:turn.example.com:3478', username: 'user', credential: 'pass' }
+  // WebRTC: STUN безкоштовні; TURN — ретранслятор для мобільних мереж (LTE/5G часто за «симетричним» NAT,
+  // де пряме з'єднання без TURN не встановлюється). Можна вказати кілька серверів масивом, напр.:
+  // turn: [{ urls: ['turn:a.relay.example.com:80', 'turn:a.relay.example.com:443?transport=tcp', 'turns:a.relay.example.com:443?transport=tcp'], username: 'user', credential: 'pass' }],
   turn: null,
+  // Онлайн: перепідключення
+  net: Object.freeze({
+    pingMs: 2000,          // серцебиття
+    deadMs: 7000,          // без відповіді стільки — з'єднання вважаємо мертвим
+    holdSec: 300,          // хост тримає місце гравця, що зник; далі за нього грає бот, доки не повернеться
+    resumeWindowSec: 900,  // після перезапуску застосунку автоматично повертаємось у партію, якщо минуло не більше
+  }),
   logSize: 40,
   // Гра на трьох: власні числа (режим на двох їх не бачить). Підібрано симуляціями tools/simulate3.js:
   // перший гравець вибуває в середньому не раніше ~2/3 партії, перемоги за місцями 28–38%.
@@ -75,10 +83,10 @@ export const JOKER_TUNING = Object.freeze({
   counter: { v: 1, ranks: 1, loseTie: true },           // Сходинка
   brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
   magnet: { v: 6 },
-  temptation: { v: 3, gap: 60 },         // Аутсайдер
+  temptation: { v: 1, gap: 60 },         // Аутсайдер
   storm: { v: 5 },
   swap: {},
-  shadow: { v: 4 },
+  shadow: { v: 2 },
   trap: { v: 2, ranks: 1 },
   highroller: { v: 7 },
   pocket: { v: 6 },

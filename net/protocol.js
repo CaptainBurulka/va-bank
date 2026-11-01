@@ -1,6 +1,6 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 5; // 5 — комбінації з 3 карт (playSet)
+export const PROTOCOL_VERSION = 6; // 5 — комбінації з 3 карт (playSet); 6 — «away» (згорнуто), епохи ID хоста
 
 /** Порівняння версій «2.0.1» → -1 / 0 / 1. */
 export function compareVersions(a, b) {
@@ -47,7 +47,13 @@ export function isValidCode(code) {
   return typeof code === 'string' && code.length === 4 && [...code].every((c) => ROOM_ALPHABET.includes(c));
 }
 
-export const peerIdFor = (code) => PEER_PREFIX + code;
+/**
+ * ID хоста на сервері сигналізації. Після обриву мобільної мережі сервер ще до ~60 с тримає
+ * старе з'єднання і відповідає «ID taken», тож хост переходить на наступну «епоху» ID,
+ * а гість шукає кімнату одразу за всіма епохами. Епоха 0 — старий формат (сумісність).
+ */
+export const HOST_EPOCHS = 8;
+export const peerIdFor = (code, epoch = 0) => PEER_PREFIX + code + (epoch ? `-${epoch}` : '');
 
 export function randomToken(rng) {
   let s = '';
@@ -100,11 +106,15 @@ export function parseGuestMessage(m) {
       if (a.amount === 'allin' || (Number.isInteger(a.amount) && a.amount > 0 && a.amount < 1e6)) clean.amount = a.amount;
       if (a.guess === 'higher' || a.guess === 'lower') clean.guess = a.guess;
       if (Number.isInteger(a.target) && a.target >= 0 && a.target < 3) clean.target = a.target;
-      return { ok: true, m: { type: 'action', action: clean } };
+      // aid — номер дії гостя: хост підтверджує його в стані й відкидає повтори
+      const aid = Number.isSafeInteger(m.aid) && m.aid > 0 ? m.aid : null;
+      return { ok: true, m: { type: 'action', action: clean, aid } };
     }
     case 'react':
       if (!isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
       return { ok: true, m: { type: 'react', emoji: m.emoji } };
+    case 'away':
+      return { ok: true, m: { type: 'away', hidden: m.hidden === true } };
     case 'ping':
     case 'pong':
     case 'bye':

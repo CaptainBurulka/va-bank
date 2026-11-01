@@ -26,6 +26,7 @@ export class GameHost {
     this.seats = Array(this.n).fill(null);
     this.connected = Array(this.n).fill(false);
     this.hidden = false;
+    this.away = Array(this.n).fill(false); // гість згорнув гру (на зв'язку, але не бачить екрана)
     this.rematch = Array(this.n).fill(false);
     this.names = Array(this.n).fill(null); // публічні імена за місцями (для журналу й столу)
     this.looks = Array(this.n).fill(null); // косметика за місцями (лише для показу)
@@ -132,6 +133,12 @@ export class GameHost {
     this.refresh();
   }
 
+  setAway(p, value) {
+    if (this.away[p] === value) return;
+    this.away[p] = value;
+    this.refresh();
+  }
+
   setHidden(value) {
     if (this.hidden === value) return;
     this.hidden = value;
@@ -142,7 +149,7 @@ export class GameHost {
   syncPause() {
     if (!this.state) return;
     // Пауза, якщо хтось із тих, хто ще грає, не на зв'язку (глядачі, що вибули, гру не зупиняють)
-    const pause = this.hidden || this.connected.some((c, p) => !c && !this.state.players[p]?.out);
+    const pause = this.hidden || this.connected.some((c, p) => (!c || this.away[p]) && !this.state.players[p]?.out);
     const r = reduce(this.state, { type: pause ? 'pause' : 'resume' }, this.ctx());
     this.state = r.state;
   }
@@ -179,6 +186,7 @@ export class GameHost {
       meta: {
         oppConnected: others.every((q) => this.connected[q]),
         connected: this.connected.slice(),
+        away: this.away.slice(),
         names: this.names.slice(),
         looks: this.looks.slice(),
         pids: this.pids.slice(),

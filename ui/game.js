@@ -11,6 +11,7 @@ import { PHRASES, isPhrase } from '../meta/rivals.js';
 import { MODES, FEEL } from '../config.js';
 import { liveCombo, weakestId, possibleCombos, comboOf, cheatSheetHTML } from './combo-ui.js';
 import { COMBO_NAME } from '../game/combos.js';
+import { setGlyph } from './glyph.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -179,14 +180,14 @@ export class GameScreen {
     this.seatNames = null;
     this.el.meName.textContent = me;
     this.el.oppName.textContent = opp;
-    this.el.oppInitial.textContent = (opp.replace(/^Бот · /, '')[0] || 'С').toUpperCase();
-    document.querySelector('#me .ava span').textContent = (me[0] || 'Т').toUpperCase();
+    setGlyph(this.el.oppInitial, opp, 'С');
+    setGlyph(document.querySelector('#me .ava span'), me, 'Т');
   }
 
   /** Імена за місцями (гра втрьох, онлайн): names[seat]; своє місце підписується names[you] або «Ти». */
   setSeatNames(names, meLabel = null) {
     this.seatNames = names.slice();
-    if (meLabel) { this.names[0] = meLabel; this.el.meName.textContent = meLabel; document.querySelector('#me .ava span').textContent = (meLabel[0] || 'Т').toUpperCase(); }
+    if (meLabel) { this.names[0] = meLabel; this.el.meName.textContent = meLabel; setGlyph(document.querySelector('#me .ava span'), meLabel, 'Т'); }
   }
 
   /** Місця суперників: удвох — [інший], утрьох — [наступний за годинниковою, ще наступний]. */
@@ -212,6 +213,9 @@ export class GameScreen {
   /** Стан «не на зв'язку» показується в банері фази, нічого не перекриваючи. */
   setOffline(show, text = "Суперник не на зв'язку") {
     this.offline = show ? text : null;
+    // Пауза для всіх: локальний відлік зупиняємо, доки хост не пришле свіжий стан
+    const t = this.timer;
+    if (show && t && !t.paused) this.timer = { ...t, paused: true, remaining: Math.max(0, t.deadline - performance.now()) };
     if (this.view) { this.renderPhase(this.view); this.renderPlayers(this.view); }
   }
 
@@ -289,7 +293,7 @@ export class GameScreen {
       const pn = this.panels[i];
       const nm = this.nameOf(q, view);
       if (pn.name.textContent !== nm) pn.name.textContent = nm;
-      pn.initial.textContent = (nm.replace(/^Бот · /, '')[0] || 'С').toUpperCase();
+      setGlyph(pn.initial, nm, 'С');
     });
 
     this.renderNumbers(prev, view);
@@ -491,7 +495,8 @@ export class GameScreen {
       const offline = (!three && this.offline) || (conn ? conn[q] === false : (this.meta && !this.meta.oppConnected)) || (three && this.offline && false);
       const parts = [];
       if (o.out) parts.push('<span>💀 вибув</span>');
-      else if (offline) parts.push(`<span class="warn">${ico('wifi-off')}не на зв'язку</span>`);
+      else if (offline) parts.push(`<span class="warn">${ico('wifi-off')}офлайн</span>`);
+      else if (this.meta?.away?.[q]) parts.push('<span class="warn">💤 згорнув</span>');
       else {
         // значки без тексту, щоб статус уміщався: 👁 — підглядав, ⇄ — міняв карту
         if (o.scouted && v.phase !== 'result') parts.push(`<span class="ic" title="Зробив розвідку${three && o.scoutTarget !== undefined ? `: ${this.nameOf(o.scoutTarget)}` : ''}" aria-label="розвідка">${ico('eye')}${three && o.scoutTarget === v.you ? '→ти' : ''}</span>`);
@@ -846,7 +851,8 @@ export class GameScreen {
         el.style.animationDelay = `${dealt * 70}ms`;
         if (prev || dealt < 4) sfx.deal(dealt);
         dealt++;
-        el.addEventListener('animationend', () => { el.classList.remove('deal'); el.style.animationDelay = ''; }, { once: true });
+        const done = (e) => { if (e.target !== el) return; el.classList.remove('deal'); el.style.animationDelay = ''; el.removeEventListener('animationend', done); };
+        el.addEventListener('animationend', done); // анімації всередині джокера теж спливають — чекаємо саме на роздачу
       } else if (!prev || prev.trump !== v.trump) fillFace(el, card, opt);
       if (hand.children[i] !== el) hand.insertBefore(el, hand.children[i] || null);
     });

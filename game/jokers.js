@@ -141,14 +141,14 @@ const build = (T) => [
   { id: 'magnet', name: 'Магніт', rarity: 'common', icon: '🧲', type: 'value', stage: 'power', slot: { v: T.magnet.v },
     desc: `Значення ${T.magnet.v}, масть будь-яка; притягує удачу — нічию виграє.`,
     apply: (api) => { api.setSlot(T.magnet.v); api.X.winTie[api.me] = true; api.note(`Магніт: ${T.magnet.v}, нічия — його`); } },
-  { id: 'temptation', name: 'Аутсайдер', rarity: 'common', icon: '🐢', type: 'value', stage: 'power', slot: { v: T.temptation.v },
-    desc: `Значення ${T.temptation.v}. Відстаєш від суперника на ${T.temptation.gap}+ фішок — твоя комбінація на сходинку сильніша.`,
-    d3: `Значення ${T.temptation.v}. Відстаєш від лідера на ${T.temptation.gap}+ фішок — твоя комбінація на сходинку сильніша.`,
+  { id: 'temptation', name: 'Аутсайдер', rarity: 'common', icon: '🐢', type: 'rule', stage: 'power', slot: { v: T.temptation.v },
+    desc: `Значення ${T.temptation.v}. Перемагає, якщо в тебе на ${T.temptation.gap}+ фішок менше, ніж у суперника.`,
+    d3: `Значення ${T.temptation.v}. Перемагає, якщо в тебе на ${T.temptation.gap}+ фішок менше, ніж у лідера.`,
     apply: (api) => {
       api.setSlot(T.temptation.v);
       const gap = api.chips(api.opp) - api.chips(api.me);
-      if (gap >= T.temptation.gap) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], 1); }); }
-      api.note(gap >= T.temptation.gap ? `Аутсайдер: відставання ${gap} — комбінація сильніша` : `Аутсайдер: ${T.temptation.v}`);
+      if (gap >= T.temptation.gap) api.winIf();
+      api.note(gap >= T.temptation.gap ? `Аутсайдер: відставання ${gap} — перемога` : `Аутсайдер: відставання ${Math.max(0, gap)} — умова не виконана`);
     } },
 
   // ───── Рідкісні ─────
@@ -176,14 +176,14 @@ const build = (T) => [
       api.replaceMe(took);
       api.note('Обмін: закриту карту суперника вкрадено');
     } },
-  { id: 'shadow', name: 'Тінь', rarity: 'rare', icon: '🌑', type: 'value', stage: 'power', slot: { v: T.shadow.v }, noSuit: true,
-    desc: `Значення ${T.shadow.v} без масті; якщо суперник підглядав до тебе — твоя комбінація на сходинку сильніша.`,
-    d3: `Значення ${T.shadow.v} без масті; якщо хтось підглядав саме до тебе — твоя комбінація на сходинку сильніша.`,
+  { id: 'shadow', name: 'Тінь', rarity: 'rare', icon: '🌑', type: 'rule', stage: 'power', slot: { v: T.shadow.v }, noSuit: true,
+    desc: `Значення ${T.shadow.v} без масті. Перемагає, якщо суперник цього раунду підглядав до тебе.`,
+    d3: `Значення ${T.shadow.v} без масті. Перемагає, якщо хтось цього раунду підглядав саме до тебе.`,
     apply: (api) => {
       const seen = api.others.some((q) => api.s.players[q].scouted && (api.s.players[q].scoutTarget ?? api.me) === api.me);
       api.setSlot(T.shadow.v);
-      if (seen) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], 1); }); }
-      api.note(seen ? 'Тінь: суперник підглядав — комбінація сильніша' : `Тінь: ${T.shadow.v}`);
+      if (seen) api.winIf();
+      api.note(seen ? 'Тінь: суперник підглядав — перемога' : `Тінь: ${T.shadow.v}, ніхто не підглядав`);
     } },
   { id: 'trap', name: 'Пастка', rarity: 'rare', icon: '🪤', type: 'rule', stage: 'power', slot: { v: T.trap.v }, noSuit: true,
     desc: `Значення ${T.trap.v} без масті. Якщо суперник цього раунду піднімав ставку — твоя комбінація на ${T.trap.ranks} сходинки сильніша.`,
@@ -377,6 +377,7 @@ export function resolveJokers(s, ctx, env) {
     cards: s.players.map((pl, q) => (parts.includes(q) ? pl.played.slice() : null)),
     openIds: s.players.map((pl) => pl.openId),
     jv: {}, // id картки-джокера → слот
+    winIf: fill(false), // умовна перемога («перемагає, якщо…») — спрацювала
     winTie: fill(false), loseTie: fill(false), lowWins: false,
     forced: undefined, coin: false, cancel: null, pre: [], post: [], afters: [], notes: [], fired: [], duel: null,
   };
@@ -427,6 +428,7 @@ export function resolveJokers(s, ctx, env) {
       openOf: (q) => X.cards[q]?.find((c) => c.id === X.openIds[q]) || null,
       setSlot: (v, su = null) => { if (where()) X.jv[e.card.id] = v == null ? { v: null } : { v, s: su ?? (e.def.noSuit ? null : '*') }; },
       setChoice: (vals, suit = '*') => { if (where()) X.jv[e.card.id] = { wild: true, wildVals: [...new Set(vals)], wildSuit: suit }; },
+      winIf: () => { X.winIf[me] = true; },
       forceNoSuit: () => { const j = X.jv[e.card.id]; if (j && j.v != null) j.s = null; },
       setWild: (max = 10) => { if (where()) X.jv[e.card.id] = { wild: true, wildMax: max }; },
       replaceMe: (card) => { const w = where(); if (w) { if (X.openIds[w.q] === e.card.id) X.openIds[w.q] = card.id; X.cards[w.q][w.i] = card; } },

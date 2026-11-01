@@ -63,13 +63,13 @@ const fs = require('fs');
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   // Перезавантаження гостя (iOS вивантажила сторінку)
   await B.reload(); await B.waitForTimeout(500);
-  console.log('B resume btn:', await B.textContent('#btn-resume'), await B.isVisible('#btn-resume'));
-  await B.click('#btn-resume'); await B.waitForTimeout(1500);
-  console.log('B back in game:', await B.isVisible('#scr-game'), await B.textContent('#round-tag'));
+  // застосунок сам повертається в партію (автоповернення), кнопка — лише запасний шлях
+  await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {});
+  console.log('B back in game (auto):', await B.isVisible('#scr-game'), await B.textContent('#round-tag'));
   // Перезавантаження хоста
   await A.reload(); await A.waitForTimeout(500);
-  console.log('A resume btn:', await A.textContent('#btn-resume'));
-  await A.click('#btn-resume'); await A.waitForTimeout(12000);
+  await A.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {});
+  await A.waitForTimeout(6000);
   console.log('A in game:', await A.isVisible('#scr-game'), await A.textContent('#round-tag'), 'A:', await A.textContent('#phase-title'), 'B:', await B.textContent('#phase-title'));
   for (let i=0;i<40;i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));

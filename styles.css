@@ -887,3 +887,6 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 .combo.three .slot.set .card .sp-sub, .combo.three .slot.set .card .jk-tag { display: none; }
 .combo.three .slot.set .card .sp-name, .combo.three .slot.set .card .jk-name { font-size: 8px; }
 #scr-game { max-width: 100%; }
+/* Аватарка: символ завжди рендериться — емодзі емодзі-шрифтом, літери з системним запасом */
+.ava span { font-family: var(--font-display), system-ui, sans-serif; }
+.ava span.emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: .95em; line-height: 1; }

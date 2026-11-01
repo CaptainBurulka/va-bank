@@ -917,13 +917,22 @@ function evalSets(s, parts, cards, X = {}) {
 }
 
 /** Переможець за комбінаціями: той, хто б'є кожного; інакше — нічия (null). */
-function comboWinner(parts, combos, X = {}) {
+/**
+ * Єдиний порядок порівняння (див. README «Порядок розкриття»):
+ *  1. Умовні перемоги джокерів («перемагає, якщо…»): спрацювала лише в одного — він вищий.
+ *     У обох або в жодного — далі.
+ *  2. Комбінації (уже зі змінами від джокерів), старші карти й козир +1; «перемагає слабша» перевертає порівняння.
+ *  3. Повна нічия: «нічию виграє» / «нічию програє» (лише якщо в одного), інакше — нічия → банк у джекпот.
+ */
+export function comboWinner(parts, combos, X = {}) {
   const cmp = (p, q) => {
+    const wp = !!X.winIf?.[p], wq = !!X.winIf?.[q];
+    if (wp !== wq) return wp ? 1 : -1;
     let c = compareCombos(combos[p], combos[q]);
     if (X.lowWins) c = -c;
     if (c === 0) {
-      if (X.winTie?.[p] !== X.winTie?.[q]) c = X.winTie[p] ? 1 : -1;
-      else if (X.loseTie?.[p] !== X.loseTie?.[q]) c = X.loseTie[p] ? -1 : 1;
+      if (!!X.winTie?.[p] !== !!X.winTie?.[q]) c = X.winTie[p] ? 1 : -1;
+      else if (!!X.loseTie?.[p] !== !!X.loseTie?.[q]) c = X.loseTie[p] ? -1 : 1;
     }
     return c;
   };
@@ -937,9 +946,16 @@ function comboDetail(s, parts, combos, winner, cmp, cuts, extra = {}) {
   let text, rival = null;
   if (winner !== null) {
     rival = parts.filter((q) => q !== winner).sort((a, b) => cmp(b, a))[0];
-    text = extra.lowWins ? `Перемагає слабша: ${combos[winner].label}` : explain(combos[winner], combos[rival]);
+    const c = compareCombos(combos[winner], combos[rival]);
+    const byCond = extra.winIf?.[winner] && !extra.winIf?.[rival];
+    text = byCond && c <= 0 ? (c < 0 ? 'Умова джокера виконана — перемога попри слабшу комбінацію' : 'Умова джокера вирішила нічию')
+      : byCond ? explain(combos[winner], combos[rival])
+      : extra.lowWins ? `Перемагає слабша: ${combos[winner].label}`
+      : c === 0 ? (extra.winTie?.[winner] ? 'Нічия — джокер забирає її собі' : 'Нічия — джокер суперника її програє')
+      : explain(combos[winner], combos[rival]);
   } else text = 'Рівні комбінації — банк у джекпот';
-  return { cmp: winner === null ? 0 : winner === parts[0] ? 1 : -1, reason: 'combo', combos: view, text, a: winner, b: rival, cuts, ...extra };
+  const { winIf, winTie, ...rest } = extra;
+  return { cmp: winner === null ? 0 : winner === parts[0] ? 1 : -1, reason: 'combo', combos: view, text, a: winner, b: rival, cuts, ...rest };
 }
 
 function comboShowdown(s, ctx) {
@@ -1025,7 +1041,7 @@ function jokerShowdown(s, ctx) {
     if (JOKER_BY_ID[f.joker].rarity === 'legendary') { s.stats[f.p].legendary += 1; addMoment(s, { kind: 'legend', p: f.p, joker: f.joker }); }
   }
   for (const n of X.notes) log(s, { t: 'joker', p: n.p, joker: n.joker, text: n.text });
-  const jokers = { notes: X.notes, fired: X.fired, cards: X.cards, openIds: X.openIds, duel: X.duel || null, coin: null };
+  const jokers = { notes: X.notes, fired: X.fired, cards: X.cards, openIds: X.openIds, duel: X.duel || null, coin: null, winIf: X.winIf.slice(), lowWins: !!X.lowWins };
 
   if (X.cancel === 'void') {
     s.jackpot = s.pot; // увесь банк — у джекпот
@@ -1051,7 +1067,7 @@ function jokerShowdown(s, ctx) {
   const { combos, cuts } = evalSets(s, parts, X.cards, X);
   const { winner: byCombo, cmp } = comboWinner(parts, combos, X);
   let winner = byCombo;
-  let extra = { joker: true, lowWins: X.lowWins };
+  let extra = { joker: true, lowWins: X.lowWins, winIf: X.winIf, winTie: X.winTie };
   if (X.forced !== undefined) { winner = X.forced; extra.forced = true; }
   else if (X.coin) { winner = parts[Math.floor(ctx.rng() * parts.length)]; jokers.coin = winner; extra.coin = true; }
   const detail = comboDetail(s, parts, combos, winner, cmp, cuts, extra);
