@@ -2,7 +2,15 @@
 export const APP_VERSION = '5.0.1'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
-  rules: 2,             // версія правил (для бота і симуляцій)
+  rules: 3,             // версія правил (для бота і симуляцій): 3 — комбінації з 3 карт
+  // Основа раунду. 'combo' — рука 6, граєш 3 карти (одна відкрита), перемагає сильніша комбінація.
+  // 'single' — стара гра однією картою (лишається в лобі як «Класика (1 карта)» на час тестування; без джокерів).
+  core: 'combo',
+  combo: Object.freeze({
+    handSize: 6,        // карт у руці
+    playCount: 3,       // скільки карт грається за раунд (одна з них відкрита)
+    scoutHighFrom: 8,   // розвідка: «чи є серед закритих карт висока (від 8)»
+  }),
   startChips: 100,      // фішок у кожного гравця на старті
   // Анте зростає: anteBase, далі +anteStep кожні anteEvery раундів (5 → 10 → 15 → 20)
   anteBase: 5,
@@ -47,71 +55,43 @@ export const CONFIG = Object.freeze({
   }),
 });
 
-// ───────── Джокери: числа ефектів (підібрано симуляціями на ~50% перемог) ─────────
+// ───────── Джокери: числа ефектів (комбінації з 3 карт; підібрано симуляціями на 45–55% перемог) ─────────
+// Значення — у комбінації (1–10). Ключі — id джокерів (переосмислені джокери зберегли id).
 export const JOKER_TUNING = Object.freeze({
-  turncoat: { power: 6 },
-  roulette: { max: 12 },
-  thief: { power: 5 },
-  fist: { power: 7, fee: 10, loseTie: true },
-  insurance: { power: 2, high: 11 },
-  chameleon: { power: 5 },
-  modest: { bias: 0 },
-  tax: { power: 6, fee: 5 },
-  twin: { plus: 0 },
-  dice: { minus: 1 },
-  counter: { plus: 1 },
-  brazen: { power: 5, target: 7 },
-  magnet: { power: 7 },
-  temptation: { power: 4, step: 10, max: 12 },
-  shadow: { power: 6, scouted: 10 },
-  trap: { power: 0 },
-  swap: { oppBonus: 0 },
+  turncoat: { v: null },                 // Перевертень: місце порожнє
+  roulette: {},
+  thief: { max: 10, loseTie: true },     // Дикун
+  fist: { v: 8, fee: 10 },
+  insurance: { high: 10, low: 2 },       // Чет-нечет
+  twin: {},
+  chameleon: { v: 5 },
+  modest: {},                            // Підробка
+  tax: { v: 6, fee: 5 },
+  dice: { d: 2 },                        // Стрибок
+  counter: { ranks: 1 },                 // Сходинка
+  brazen: {},                            // Близнюк
+  magnet: { v: 7, d: 2 },
+  temptation: { v: 4, step: 10 },        // Аутсайдер
+  storm: {},
+  swap: {},
+  shadow: { v: 6, scouted: 10 },
+  trap: { v: 2, ranks3: 2 },
+  highroller: { v: 6 },
   pocket: { tries: 1 },
-  highroller: { power: 6 },
-  sharper: { power: 4, alt: 6 },
-  luck: { high: 9, low: 1 },
-  brave: { power: 5, perRaise: 2 },
-  antitrump: { power: 6 },
-  quake: { power: 6 },
-  frenzy: { power: 6 },
-  mirrorworld: { power: 5, trump: -2 },
-  echo: { power: 6 },
-  storm: { oppBonus: 0 },
-  redeal: { oppBonus: 0 },
-  castling: { power: 6, myTie: true },
+  sharper: { v: 7, alt: 9 },
+  luck: { high: 10, low: 1 },
+  brave: { v: 4, perRaise: 2 },
+  antitrump: {},                         // Ламач
+  echo: { v: 6 },
+  quake: { v: 6 },
+  castling: { v: 6, myTie: true },
+  frenzy: { v: 6 },
+  mirrorworld: { v: 5 },
 });
 
 // Гра втрьох: ті самі ідеї джокерів, інші числа (треба побити двох суперників). Решта — як для двох.
 export const JOKER_TUNING_3 = Object.freeze({
-  turncoat: { power: 7 },
-  fist: { power: 9, fee: 14 },
-  insurance: { power: 1, high: 12 },
-  twin: { plus: 1 },
-  chameleon: { power: 7 },
-  modest: { bias: 1 },
-  tax: { power: 8 },
-  dice: { minus: 0 },
-  counter: { plus: 3 },
-  brazen: { power: 6 },
-  magnet: { power: 9 },
-  temptation: { power: 2, step: 15 },
-  storm: { oppBonus: -1 },
-  shadow: { power: 8 },
-  thief: { power: 7 },
-  trap: { power: 3 },
-  swap: { oppBonus: 1 },
-  castling: { power: 8, myTie: false },
-  mirrorworld: { power: 6 },
-  highroller: { power: 8 },
   pocket: { tries: 2 },
-  sharper: { power: 7, alt: 8 },
-  luck: { high: 11, low: 1 },
-  brave: { power: 7 },
-  antitrump: { power: 8 },
-  echo: { power: 8 },
-  quake: { power: 8 },
-  frenzy: { power: 8 },
-  redeal: { oppBonus: -1 },
 });
 
 // Коли роздаються джокери: один і той самий випадковий раунд для обох

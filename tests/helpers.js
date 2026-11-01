@@ -28,7 +28,8 @@ export function stackedDeck(ids) {
 export function newGame(ids = [], opts = {}) {
   const { config = {}, trumps, ...rest } = opts;
   const features = { trump: !!trumps, swap: true, ...(config.features || {}) };
-  return createGame({ deck: stackedDeck(ids), firstToAct: 0, trumps, ...rest, config: { ...config, features } }, ctx());
+  // Старі тести описують гру однією картою («Класика (1 карта)»); комбінації — core: 'combo'
+  return createGame({ deck: stackedDeck(ids), firstToAct: 0, trumps, core: 'single', ...rest, config: { ...config, features } }, ctx());
 }
 
 /** Послідовно застосовує дії; кидає помилку, якщо якась невалідна. */
