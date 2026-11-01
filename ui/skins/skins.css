@@ -56,7 +56,7 @@
 .sk-active .sk-tilt { transition: none; will-change: transform; }
 .sk-art, .sk-ink, .sk-live, .sk-foil, .sk-glare, .sk-frame { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 .sk-art > *, .sk-ink > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.sk-art .plx { position: absolute; inset: -4%; }
+.sk-art .plx { position: absolute; inset: -4%; width: auto; height: auto; }
 .sk-art .plx > svg { width: 100%; height: 100%; display: block; }
 /* паралакс: глибші шари рухаються сильніше (лише в активного предмета) */
 .sk-active .sk-art .d1 { transform: translate(calc((var(--px) - 50%) * -.03), calc((var(--py) - 50%) * -.03)); }
@@ -487,3 +487,19 @@
 @keyframes pxWin { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } 30%, 85% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
 .skwin.r-legendary .pxwin { animation-name: pxWin, pxWinBlink; animation-duration: 2.8s, .4s; animation-timing-function: steps(8), steps(1); animation-iteration-count: 1, 6; }
 @keyframes pxWinBlink { 50% { filter: brightness(1.6); } }
+
+/* ═════════ Набір «Космос» ═════════ */
+.sk-space .sk-tilt { background: #05030f; }
+/* легендарна: туманність дрейфує й переливається, планета йде орбітою, зорі мерехтять і падають */
+.sk-space .csneb { transform-box: view-box; transform-origin: center; animation: csNeb 18s ease-in-out infinite alternate; }
+@keyframes csNeb { from { transform: rotate(-6deg) scale(1); filter: hue-rotate(0deg); } to { transform: rotate(8deg) scale(1.15); filter: hue-rotate(50deg); } }
+@keyframes csOrb { to { transform: rotate(360deg); } }
+.sk-space .csgal { animation: csOrb 60s linear infinite; }
+.sk-space .cstw { animation: csTw 2.6s ease-in-out infinite; }
+@keyframes csTw { 50% { opacity: .2; } }
+.sk-space .csf { position: absolute; width: calc(var(--w) * .28); height: 1.5px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff); border-radius: 2px; opacity: 0; transform: rotate(-35deg); animation: csFall var(--d) ease-in var(--delay) infinite; }
+@keyframes csFall { 0%, 70% { opacity: 0; translate: 0 0; } 74% { opacity: 1; } 90% { opacity: 0; translate: calc(var(--w) * -.6) calc(var(--w) * .42); } 100% { opacity: 0; translate: calc(var(--w) * -.6) calc(var(--w) * .42); } }
+.skwin .cswarp { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; background: var(--c); border-radius: 2px; transform-origin: 0 50%; transform: rotate(var(--a)) translateX(10px); opacity: 0; animation: csWarp 1.4s cubic-bezier(.6, 0, .9, .4) both; }
+@keyframes csWarp { 0% { opacity: 0; width: 3px; transform: rotate(var(--a)) translateX(10px); } 20% { opacity: 1; } 100% { opacity: 0; width: 160px; transform: rotate(var(--a)) translateX(60vmax); } }
+.skwin .csfw { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, transparent, #fff); transform: rotate(-30deg); opacity: 0; animation: csFw 1.2s ease-in both; }
+@keyframes csFw { 0% { opacity: 0; translate: 0 0; } 20% { opacity: 1; } 100% { opacity: 0; translate: -220px 130px; } }

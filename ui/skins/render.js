@@ -9,6 +9,7 @@ import './sets/cossack.js';
 import './sets/deco.js';
 import './sets/abyss.js';
 import './sets/pixel.js';
+import './sets/space.js';
 
 export { SETS };
 export const ITEM_KINDS = {

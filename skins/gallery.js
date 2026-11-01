@@ -10,7 +10,7 @@ import { unlockAudio } from '../ui/sound.js';
 const $ = (id) => document.getElementById(id);
 const SUIT_NAME = { water: 'Води', fire: 'Вогню', stone: 'Каменю' };
 const SPECIAL = { knife: 'Ніж', mirror: 'Дзеркало', double: 'Подвоєння' };
-const UPCOMING = ['Космос'];
+const UPCOMING = [];
 const params = new URLSearchParams(location.search);
 let setId = SETS[params.get('set')] ? params.get('set') : 'kyiv';
 let rarity = RARITY_ORDER.includes(params.get('r')) ? params.get('r') : 'legendary';
