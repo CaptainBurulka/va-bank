@@ -120,6 +120,8 @@ export function renderItem(o) {
     const stop = built.live(el.querySelector('.sk-live'), SKINS.particles.legendary);
     if (typeof stop === 'function') el._stop = stop;
   }
+  // SMIL (машинки на мосту, планета на орбіті) не зупиняється CSS-ом — пауза, доки предмет не «повний»
+  setSmil(el, !!o.full);
   // текст SVG для растеризації (без повторної серіалізації)
   const rs = el.querySelectorAll('.sk-art [data-r]');
   let k = 0;
@@ -129,6 +131,11 @@ export function renderItem(o) {
   el.dataset.rarity = rarity;
   el.dataset.set = o.set;
   return el;
+}
+
+/** Увімкнути/зупинити SMIL-анімації предмета (викликає tilt.setActive). */
+export function setSmil(el, on) {
+  for (const sv of el.querySelectorAll('svg')) if (sv.querySelector('animateMotion, animate, animateTransform')) { try { on ? sv.unpauseAnimations() : sv.pauseAnimations(); } catch {} }
 }
 
 /** Прибрати предмет (зупинити canvas-цикли). */

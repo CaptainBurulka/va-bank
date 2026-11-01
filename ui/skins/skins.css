@@ -20,11 +20,11 @@
 @font-face { font-family: 'Unbounded'; font-weight: 600; font-display: swap; src: url('../../fonts/unbounded-latin-600-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
 @font-face { font-family: 'Unbounded'; font-weight: 600; font-display: swap; src: url('../../fonts/unbounded-cyrillic-600-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
 
-@property --px { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
-@property --py { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
-@property --rx { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
-@property --ry { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
-@property --hyp { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --px { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+@property --py { syntax: '<percentage>'; inherits: false; initial-value: 50%; }
+@property --rx { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --ry { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --hyp { syntax: '<number>'; inherits: false; initial-value: 0; }
 
 :root {
   --rar-common: #9aa4ad;
@@ -172,6 +172,11 @@
 .sk-kyiv .sk-tilt { background: #0b1233; }
 /* легендарна: місто «вмикає» вогні хвилею (кожні 12 с), зорі мерехтять, Дніпро переливається, вивіска блимає */
 .sk-kyiv.sk-full .kw { opacity: 0; animation: kwOn 12s ease-out infinite; }
+/* вікна «вмикаються» хвилею зліва направо: готовий bitmap вікон + два зустрічні transform (без перемальовки) */
+.sk-kyiv.sk-full .kwwipe { animation: kwWipe 12s ease-out infinite; }
+.sk-kyiv.sk-full .kwwipe > .wipe-in { animation: kwWipeIn 12s ease-out infinite; }
+@keyframes kwWipe { 0% { transform: translateX(-100%); opacity: 1; } 22% { transform: translateX(0); } 90% { opacity: 1; } 96%, 100% { transform: translateX(0); opacity: 0; } }
+@keyframes kwWipeIn { 0% { transform: translateX(100%); } 22%, 100% { transform: translateX(0); } }
 @keyframes kwOn { 0% { opacity: 0; } 3% { opacity: 1; } 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
 .sk-kyiv.sk-full .ktw { animation: ktw 3.2s ease-in-out infinite; }
 @keyframes ktw { 50% { opacity: .15; } }
@@ -315,8 +320,8 @@
 .round.r-epic .sk-tilt::after { display: none; }
 
 /* ═════════ Матеріали v2: «важкий» метал рідкісної та епічної, благородна поліхромія легендарної ═════════ */
-@property --nx { syntax: '<number>'; inherits: true; initial-value: 0; }
-@property --ny { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --nx { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --ny { syntax: '<number>'; inherits: false; initial-value: 0; }
 :root {
   --metal-brush: repeating-linear-gradient(90deg, rgba(255, 255, 255, .07) 0 1px, rgba(0, 0, 0, .06) 1px 2px, transparent 2px 3px);
   --rar-edge-rare: #1a2c46;
@@ -564,3 +569,10 @@
 .sk-idx .v.px { height: clamp(12px, calc(var(--w) * .17), 30px); width: auto; shape-rendering: crispEdges; }
 .sk-idx .s { display: block; width: clamp(12px, calc(var(--w) * .17), 30px); height: clamp(12px, calc(var(--w) * .17), 30px); }
 .sk-idx.sp .s { width: clamp(14px, calc(var(--w) * .2), 34px); height: clamp(14px, calc(var(--w) * .2), 34px); }
+
+/* Змінні світла (--px --py --rx --ry --hyp --nx --ny) — НЕуспадковувані: зміна на кожен рух пальця
+   перераховує стилі лише ланцюжка споживачів нижче, а не всього SVG-піддерева арту (сотні вузлів). */
+.sk-tilt, .sk-tilt::before, .sk-tilt::after, .sk-art, .sk-art > .plx, .sk-ink, .sk-foil, .sk-foil::before, .sk-foil::after,
+.sk-glare, .sk-glare::before, .sk-glare::after, .sk-frame, .sk-frame::before, .sk-frame::after, .sk-bevel, .sk-bevel::after {
+  --px: inherit; --py: inherit; --rx: inherit; --ry: inherit; --hyp: inherit; --nx: inherit; --ny: inherit;
+}

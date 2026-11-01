@@ -41,10 +41,15 @@ const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
 /** Зробити елемент активним (повний ефект). Попередній повертається в полегшений режим. */
 export function setActive(el) {
   if (active === el) return;
-  if (active) { active.classList.remove('sk-active'); if (!active.dataset.full) active.classList.remove('sk-full'); resetVars(active); }
+  if (active) { active.classList.remove('sk-active'); if (!active.dataset.full) { active.classList.remove('sk-full'); smil(active, false); } resetVars(active); }
   active = el;
   // активний предмет отримує повний ефект (живі анімації, світло); решта — полегшений режим
-  if (el) { el.classList.add('sk-active', 'sk-full'); cur = { x: 0.5, y: 0.5 }; target = { x: 0.5, y: 0.5 }; kick(); }
+  if (el) { el.classList.add('sk-active', 'sk-full'); smil(el, true); cur = { x: 0.5, y: 0.5 }; target = { x: 0.5, y: 0.5 }; kick(); }
+}
+
+/** SMIL-анімації SVG (не керуються CSS) — лише в активного. */
+function smil(el, on) {
+  for (const sv of el.querySelectorAll('svg')) if (sv.querySelector('animateMotion, animate, animateTransform')) { try { on ? sv.unpauseAnimations() : sv.pauseAnimations(); } catch {} }
 }
 
 function resetVars(el) { for (const k of ['--px', '--py', '--rx', '--ry', '--hyp', '--nx', '--ny']) el.style.removeProperty(k); }

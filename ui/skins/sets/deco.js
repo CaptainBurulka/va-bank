@@ -57,7 +57,7 @@ function stepped(x, y, w, h, s, stroke, sw, live) {
 function bigValue(v, rar, id) {
   const fill = { common: '#e8e4da', rare: `url(#CH${id})`, epic: `url(#GO${id})`, legendary: `url(#GO${id})` }[rar];
   const outline = { common: '#6d685e', rare: '#c9d3dc', epic: '#e5b04a', legendary: '#ffe39a' }[rar];
-  const t = (attrs) => `<text x="50" y="80" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="50" letter-spacing="1" ${attrs}>${v}</text>`;
+  const t = (attrs) => `<text x="50" y="80" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="${String(v).length > 1 ? 42 : 50}" letter-spacing="1" ${attrs}>${v}</text>`;
   return t(`fill="none" stroke="${outline}" stroke-width="3.6" ${rar === 'legendary' ? `filter="url(#GW${id})" class="dkglow"` : ''}`) + t('fill="none" stroke="#0b0b0d" stroke-width="2"') + t(`fill="${fill}"`);
 }
 
