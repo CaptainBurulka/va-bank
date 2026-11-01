@@ -4,9 +4,10 @@ import { GameScreen } from './game.js';
 import { cardEl } from './cardview.js';
 import { unlockAudio, sfx, isMuted, setMuted, getVolume, setVolume } from './sound.js';
 import { RULES_HTML, TUTORIAL } from './text.js';
-import { tutorial } from './settings.js';
+import { tutorial, botLang } from './settings.js';
 import { CONFIG, APP_VERSION, MODES, MODE_IDS, META } from '../config.js';
 import { ALL_BOT_STYLES } from '../game/bot.js';
+import { PERSONAS, PERSONA_BY_ID } from '../game/banter.js';
 const BOT_STYLES = ['smart', 'greedy', ...ALL_BOT_STYLES.filter((k) => !['smart', 'greedy'].includes(k))];
 import { buildDeck } from '../game/cards.js';
 import { upgradeState } from '../game/engine.js';
@@ -185,9 +186,9 @@ const PLAYER_OPTS = {
 
 const roundOptions = () => CONFIG.roundOptions.map((r) => ({ value: r, label: `${r}`, sub: r === 8 ? 'швидка' : r === 16 ? 'довга' : 'звичайна' }));
 let prefRounds = CONFIG.maxRounds;
-let prefStyle = 'aggressive';
+let prefStyle = 'vitok'; // персонаж бота (game/banter.js PERSONAS)
 try { prefRounds = Number(localStorage.getItem('vabank-rounds')) || prefRounds; prefStyle = localStorage.getItem('vabank-style') || prefStyle; } catch {}
-if (!STYLE_INFO[prefStyle]) prefStyle = 'smart';
+if (!PERSONA_BY_ID[prefStyle]) prefStyle = 'vitok';
 // Швидкість: множник таймерів кожного кроку (CONFIG.timerSpeeds), «без таймера» — 0
 let prefSpeed = 'normal';
 try { prefSpeed = localStorage.getItem('vabank-speed') || prefSpeed; } catch {}
@@ -204,7 +205,7 @@ const rememberPrefs = () => { try { localStorage.setItem('vabank-speed', prefSpe
 function gameSetupModal({ withStyle, title, onStart, players = null }) {
   const opts = players ? PLAYER_OPTS[players] : null;
   let pl = opts?.some((o) => o.value === prefPlayers) ? prefPlayers : 2;
-  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg modes" id="m-style"></div></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Швидкість (час на хід)</div><div class="seg" id="m-speed"></div></div>' : ''}`, [
+  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg modes" id="m-style"></div><p class="hint-text" id="m-style-desc"></p></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Швидкість (час на хід)</div><div class="seg" id="m-speed"></div></div>' : ''}`, [
     { label: 'Почати', cls: 'primary', onClick: () => { prefPlayers = pl; rememberPrefs(); onStart({ maxRounds: prefRounds, style: prefStyle, players: pl, mode: prefMode }); } },
     { label: 'Скасувати', cls: 'tertiary' },
   ]);
@@ -212,7 +213,11 @@ function gameSetupModal({ withStyle, title, onStart, players = null }) {
   const blitzRounds = () => $('m-rounds-field').classList.toggle('hidden', prefMode === 'blitz'); // у бліці завжди 8
   segmented($('m-mode'), modeOptions(), prefMode, (v) => { prefMode = v; $('m-mode-desc').textContent = MODES[v].desc; blitzRounds(); });
   blitzRounds();
-  if (withStyle) segmented($('m-style'), BOT_STYLES.map((k) => ({ value: k, label: STYLE_INFO[k].name, sub: STYLE_INFO[k].sub })), prefStyle, (v) => (prefStyle = v));
+  if (withStyle) {
+    const desc = () => { const x = PERSONA_BY_ID[prefStyle]; $('m-style-desc').textContent = `${x.name}: ${x.blurb}`; };
+    segmented($('m-style'), PERSONAS.map((x) => ({ value: x.id, label: `${x.avatar} ${x.name}`, sub: x.short })), prefStyle, (v) => { prefStyle = v; desc(); });
+    desc();
+  }
   segmented($('m-rounds'), roundOptions(), prefRounds, (v) => (prefRounds = v));
   if (withStyle) segmented($('m-speed'), speedOptions(), prefSpeed, (v) => { prefSpeed = v; rememberPrefs(); });
 }
@@ -222,6 +227,8 @@ function openSettings(back = null) {
   modal(`<h3>Налаштування</h3>
     <label class="setting">Звук <input type="checkbox" class="switch" id="set-sound" ${isMuted() ? '' : 'checked'}></label>
     <label class="setting col">Гучність <input type="range" id="set-vol" min="0" max="100" value="${Math.round(getVolume() * 100)}" aria-label="Гучність"></label>
+    <label class="setting">Мова ботів: 18+ <input type="checkbox" class="switch" id="set-botlang" ${botLang.clean() ? '' : 'checked'}></label>
+    <p class="hint-text">Увімкнено — боти лаються, як друзі за картами. Вимкнено — ті самі підколки без матів.</p>
     <label class="setting">Ефекти нахилу <input type="checkbox" class="switch" id="set-tilt" ${tiltEnabled() ? 'checked' : ''}></label>
     <p class="hint-text" id="set-tilt-hint">Світло й блиск карт рухаються, коли нахиляєш телефон. Без нього — за пальцем.</p>
     <p>Версія ${APP_VERSION}</p>`, [
@@ -231,6 +238,7 @@ function openSettings(back = null) {
     { label: 'Готово', cls: 'primary', onClick: () => back?.() },
   ]);
   $('set-sound').addEventListener('change', (e) => { setMuted(!e.target.checked); sfx.tap(); });
+  $('set-botlang').addEventListener('change', (e) => { botLang.set(!e.target.checked); sfx.tap(); });
   $('set-vol').addEventListener('input', (e) => setVolume(e.target.value / 100));
   $('set-vol').addEventListener('change', () => sfx.chip(3));
   // iOS просить дозвіл на датчики лише з тапу — тому вмикаємо саме тут
@@ -492,21 +500,31 @@ $('btn-rematch').addEventListener('click', () => { sfx.tap(); session?.rematch()
 $('btn-end-menu').addEventListener('click', () => { sfx.tap(); leave(true); });
 
 // ───────── проти бота ─────────
-const BOT3_NAMES = ['Мирко 🤖', 'Ліза 🤖'];
-const BOT3_STYLES = { aggressive: 'cautious', cautious: 'bluffer', bluffer: 'aggressive', smart: 'aggressive', greedy: 'smart' };
+/** Персонажі для ботів: перший — обраний (або збережений), решта — випадкові інші. */
+function pickPersonas(count, first = null) {
+  const out = [];
+  if (first && PERSONA_BY_ID[first]) out.push(PERSONA_BY_ID[first]);
+  const rest = PERSONAS.filter((x) => !out.includes(x));
+  while (out.length < count && rest.length) out.push(rest.splice(Math.floor(Math.random() * rest.length), 1)[0]);
+  return out;
+}
 
 function startBot(resume = false, opts = {}) {
   const saved = resume && GameHost.load(BOT_KEY);
-  const style = (saved && saved.style) || opts.style || 'aggressive';
+  const style = (saved && saved.style) || opts.style || 'vitok';
   const players = (saved?.state?.players?.length || opts.players) === 3 ? 3 : 2;
   const prof = loadProfile();
   // Збереження старої версії тримало одного бота як об'єкт
   const savedLoad = saved?.botLoadout ? [].concat(saved.botLoadout) : null;
   const loads = savedLoad && savedLoad.length === players - 1 ? savedLoad : Array.from({ length: players - 1 }, () => botLoadout());
   const host = new GameHost({ timers: true, persistKey: BOT_KEY, extra: { style, botLoadout: players === 2 ? loads[0] : loads }, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds, timerScale: speedScale() }, gameOpts: { players, mode: (saved?.state?.cfg?.mode) || opts.mode || 'classic', jokerSets: [prof.set, ...loads.map((l) => l.set)] } });
-  const names = players === 2 ? ['Ти', `Бот · ${STYLE_INFO[style].name}`] : ['Ти', ...BOT3_NAMES];
-  const bots = loads.map((_, i) => new BotSeat(host, i + 1, Math.random, i === 0 ? style : BOT3_STYLES[style]));
+  // персонажі: збережені, або обраний + випадкові (старі збереження зі стилем замість персонажа — випадкові)
+  const pers = saved?.personas?.length === players - 1 ? saved.personas.map((id) => PERSONA_BY_ID[id] || PERSONAS[0]) : pickPersonas(players - 1, style);
+  host.extra = { ...host.extra, personas: pers.map((x) => x.id) };
+  const names = ['Ти', ...pers.map((x) => x.name)];
+  const bots = pers.map((x, i) => new BotSeat(host, i + 1, Math.random, x.style, x.id));
   host.names = names.slice();
+  host.avatars = [null, ...pers.map((x) => x.avatar)];
   host.looks = [null, ...loads.map((l) => l.look)];
   session = {
     mode: 'bot',
@@ -525,7 +543,7 @@ function startBot(resume = false, opts = {}) {
   lastLooksKey = '';
   if (players === 2) prepareLooks(loads[0].look);
   $('btn-react').classList.remove('hidden');
-  host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e, from) => game.showReaction(e, false, from) });
+  host.attach(0, { deliver: (m) => deliverToUi(m, { names }), reaction: (e, from) => game.showReaction(e, false, from), say: (key, from) => game.showBotLine(from, key) });
   bots.forEach((b, i) => host.attach(i + 1, b));
   if (saved && saved.state?.phase !== 'over') {
     if (!host.restore(saved)) {
@@ -639,10 +657,12 @@ function startHotseat(opts = {}) {
   const prof = prepareLooks(null);
   const withBot = opts.players === '2b';
   const players = opts.players === 3 || withBot ? 3 : 2;
+  const hsBot = pickPersonas(1)[0];
   const host = new GameHost({ timers: false, gameConfig: { maxRounds: opts.maxRounds || CONFIG.maxRounds }, gameOpts: { players, mode: opts.mode || 'classic', jokerSets: Array(players).fill(prof.set) } });
-  const names = players === 2 ? ['Гравець 1', 'Гравець 2'] : withBot ? ['Гравець 1', 'Гравець 2', BOT3_NAMES[0]] : ['Гравець 1', 'Гравець 2', 'Гравець 3'];
+  const names = players === 2 ? ['Гравець 1', 'Гравець 2'] : withBot ? ['Гравець 1', 'Гравець 2', hsBot.name] : ['Гравець 1', 'Гравець 2', 'Гравець 3'];
   const humans = Array.from({ length: players }, (_, q) => q).filter((q) => !(withBot && q === 2));
-  const bot = withBot ? new BotSeat(host, 2, Math.random, 'aggressive') : null;
+  const bot = withBot ? new BotSeat(host, 2, Math.random, hsBot.style, hsBot.id) : null;
+  if (withBot) host.avatars[2] = hsBot.avatar;
   if (bot) bot.reaction = () => {};
   host.names = names.slice();
   const msgs = Array(players).fill(null);
@@ -667,7 +687,8 @@ function startHotseat(opts = {}) {
     const vs = msgs.map((m) => m?.view);
     const live = humans.filter((q) => !vs[q].me.out);
     switch (v.phase) {
-      case 'play': return live.find((q) => !vs[q].me.played) ?? null;
+      // покроково: на кроці «відкрита» черга тих, хто ще не поклав відкриту; далі — закриті
+      case 'play': return live.find((q) => vs[q].legal.some((x) => ['play', 'playSet', 'playOpen', 'playClosed'].includes(x.type))) ?? null;
       case 'scout': return live.find((q) => !vs[q].me.scoutDecided) ?? null;
       case 'bet': return humans.includes(v.bet.toAct) ? v.bet.toAct : null;
       case 'result': {
@@ -721,7 +742,7 @@ function startHotseat(opts = {}) {
   };
   for (let q = 0; q < players; q++) {
     if (bot && q === 2) { host.attach(2, bot); continue; }
-    host.attach(q, { deliver: (m) => { msgs[q] = m; queueMicrotask(render); } });
+    host.attach(q, { deliver: (m) => { msgs[q] = m; queueMicrotask(render); }, say: (key, from) => { if (q === humans[0]) game.showBotLine(from, key); } });
   }
   host.start();
 }
@@ -797,6 +818,7 @@ async function startCreate(resumeSave = null) {
         },
         onMessage: (m) => deliverToUi(m, { names }),
         onReaction: (e, from) => game.showReaction(e, false, from),
+        onSay: (key, from) => game.showBotLine(from, key),
       });
       session = await opening;
     } catch (e) {
@@ -847,6 +869,7 @@ async function startJoin(code, resumeSave = null) {
       },
       onMessage: (m) => deliverToUi(m, { names }),
       onReaction: (e, from) => game.showReaction(e, false, from),
+      onSay: (key, from) => game.showBotLine(from, key),
       onFatal: (text) => { leave(true); toast(text, 8000, 'error'); },
       onReject: (code) => { if (!['already-played', 'wrong-phase', 'not-your-turn'].includes(code)) toast('Хід не прийнято — обери ще раз', 2500, 'error'); },
     });

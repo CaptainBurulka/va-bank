@@ -1010,3 +1010,10 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 }
 /* 👁/🔒 на вибраній карті — над лівою (завжди видимою у віялі) частиною карти */
 #scr-game .hand .eye-tog { top: -24px; right: auto; left: 30%; transform: translateX(-50%); }
+/* Репліки ботів: бульбашка біля аватара, поверх імені/статусу суперника (стіл і фішки не перекриваються) */
+.bot-say { position: absolute; z-index: 45; padding: 6px 10px; border-radius: 4px 14px 14px 14px; background: #fff7e3; color: #2a1d08; font: 700 12.5px/1.25 var(--font-ui); box-shadow: 0 6px 18px rgba(0, 0, 0, .45); pointer-events: none; animation: botSay .25s var(--ease-out); }
+@keyframes botSay { from { opacity: 0; transform: translateY(-4px) scale(.96); } to { opacity: 1; transform: none; } }
+.bot-say.narrow { font-size: 11px; padding: 5px 8px; }
+/* модалка не виходить за екран на невисоких телефонах — прокручується */
+.modal-box { max-height: calc(100% - 8px); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-height: 760px) { .modal-box { padding: var(--sp-4); gap: var(--sp-3); } #modal-text .field { margin-top: 8px !important; } }

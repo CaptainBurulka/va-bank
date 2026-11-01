@@ -444,4 +444,8 @@ export const COMBO_STYLES = {
   cautious: { ...SMART, raiseAt: 0.7, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.2, bluff: 0.04, scoutProb: 0.6, resultStyle: 'cautious' },
   aggressive: { ...SMART, raiseAt: 0.5, reraiseAt: 0.72, allinAt: 0.88, callSlack: 0.06, bluff: 0.14, scoutProb: 0.3, resultStyle: 'aggressive' },
   bluffer: { ...SMART, raiseAt: 0.58, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.1, bluff: 0.3, bluffOpen: 0.6, scoutProb: 0.35, resultStyle: 'bluffer' },
+  // Дід Панас: азарт — легко йде ва-банк і в «Подвій або нічого»
+  gambler: { ...SMART, raiseAt: 0.45, reraiseAt: 0.66, allinAt: 0.78, callSlack: 0.04, bluff: 0.18, scoutProb: 0.2, resultStyle: 'gambler' },
+  // Валєра: спокійний (як Розумний); після двох програшів поспіль BotSeat перемикає на агресивний — «тілт»
+  tilter: { ...SMART, resultStyle: 'cautious' },
 };

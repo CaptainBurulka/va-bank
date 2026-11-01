@@ -3,14 +3,14 @@
 // (повз HTTP-кеш браузера) і більше не переписуються по одному — інакше після деплою в кеші могла
 // опинитися мішанина файлів двох версій, і модулі не завантажувались («гра висить у меню»).
 // Версія кешу = APP_VERSION із config.js (перевіряє тест). Змінюйте разом із кожним релізом.
-const CACHE = 'vabank-6.1.0';
+const CACHE = 'vabank-7.0.0';
 const FONTS = ['oswald-cyrillic-700', 'oswald-latin-700', 'unbounded-cyrillic-800', 'unbounded-latin-800', 'unbounded-cyrillic-600', 'unbounded-latin-600',
   'playfair-display-cyrillic-700', 'playfair-display-latin-700', 'playfair-display-cyrillic-900', 'playfair-display-latin-900',
   'manrope-cyrillic-500', 'manrope-latin-500', 'manrope-cyrillic-700', 'manrope-latin-700', 'manrope-cyrillic-800', 'manrope-latin-800']
   .map((f) => `fonts/${f}-normal.woff2`);
 const ASSETS = [
   './', 'index.html', 'styles.css', 'config.js', 'manifest.json',
-  'game/cards.js', 'game/engine.js', 'game/combos.js', 'game/bot.js', 'game/jokers.js',
+  'game/cards.js', 'game/engine.js', 'game/combos.js', 'game/bot.js', 'game/jokers.js', 'game/banter.js',
   'meta/profile.js', 'meta/catalog.js', 'meta/rivals.js',
   'net/host.js', 'net/online.js', 'net/protocol.js',
   'ui/app.js', 'ui/game.js', 'ui/glyph.js', 'ui/combo-ui.js', 'ui/cardview.js', 'ui/fx.js', 'ui/motion.js', 'ui/sound.js', 'ui/text.js', 'ui/settings.js', 'ui/tokens.css',

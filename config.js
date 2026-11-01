@@ -1,5 +1,5 @@
 // Усі числа балансу гри «Ва-банк». Змінюйте тут — логіка підхопить автоматично.
-export const APP_VERSION = '6.1.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
+export const APP_VERSION = '7.0.0'; // змінюйте з кожним релізом разом із CACHE у sw.js
 
 export const CONFIG = Object.freeze({
   rules: 3,             // версія правил (для бота і симуляцій): 3 — комбінації з 3 карт
@@ -66,6 +66,8 @@ export const CONFIG = Object.freeze({
     greedy: Object.freeze({ jokerPlay: 1, raiseAt: 0.7, reraiseAt: 0.85, allinAt: 0.95, callSlack: 0.1, bluff: 0, scoutProb: 0, donStart: 0.5, donMinP: 0.6, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0 }),
     greedyPick: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0.3 }),
     smart: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
+    gambler: Object.freeze({ jokerPlay: 0.8, raiseAt: 0.45, reraiseAt: 0.62, allinAt: 0.78, callSlack: 0.05, bluff: 0.18, scoutProb: 0.2, donStart: 0.92, donMinP: 0.5, swapMax: 3, swapProb: 0.5, playStrong: 0.5, playWeak: 0.15, showProb: 0.5 }),
+    tilter: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.55, reraiseAt: 0.75, allinAt: 0.9, callSlack: 0.15, bluff: 0.08, scoutProb: 0.35, donStart: 0.4, donMinP: 0.65, swapMax: 3, swapProb: 0.6, playStrong: 0.35, playWeak: 0.15, showProb: 0.2 }),
     bluffer: Object.freeze({ jokerPlay: 0.5, raiseAt: 0.6, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.2, bluff: 0.3, scoutProb: 0.3, donStart: 0.5, donMinP: 0.6, swapMax: 2, swapProb: 0.4, playStrong: 0.25, playWeak: 0.35, showProb: 0.8 }),
   }),
 });
@@ -83,7 +85,7 @@ export const JOKER_TUNING = Object.freeze({
   modest: { alt: 6 },                    // Підробка
   tax: { v: 6, fee: 5 },
   dice: { d: 2 },                        // Стрибок
-  counter: { v: null, ranks: 1, loseTie: false },           // Сходинка
+  counter: { v: null, ranks: 1, bonusP: 0.5, loseTie: false }, // +1 сходинка, з шансом 50% — ще +1           // Сходинка
   brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
   magnet: { v: 6 },
   temptation: { v: 1, gap: 60 },         // Аутсайдер

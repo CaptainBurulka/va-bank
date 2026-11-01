@@ -102,7 +102,9 @@ const os = require('os');
   await B.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 });
   const nb = await B.$$eval('.opps .who b', (e) => e.map((x) => x.textContent));
   console.log('двоє + бот, B бачить:', nb);
-  check(nb.some((x) => x.includes('🤖')), 'бот сидить за столом');
+  const PERSONA_NAMES = ['Вітьок', 'Ігор Олегович', 'Стасик', 'Дід Панас', 'Кіра_UA', 'Валєра'];
+  check(nb.some((x) => PERSONA_NAMES.includes(x)), 'бот-персонаж сидить за столом');
+  check(await A.evaluate(() => [...document.querySelectorAll('.opps .ava span')].some((e) => e.classList.contains('emoji'))), 'бот-персонаж з емодзі-аватаром');
   for (let i = 0; i < 60; i++) { await step(A); await step(B); await A.waitForTimeout(200); }
   console.log('A:', await A.textContent('#phase-title'), '|', await A.textContent('#phase-sub'), '| B:', await B.textContent('#phase-title'));
   check(!(await A.textContent('#round-tag')).includes('Раунд 1/'), 'гра з ботом іде');

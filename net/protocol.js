@@ -32,6 +32,7 @@ export const PEER_PREFIX = 'vabank-ua-v1-';
 
 import { COSMETICS } from '../meta/catalog.js';
 import { PHRASES, isPid, cleanTitle } from '../meta/rivals.js';
+import { isLineKey } from '../game/banter.js';
 // Дозволені реакції — усі емодзі з усіх наборів косметики
 export const REACTIONS = [...new Set(COSMETICS.filter((c) => c.cat === 'emoji').flatMap((c) => c.set))];
 /** Реакція — емодзі з наборів або швидка фраза. */
@@ -129,7 +130,9 @@ export function parseHostMessage(m) {
   // Повідомлення про різні версії приймаємо з будь-якою версією протоколу
   if (m.type === 'error' && m.code === 'version') return { ok: true, m: { type: 'error', code: 'version', app: typeof m.app === 'string' ? m.app : null } };
   if (m.v !== PROTOCOL_VERSION) return { ok: false, error: 'version', app: typeof m.app === 'string' ? m.app : null };
-  if (!['welcome', 'state', 'react', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
+  if (!['welcome', 'state', 'react', 'say', 'ping', 'pong', 'error', 'bye'].includes(m.type)) return { ok: false, error: 'unknown-type' };
+  // репліка бота — лише ключ відомої фрази (текст і варіант «без матів» — на боці гостя)
+  if (m.type === 'say' && (!isLineKey(m.key) || !Number.isInteger(m.from))) return { ok: false, error: 'bad-say' };
   if (m.type === 'react' && !isReaction(m.emoji)) return { ok: false, error: 'bad-emoji' };
   return { ok: true, m };
 }

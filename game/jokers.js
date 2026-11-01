@@ -128,7 +128,14 @@ const build = (T) => [
     } },
   { id: 'counter', name: 'Сходинка', rarity: 'common', icon: '🪜', type: 'value', stage: 'power', slot: T.counter.v == null ? null : { v: T.counter.v }, noSuit: true,
     desc: `${T.counter.v == null ? 'Місце порожнє' : `Значення ${T.counter.v} без масті`}, а твоя комбінація на ${T.counter.ranks} сходинку сильніша${T.counter.loseTie ? '; нічию програє' : ''}.`,
-    apply: (api) => { api.setSlot(T.counter.v ?? null); if (T.counter.loseTie) api.X.loseTie[api.me] = true; const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.counter.ranks); }); api.note('Сходинка: комбінація сильніша'); } },
+    apply: (api) => {
+      api.setSlot(T.counter.v ?? null);
+      if (T.counter.loseTie) api.X.loseTie[api.me] = true;
+      const me = api.me;
+      const r = T.counter.ranks + (T.counter.bonusP && api.rng() < T.counter.bonusP ? 1 : 0);
+      api.post((cs) => { cs[me] = rankUp(cs[me], r); });
+      api.note(`Сходинка: комбінація на ${r} ${r === 1 ? 'сходинку' : 'сходинки'} сильніша`);
+    } },
   { id: 'brazen', name: 'Близнюк', rarity: 'common', icon: '♊', type: 'value', stage: 'power', slot: { mirror: true }, noSuit: !T.brazen.suit,
     desc: `${Math.round(T.brazen.p * 100)}%: копія значення твоєї наймолодшої іншої зіграної карти${T.brazen.suit ? ' (і масті)' : ', без масті'}${T.brazen.loseTie ? '; нічию програє' : ''}, інакше — 1.`,
     apply: (api) => {
@@ -343,7 +350,7 @@ const ROLE = {
   modest: ['combo', (T, o) => `Копіює відкриту карту ${o} або грає як ${T.modest.alt} — що краще для комбінації.`],
   tax: ['bank', (T) => `Усі учасники платять по ${T.tax.fee} фішок у джекпот. Грає як ${T.tax.v}.`],
   dice: ['combo', () => 'На 1–3 вища чи нижча за твою карту тієї ж масті — що краще для комбінації.'],
-  counter: ['combo', (T) => `Твоя комбінація на ${T.counter.ranks} сходинку вища; сам грає як ${T.counter.v ?? '—'}${T.counter.loseTie ? ', нічию програє' : ''}.`],
+  counter: ['combo', (T) => `Твоя комбінація на ${T.counter.ranks}${T.counter.bonusP ? `–${T.counter.ranks + 1}` : ''} сходинки вища${T.counter.bonusP ? ' (50/50)' : ''}; ${T.counter.v == null ? 'своє місце порожнє' : `сам грає як ${T.counter.v}`}${T.counter.loseTie ? ', нічию програє' : ''}.`],
   brazen: ['combo', (T) => `${Math.round(T.brazen.p * 100)}%: копія твоєї наймолодшої карти (пара!), інакше грає як 1${T.brazen.loseTie ? '; нічию програє' : ''}.`],
   magnet: ['compare', (T) => `Нічию виграє. Грає як ${T.magnet.v} будь-якої масті.`],
   temptation: ['compare', (T, o) => `Перемагає, якщо в тебе на ${T.temptation.gap}+ фішок менше, ніж у ${o}. Грає як ${T.temptation.v}.`],

@@ -138,9 +138,9 @@ test('Стрибок: ±1..3 від своєї карти тієї ж масті
   const { combo } = duel({ j0: 'dice', h0: ['w4', 'w5', 's9', 'f4', 'f9', 's5'], p0: ['J0-dice', 'w4', 'w5'] });
   assert.equal(combo(0).id, 'sflush');
 });
-test('Сходинка: комбінація на сходинку сильніша', () => {
+test('Сходинка: комбінація на T.counter.ranks сходинок сильніша', () => {
   const { combo } = duel({ j0: 'counter', p0: ['J0-counter', 'w7', 'f7'] });
-  assert.equal(combo(0).rank, 2, 'пара → як масть');
+  assert.ok([1 + T.counter.ranks, 2 + T.counter.ranks].includes(combo(0).rank), 'пара → вище на 1–2 сходинки');
   assert.match(combo(0).label, /↑/);
 });
 test('Близнюк: копія наймолодшої іншої карти або 1', () => {

@@ -72,7 +72,7 @@ const fs = require('fs');
   await A.waitForSelector('#scr-game:not(.hidden)', { timeout: 15000 }).catch(() => {});
   await A.waitForTimeout(6000);
   console.log('A in game:', await A.isVisible('#scr-game'), await A.textContent('#round-tag'), 'A:', await A.textContent('#phase-title'), 'B:', await B.textContent('#phase-title'));
-  for (let i=0;i<40;i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
+  for (let i=0;i<120 && !(await A.isVisible('#scr-end'));i++){ await step(A); await step(B); await A.waitForTimeout(150); } console.log('end A', await A.isVisible('#scr-end'), 'end B', await B.isVisible('#scr-end'));
   console.log('round A', await A.textContent('#round-tag'), 'B', await B.textContent('#round-tag'));
   await A.click('#btn-rematch'); await B.waitForTimeout(500);
   console.log('рахунок у профілі A:', await A.evaluate(() => Object.values(JSON.parse(localStorage.getItem('vabank-profile')).rivals).map((r) => `${r.name} ${r.wins}:${r.losses}`)));

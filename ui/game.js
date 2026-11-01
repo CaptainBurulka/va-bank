@@ -13,6 +13,8 @@ import { MODES, FEEL } from '../config.js';
 import { liveCombo, weakestId, possibleCombos, comboOf, cheatSheetHTML, bestWith } from './combo-ui.js';
 import { COMBO_NAME } from '../game/combos.js';
 import { setGlyph } from './glyph.js';
+import { lineText } from '../game/banter.js';
+import { botLang } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -285,6 +287,39 @@ export class GameScreen {
     setTimeout(() => b.remove(), 2700);
   }
 
+  /**
+   * Репліка бота — бульбашка біля його аватара (поверх імені й статусу, не над столом і фішками).
+   * key — ключ фрази; текст з урахуванням «Мови ботів» цього пристрою.
+   */
+  showBotLine(from, key) {
+    const text = lineText(key, botLang.clean());
+    const v = this.view;
+    if (!text || !v || from === v.you) return;
+    const i = this.oppSeats(v).indexOf(from);
+    if (i < 0) return;
+    const pn = this.panels[i];
+    const layer = this.el.fx;
+    pn.root.querySelector('.bot-say')?.remove();
+    const a = pn.ava.getBoundingClientRect();
+    const r = pn.root.getBoundingClientRect();
+    const l = layer.getBoundingClientRect();
+    const b = document.createElement('div');
+    b.className = 'bot-say';
+    b.textContent = text;
+    b.style.left = `${a.right - l.left + 6}px`;
+    b.style.top = `${r.top - l.top + 3}px`;
+    // між аватаром і фішками цього бота: фішки й сусідня панель лишаються видимими
+    const stack = pn.root.querySelector('.stack')?.getBoundingClientRect();
+    const room = (stack ? stack.left : r.right) - a.right - 10;
+    b.style.maxWidth = `${Math.max(90, room)}px`;
+    if (room < 140) b.classList.add('narrow');
+    layer.querySelectorAll(`.bot-say[data-seat="${from}"]`).forEach((x) => x.remove());
+    b.dataset.seat = from;
+    layer.append(b);
+    sfx.pop();
+    setTimeout(() => b.remove(), Math.min(5200, 2200 + text.length * 45));
+  }
+
   /** Великий рахунок зустрічей перед партією. rows: [{ me, them, name, line }]. Тап — закрити. */
   showIntro(rows, eyebrow = 'Рахунок зустрічей') {
     document.querySelectorAll('.intro').forEach((x) => x.remove());
@@ -326,7 +361,7 @@ export class GameScreen {
       const pn = this.panels[i];
       const nm = this.nameOf(q, view);
       if (pn.name.textContent !== nm) pn.name.textContent = nm;
-      setGlyph(pn.initial, nm, 'С');
+      setGlyph(pn.initial, this.meta?.avatars?.[q] || nm, 'С'); // персонаж бота — його емодзі-аватар
     });
 
     this.renderNumbers(prev, view);

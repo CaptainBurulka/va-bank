@@ -48,7 +48,7 @@ const ERR_TEXT = {
 
 // ───────────────────────── ХОСТ ─────────────────────────
 
-const BOT_NAMES = ['Мирко 🤖', 'Ліза 🤖'];
+import { PERSONAS } from '../game/banter.js';
 
 /**
  * @param {object} o { resume, players: 2|3, profile, onCode, onStatus, onLobby, onMessage, onReaction }
@@ -73,8 +73,9 @@ export async function createOnlineHost(o) {
   let freshTries = 0;
 
   const me = o.profile || { set: [], look: null, name: null };
-  const extra = () => ({ code, players: n, guestToken: slots[1]?.token || null, tokens: slots.map((x) => x.token), bots: botSeats.slice() });
-  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: extra(), gameConfig: o.gameConfig || {}, gameOpts: { players: n, mode: o.mode || 'classic', jokerSets: Array.from({ length: n }, (_, q) => (q === 0 ? sanitizeSet(me.set) : [])) } });
+  const extra = () => ({ code, players: n, guestToken: slots[1]?.token || null, tokens: slots.map((x) => x.token), bots: botSeats.slice(), personas: host?.personas?.slice() || [] });
+  const host = new GameHost({ timers: true, persistKey: HOST_KEY, extra: {}, gameConfig: o.gameConfig || {}, gameOpts: { players: n, mode: o.mode || 'classic', jokerSets: Array.from({ length: n }, (_, q) => (q === 0 ? sanitizeSet(me.set) : [])) } });
+  host.extra = extra();
   host.names[0] = me.name || 'Господар';
   host.looks[0] = me.look || null;
   host.pids[0] = me.pid || null;
@@ -89,9 +90,10 @@ export async function createOnlineHost(o) {
   const remoteSeat = (q) => ({
     deliver: (m) => send(q, msg('state', { msg: m, ack: slots[q].aid })),
     reaction: (emoji, from) => send(q, msg('react', { emoji, from })),
+    say: (key, from) => send(q, msg('say', { key, from })),
     error: (c) => send(q, msg('error', { code: c })),
   });
-  host.seats[0] = { deliver: o.onMessage, reaction: (e, from) => o.onReaction(e, from) };
+  host.seats[0] = { deliver: o.onMessage, reaction: (e, from) => o.onReaction(e, from), say: (key, from) => o.onSay?.(key, from) };
   host.connected[0] = true;
   for (let q = 1; q < n; q++) {
     if (botSeats[q]) { seatBot(q); continue; }
@@ -105,11 +107,17 @@ export async function createOnlineHost(o) {
 
   function seatBot(q) {
     botSeats[q] = true;
-    const bot = new BotSeat(host, q, Math.random, ['aggressive', 'cautious', 'bluffer'][q % 3]);
+    // персонаж: збережений (відновлення кімнати) або випадковий з тих, кого ще немає за столом
+    const taken = new Set(host.personas.filter(Boolean));
+    const free = PERSONAS.filter((x) => !taken.has(x.id));
+    const per = (saved?.personas?.[q] && PERSONAS.find((x) => x.id === saved.personas[q])) || free[Math.floor(Math.random() * free.length)] || PERSONAS[0];
+    const bot = new BotSeat(host, q, Math.random, per.style, per.id);
     host.seats[q] = bot;
     host.bots[q] = true;
     host.connected[q] = true;
-    host.names[q] = BOT_NAMES[q - 1];
+    host.names[q] = per.name;
+    host.avatars[q] = per.avatar;
+    host.personas[q] = per.id;
   }
 
   function send(q, m) {
@@ -531,6 +539,7 @@ export function joinOnline(o) {
             status();
             break;
           case 'react': o.onReaction(m.emoji, m.from); break;
+          case 'say': o.onSay?.(m.key, m.from); break;
           case 'ping': send(msg('pong')); break;
           case 'error': handleError(m); break;
           case 'bye':

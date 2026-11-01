@@ -44,6 +44,7 @@ const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
   const step = async (p) => {
     if (await p.isVisible('#scr-end')) return;
     await p.click('.intro', { timeout: 300 }).catch(() => {});
+    if (await p.isVisible('#verdict.reveal-screen')) await p.click('#verdict', { timeout: 500 }).catch(() => {}); // екран розкриття — тап, щоб продовжити
     if (await p.isVisible('#modal:not(.hidden)')) await p.click('#modal-btns .btn', { timeout: 500 }).catch(() => {});
     const btns = await p.$$('#actions button:not([disabled])');
     for (const want of ['Чек', 'Колл', 'Далі без розвідки', 'Далі', 'Забрати']) for (const b of btns) if ((await b.textContent().catch(() => '')).includes(want)) { await b.click({ timeout: 1500 }).catch(() => {}); return; }
@@ -108,7 +109,7 @@ const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
     const took = ((Date.now() - t0) / 1000).toFixed(1);
     if (!ok) for (const [i, Q] of pages.entries()) console.log('   ', 'ABC'[i], await offlineText(Q));
     check(ok, `${label} → знову разом за ${took} с`);
-    await play(6);
+    await play(10);
     const after = await roundOf(A);
     const same = (await Promise.all(pages.map(roundOf))).every((r) => r === after);
     const over = (await Promise.all(pages.map((P) => P.isVisible('#scr-end')))).every(Boolean);
