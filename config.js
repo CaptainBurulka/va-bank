@@ -51,6 +51,10 @@ export const CONFIG = Object.freeze({
   botStyles: Object.freeze({
     cautious: Object.freeze({ jokerPlay: 0.4, raiseAt: 0.72, reraiseAt: 0.88, allinAt: 0.97, callSlack: 0.32, bluff: 0.03, scoutProb: 0.45, donStart: 0.25, donMinP: 0.75, swapMax: 3, swapProb: 0.7, playStrong: 0.3, playWeak: 0.15, showProb: 0.1 }),
     aggressive: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
+    // для метрики глибини в «Класиці (1 карта)»: жадібний — завжди найсильніша карта, без блефу; розумний — як агресивний
+    greedy: Object.freeze({ jokerPlay: 1, raiseAt: 0.7, reraiseAt: 0.85, allinAt: 0.95, callSlack: 0.1, bluff: 0, scoutProb: 0, donStart: 0.5, donMinP: 0.6, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0 }),
+    greedyPick: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 0, swapProb: 0, playStrong: 1, playWeak: 0, showProb: 0.3 }),
+    smart: Object.freeze({ jokerPlay: 0.6, raiseAt: 0.5, reraiseAt: 0.7, allinAt: 0.86, callSlack: 0.12, bluff: 0.12, scoutProb: 0.2, donStart: 0.7, donMinP: 0.55, swapMax: 4, swapProb: 0.6, playStrong: 0.4, playWeak: 0.15, showProb: 0.3 }),
     bluffer: Object.freeze({ jokerPlay: 0.5, raiseAt: 0.6, reraiseAt: 0.8, allinAt: 0.93, callSlack: 0.2, bluff: 0.3, scoutProb: 0.3, donStart: 0.5, donMinP: 0.6, swapMax: 2, swapProb: 0.4, playStrong: 0.25, playWeak: 0.35, showProb: 0.8 }),
   }),
 });
