@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { META } from '../config.js';
 import { JOKERS } from '../game/jokers.js';
-import { COSMETICS } from '../meta/catalog.js';
+import { COSMETICS, SKIN_ITEMS, SKIN_BY_ID, LEGACY_SKINS } from '../meta/catalog.js';
 import {
   defaultProfile, migrate, normalize, grant, buy, exchange, priceOf, setJokers, equip, spin, awardGame,
-  checkAchievements, exportCode, importCode, sanitizeLook,
+  checkAchievements, exportCode, importCode, sanitizeLook, publicLook,
 } from '../meta/profile.js';
 import { seededRng } from './helpers.js';
 
@@ -35,7 +35,7 @@ test('бали: участь + бонус за перемогу, проти бо
 test('досягнення: бали або унікальна косметика, лише раз', () => {
   let r = awardGame(defaultProfile(), { won: false, mode: 'online', me: stats({ bluffOne: 1, legendary: 1 }) }, DAY);
   assert.ok(r.achievements.includes('bluff_one'));
-  assert.ok(r.profile.cosmetics.back_bluff, 'унікальна сорочка');
+  assert.deepEqual({ r: r.profile.skins.back_pixel?.r }, { r: 'rare' }, 'унікальна сорочка набору — рідкісна');
   assert.ok(r.profile.cosmetics.frame_legend);
   const again = awardGame(r.profile, { won: false, mode: 'online', me: stats({ bluffOne: 1 }) }, DAY);
   assert.ok(!again.achievements.includes('bluff_one'));
@@ -55,9 +55,13 @@ test('магазин: ціни з config, не можна піти в мінус
   assert.equal(buy(r.profile, 'joker', 'storm').error, 'owned');
   assert.equal(priceOf('joker', 'apocalypse'), null);
   assert.equal(buy(rich, 'joker', 'apocalypse').error, 'not-for-sale');
-  assert.equal(buy(rich, 'cosmetic', 'back_bluff').error, 'not-for-sale', 'досягнення не продаються');
-  const c = buy(rich, 'cosmetic', 'felt_blue');
+  assert.equal(buy(rich, 'cosmetic', 'frame_legend').error, 'not-for-sale', 'досягнення не продаються');
+  const c = buy(rich, 'skin', 'felt_kyiv', 'common');
   assert.equal(c.profile.points, 1000 - META.prices.cosmetic.common);
+  assert.equal(c.profile.skins.felt_kyiv.r, 'common');
+  assert.equal(buy(c.profile, 'skin', 'felt_kyiv', 'common').error, 'owned');
+  assert.ok(buy({ ...c.profile, points: 1000 }, 'skin', 'felt_kyiv', 'rare').ok, 'покращення до вищої рідкості');
+  assert.equal(buy(rich, 'skin', 'felt_kyiv', 'legendary').error, 'not-for-sale', 'легендарні предмети наборів — лише автомат');
   assert.ok(META.prices.cosmetic.common > META.spin.cost, 'косметика напряму дорожча за спін');
 });
 
@@ -69,7 +73,9 @@ test('уламки: дублікат → уламки; обмін на будь-
   p = { ...g.profile, shards: 5000 };
   assert.ok(exchange(p, 'joker', 'boom').ok);
   assert.equal(exchange(p, 'joker', 'duel').error, 'not-for-sale');
-  assert.ok(exchange(p, 'cosmetic', 'back_starry').ok, 'легендарну косметику — можна');
+  assert.ok(exchange(p, 'cosmetic', 'frame_cosmic').ok, 'легендарну рамку — можна');
+  assert.ok(exchange(p, 'skin', 'back_space', 'epic').ok, 'предмет набору — у вибраній рідкості');
+  assert.equal(exchange(p, 'skin', 'back_space', 'legendary').error, 'not-for-sale');
   assert.equal(exchange({ ...p, shards: 10 }, 'joker', 'storm').error, 'no-shards');
 });
 
@@ -150,52 +156,77 @@ test('експорт/імпорт: код із контрольною сумою
 });
 
 test('чужа косметика валідується', () => {
-  const look = sanitizeLook({ felt: 'felt_wine', back: 'deck_ivory', frame: 42, evil: '<script>' });
-  assert.equal(look.felt, 'felt_wine');
+  const look = sanitizeLook({ felt: 'felt_wine', back: 'deck_kyiv', deck: 'deck_cyber', frame: 42, evil: '<script>', rar: { deck: 'epic', felt: 'mythic' } });
+  assert.equal(look.felt, 'felt_deco', 'стара косметика від старого клієнта → предмет набору');
+  assert.equal(look.rar.felt, 'rare', '…зі своєю старою рідкістю (невідома рідкість відкидається)');
+  assert.equal(look.deck, 'deck_cyber');
+  assert.equal(look.rar.deck, 'epic');
   assert.equal(look.back, 'back_burgundy', 'id не тієї категорії відкидається');
   assert.equal(look.frame, 'frame_basic');
-  assert.equal(Object.keys(look).length, 8);
+  assert.equal(Object.keys(look).length, 9);
 });
 
-test('каталог: ~30 базових предметів + 4 набори у 8 категоріях (із «Звуком»)', () => {
-  assert.ok(COSMETICS.length >= 60);
+test('каталог: класика, емодзі, рамки + 8 наборів × 6 предметів', () => {
   assert.equal(new Set(COSMETICS.map((c) => c.cat)).size, 8);
+  assert.equal(SKIN_ITEMS.length, 48);
+  for (const [old, [id, r]] of Object.entries(LEGACY_SKINS)) {
+    assert.ok(SKIN_BY_ID[id], `${old} → ${id}`);
+    assert.equal(SKIN_BY_ID[id].cat, old.split('_')[0], 'категорія зберігається');
+    assert.ok(['common', 'rare', 'epic', 'legendary'].includes(r));
+  }
 });
 
 test('загальні досягнення перевіряються й без партії (напр. після спіну)', () => {
   const p = { ...defaultProfile(), flags: { legendarySpin: true } };
   const r = checkAchievements(p, null);
   assert.ok(r.unlocked.includes('lucky_spin'));
-  assert.ok(r.profile.cosmetics.felt_goldrush);
+  assert.equal(r.profile.skins.felt_pixel.r, 'legendary');
 });
 
 import { SETS } from '../meta/catalog.js';
 import { setProgress, priceOf as priceOf2 } from '../meta/profile.js';
 
-test('набори: 4 теми по 6 предметів (колода, сорочка, сукно, фішки, перемога, звук) + рамка за повний набір', () => {
-  assert.equal(SETS.length, 4);
+test('набори: 8 тем по 6 предметів (колода, сорочка, сукно, фішки, перемога, звук) + рамка за повний набір', () => {
+  assert.equal(SETS.length, 8);
   for (const st of SETS) {
-    const cats = st.items.map((id) => COSMETICS.find((c) => c.id === id).cat).sort();
-    assert.deepEqual(cats, ['back', 'chips', 'deck', 'felt', 'sound', 'win']);
-    const deck = COSMETICS.find((c) => c.id === `deck_${st.id}`);
-    assert.equal(deck.rarity, 'legendary');
-    assert.equal(deck.source, 'slot', 'легендарна колода — лише з автомата');
-    assert.equal(deck.suits, st.id, 'власні іконки мастей');
+    assert.deepEqual(st.items.map((id) => SKIN_BY_ID[id].cat).sort(), ['back', 'chips', 'deck', 'felt', 'sound', 'win']);
     assert.equal(priceOf2('cosmetic', st.frame), null, 'рамку не купити — лише за повний набір');
   }
 });
 
-test('набори: останній предмет набору додає рамку, повторно — не дублює', () => {
-  const st = SETS[0];
+test('набори: останній предмет (будь-якої рідкості) додає рамку, повторно — не дублює', () => {
+  const st = SETS[5];
   let p = defaultProfile();
-  for (const id of st.items.slice(0, -1)) p = grant(p, 'cosmetic', id).profile;
+  for (const id of st.items.slice(0, -1)) p = grant(p, 'skin', id, { rarity: 'common' }).profile;
   assert.ok(!p.cosmetics[st.frame]);
-  const r = grant(p, 'cosmetic', st.items.at(-1));
+  const r = grant(p, 'skin', st.items.at(-1), { rarity: 'rare' });
   assert.deepEqual(r.completed, [st.id]);
   assert.ok(r.profile.cosmetics[st.frame]);
   assert.equal(setProgress(r.profile).find((x) => x.id === st.id).done, true);
-  const again = grant(r.profile, 'cosmetic', st.items[0]);
+  const again = grant(r.profile, 'skin', st.items[0], { rarity: 'common' });
   assert.ok(again.duplicate);
+});
+
+test('предмет набору: вища рідкість — покращення з новим номером, така сама чи нижча — уламки', () => {
+  let p = defaultProfile();
+  let g = grant(p, 'skin', 'deck_space', { rarity: 'rare', serial: 42 });
+  assert.equal(g.upgraded, false);
+  assert.deepEqual(g.profile.skins.deck_space, { r: 'rare', n: 42 });
+  p = g.profile;
+  g = grant(p, 'skin', 'deck_space', { rarity: 'common', serial: 7 });
+  assert.ok(g.duplicate);
+  assert.equal(g.profile.shards, META.shards.dupe.common);
+  assert.equal(g.profile.skins.deck_space.n, 42, 'номер не змінюється');
+  g = grant(p, 'skin', 'deck_space', { rarity: 'legendary', serial: 9 });
+  assert.ok(g.upgraded);
+  assert.equal(g.from, 'rare');
+  assert.deepEqual(g.profile.skins.deck_space, { r: 'legendary', n: 9 });
+  assert.equal(g.profile.shards, 0);
+  // вдягнути можна лише своє
+  assert.equal(equip(p, 'deck', 'deck_kyiv'), p);
+  assert.equal(equip(p, 'deck', 'deck_space').equipped.deck, 'deck_space');
+  assert.equal(equip(p, 'back', 'deck_space'), p, 'не тієї категорії');
+  assert.equal(publicLook(equip(p, 'deck', 'deck_space')).rar.deck, 'rare');
 });
 
 import { recordJokers, jokerStatsCsv, normalizeJokerStats } from '../meta/profile.js';
