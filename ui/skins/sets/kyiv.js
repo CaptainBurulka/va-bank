@@ -233,7 +233,7 @@ function win(layer, rar, limit) {
 }
 
 export default registerSet({
-  id: 'kyiv', name: 'Нічний Київ', icon: '🌃', accent: 'bells',
+  id: 'kyiv', name: 'Нічний Київ', icon: '🌃', accent: 'bells', accentName: 'дзвони',
   blurb: 'Нічне місто: пагорби з куполами, вогні вікон, неон і каштани.',
   legendaryNote: 'Місто вмикає вогні, мостом їдуть автівки, вивіска мерехтить.',
   face, back, felt, chip, win, suits: SUITS, suitColor: SUIT_COLOR,

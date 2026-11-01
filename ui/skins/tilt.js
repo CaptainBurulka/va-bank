@@ -22,6 +22,9 @@ function apply(el, x, y, strength = 1) {
   el.style.setProperty('--rx', `${((0.5 - y) * 2 * max).toFixed(2)}deg`);
   el.style.setProperty('--ry', `${((x - 0.5) * 2 * max).toFixed(2)}deg`);
   el.style.setProperty('--hyp', Math.min(1, Math.hypot(x - 0.5, y - 0.5) * 2).toFixed(3));
+  // числові −1…1 — для «торця» карти (видно з протилежного боку від нахилу)
+  el.style.setProperty('--nx', ((x - 0.5) * 2 * strength).toFixed(3));
+  el.style.setProperty('--ny', ((y - 0.5) * 2 * strength).toFixed(3));
 }
 
 function loop() {
@@ -43,7 +46,7 @@ export function setActive(el) {
   if (el) { el.classList.add('sk-active'); cur = { x: 0.5, y: 0.5 }; target = { x: 0.5, y: 0.5 }; kick(); }
 }
 
-function resetVars(el) { for (const k of ['--px', '--py', '--rx', '--ry', '--hyp']) el.style.removeProperty(k); }
+function resetVars(el) { for (const k of ['--px', '--py', '--rx', '--ry', '--hyp', '--nx', '--ny']) el.style.removeProperty(k); }
 
 /** Палець: тримаєш карту і ведеш — світло йде за пальцем. Відпустив — карта плавно вирівнюється. */
 export function bindPointer(el, { onHold, holdMs = 380 } = {}) {

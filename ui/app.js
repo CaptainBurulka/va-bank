@@ -14,10 +14,11 @@ import { initMeta, renderWallet, openCollection, openShop, openSlot, awardAfterG
 import { titleOf, pickMoment, scoreLine, isPid } from '../meta/rivals.js';
 import { cardName } from './text.js';
 import { loadProfile, saveProfile } from './profile-store.js';
-import { applyOppLook, emojiSet } from './cosmetics.js';
+import { applyOppLook, emojiSet, winFxOf } from './cosmetics.js';
+import { enableTilt, disableTilt, tiltEnabled, tiltWanted } from './skins/tilt.js';
 import { exportCode, importCode, publicLook, modeOfDay } from '../meta/profile.js';
 import { JOKERS, JOKER_BY_ID } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, DEFAULT_EQUIPPED } from '../meta/catalog.js';
+import { COSMETICS, DEFAULT_EQUIPPED, SKIN_SETS_META, SKIN_KINDS } from '../meta/catalog.js';
 
 const $ = (id) => document.getElementById(id);
 const SCREENS = ['menu', 'create', 'join', 'rules', 'game', 'end', 'collection', 'shop', 'slot', 'rivals'];
@@ -40,7 +41,7 @@ function prepareLooks(oppLook) {
   game.setEmojiSet(emojiSet(p.equipped));
   const opp = oppLook || DEFAULT_EQUIPPED;
   applyOppLook(opp);
-  game.setWinFx(COSMETIC_BY_ID[p.equipped.win]?.fx || 'chips', COSMETIC_BY_ID[opp.win]?.fx || 'chips');
+  game.setWinFx(winFxOf(publicLook(p)), winFxOf(opp));
   return p;
 }
 
@@ -54,7 +55,7 @@ function prepareLooks3(looks, you) {
   game.setEmojiSet(emojiSet(p.equipped));
   const n = looks.length;
   [(you + 1) % n, (you + 2) % n].forEach((q, i) => applyOppLook(looks[q] || DEFAULT_EQUIPPED, i ? 'opp2' : 'opp'));
-  game.setWinFxSeats(looks.map((l, q) => COSMETIC_BY_ID[(q === you ? p.equipped : l || DEFAULT_EQUIPPED).win]?.fx || 'chips'));
+  game.setWinFxSeats(looks.map((l, q) => winFxOf(q === you ? publicLook(p) : l || DEFAULT_EQUIPPED)));
   return p;
 }
 
@@ -63,9 +64,13 @@ function botLoadout() {
   const pool = JOKERS.filter((j) => j.rarity !== 'legendary' || Math.random() < 0.15).map((j) => j.id);
   const set = [];
   while (set.length < 3 && pool.length) set.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-  const look = { ...DEFAULT_EQUIPPED };
-  for (const cat of Object.keys(look)) {
-    const opts = COSMETICS.filter((c) => c.cat === cat && c.source !== 'ach');
+  // бот «вдягає» один тематичний набір (окремі предмети — з шансом) у випадковій рідкості
+  const look = { ...DEFAULT_EQUIPPED, rar: {} };
+  const theme = SKIN_SETS_META[Math.floor(Math.random() * SKIN_SETS_META.length)].id;
+  const rar = () => { const x = Math.random(); return x < 0.5 ? 'common' : x < 0.8 ? 'rare' : x < 0.95 ? 'epic' : 'legendary'; };
+  for (const cat of SKIN_KINDS) if (Math.random() < 0.7) { look[cat] = `${cat}_${theme}`; look.rar[cat] = rar(); }
+  for (const cat of ['emoji', 'frame']) {
+    const opts = COSMETICS.filter((c) => c.cat === cat && c.source !== 'ach' && c.source !== 'set');
     if (Math.random() < 0.6) look[cat] = opts[Math.floor(Math.random() * opts.length)].id;
   }
   return { set, look };
@@ -193,6 +198,8 @@ function openSettings(back = null) {
   modal(`<h3>Налаштування</h3>
     <label class="setting">Звук <input type="checkbox" class="switch" id="set-sound" ${isMuted() ? '' : 'checked'}></label>
     <label class="setting col">Гучність <input type="range" id="set-vol" min="0" max="100" value="${Math.round(getVolume() * 100)}" aria-label="Гучність"></label>
+    <label class="setting">Ефекти нахилу <input type="checkbox" class="switch" id="set-tilt" ${tiltEnabled() ? 'checked' : ''}></label>
+    <p class="hint-text" id="set-tilt-hint">Світло й блиск карт рухаються, коли нахиляєш телефон. Без нього — за пальцем.</p>
     <p>Версія ${APP_VERSION}</p>`, [
     { label: 'Пройти навчання ще раз', cls: 'secondary', onClick: () => startTutorial() },
     { label: 'Експорт прогресу', cls: 'secondary', onClick: () => openExport() },
@@ -202,6 +209,12 @@ function openSettings(back = null) {
   $('set-sound').addEventListener('change', (e) => { setMuted(!e.target.checked); sfx.tap(); });
   $('set-vol').addEventListener('input', (e) => setVolume(e.target.value / 100));
   $('set-vol').addEventListener('change', () => sfx.chip(3));
+  // iOS просить дозвіл на датчики лише з тапу — тому вмикаємо саме тут
+  $('set-tilt').addEventListener('change', async (e) => {
+    if (!e.target.checked) { disableTilt(); return; }
+    const ok = await enableTilt();
+    if (!ok) { e.target.checked = false; $('set-tilt-hint').textContent = 'Нахил недоступний: браузер не дав доступу до датчиків руху.'; }
+  });
 }
 
 function openExport() {
@@ -877,6 +890,11 @@ window.addEventListener('pageshow', () => session?.onVisibility?.(false));
 // Запрошення ?room=ABCD (і старе #join=ABCD) — одразу приєднуємось
 function boot() {
   initMeta({ show, modal, toast });
+  // «Ефекти нахилу», якщо гравець їх увімкнув раніше: на Android — одразу, на iOS — з першого тапу (дозвіл уже дано)
+  if (tiltWanted() && typeof DeviceOrientationEvent !== 'undefined') {
+    if (typeof DeviceOrientationEvent.requestPermission !== 'function') enableTilt();
+    else document.addEventListener('click', () => { if (!tiltEnabled()) enableTilt(); }, { once: true });
+  }
   renderDayMode();
   refreshResume();
   const q = new URLSearchParams(location.search).get('room') || (location.hash.match(/join=([A-Z]{4})/i) || [])[1];

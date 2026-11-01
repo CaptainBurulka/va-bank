@@ -70,7 +70,8 @@ test('протокол: нові дії обмін і подвоєння, пом
 test('кеш service worker змінюється разом із версією застосунку', () => {
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   assert.ok(sw.includes(`'vabank-${APP_VERSION}'`), `sw.js має містити CACHE = 'vabank-${APP_VERSION}'`);
-  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'game/jokers.js', 'meta/profile.js', 'meta/catalog.js', 'ui/meta-ui.js', 'ui/profile-store.js', 'ui/cosmetics.js', 'net/protocol.js']) assert.ok(sw.includes(`'${f}'`), f);
+  for (const f of ['ui/settings.js', 'ui/tokens.css', 'ui/motion.js', 'game/engine.js', 'game/jokers.js', 'meta/profile.js', 'meta/catalog.js', 'ui/meta-ui.js', 'ui/profile-store.js', 'ui/cosmetics.js', 'net/protocol.js', 'ui/skins/skins.css', 'ui/skins/render.js', 'ui/skins/ceremony.js']) assert.ok(sw.includes(`'${f}'`), f);
+  for (const s of ['kyiv', 'samurai', 'cyber', 'cossack', 'deco', 'abyss', 'pixel', 'space']) assert.ok(sw.includes(`'${s}'`), `набір ${s} у кеші`);
 });
 
 test('деплой: кожен каталог із кодом гри копіюється на сайт', () => {

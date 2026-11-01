@@ -15,6 +15,11 @@
 @font-face { font-family: 'Unbounded'; font-weight: 800; font-display: swap; src: url('../../fonts/unbounded-latin-800-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
 @font-face { font-family: 'Unbounded'; font-weight: 800; font-display: swap; src: url('../../fonts/unbounded-cyrillic-800-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
 
+@font-face { font-family: 'Playfair Display'; font-weight: 900; font-display: swap; src: url('../../fonts/playfair-display-latin-900-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
+@font-face { font-family: 'Playfair Display'; font-weight: 900; font-display: swap; src: url('../../fonts/playfair-display-cyrillic-900-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
+@font-face { font-family: 'Unbounded'; font-weight: 600; font-display: swap; src: url('../../fonts/unbounded-latin-600-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; }
+@font-face { font-family: 'Unbounded'; font-weight: 600; font-display: swap; src: url('../../fonts/unbounded-cyrillic-600-normal.woff2') format('woff2'); unicode-range: U+0400-04FF; }
+
 @property --px { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
 @property --py { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
 @property --rx { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
@@ -51,7 +56,7 @@
 .sk-active .sk-tilt { transition: none; will-change: transform; }
 .sk-art, .sk-ink, .sk-live, .sk-foil, .sk-glare, .sk-frame { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 .sk-art > *, .sk-ink > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.sk-art .plx { position: absolute; inset: -4%; }
+.sk-art .plx { position: absolute; inset: -4%; width: auto; height: auto; }
 .sk-art .plx > svg { width: 100%; height: 100%; display: block; }
 /* паралакс: глибші шари рухаються сильніше (лише в активного предмета) */
 .sk-active .sk-art .d1 { transform: translate(calc((var(--px) - 50%) * -.03), calc((var(--py) - 50%) * -.03)); }
@@ -301,3 +306,226 @@
 .round.r-rare .sk-frame, .round.r-epic .sk-frame { padding: calc(var(--w) * .05); }
 .round.r-legendary .sk-frame { padding: calc(var(--w) * .06); }
 .round.r-epic .sk-tilt::after { display: none; }
+
+/* ═════════ Матеріали v2: «важкий» метал рідкісної та епічної, благородна поліхромія легендарної ═════════ */
+@property --nx { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --ny { syntax: '<number>'; inherits: true; initial-value: 0; }
+:root {
+  --metal-brush: repeating-linear-gradient(90deg, rgba(255, 255, 255, .07) 0 1px, rgba(0, 0, 0, .06) 1px 2px, transparent 2px 3px);
+  --rar-edge-rare: #1a2c46;
+  --rar-edge-epic: #2a1446;
+  --rar-edge-legendary: #6b4300;
+}
+/* торець картки: зміщена тінь кольору металу з боку, протилежного нахилу — картка «товста» */
+.sk-item.r-rare .sk-tilt, .sk-item.r-epic .sk-tilt, .sk-item.r-legendary .sk-tilt {
+  --edge: var(--rar-edge-rare);
+  box-shadow:
+    calc(var(--nx) * -4px) calc(var(--ny) * -4px + 2px) 0 -.5px var(--edge),
+    calc(var(--nx) * -5px) calc(var(--ny) * -5px + 3px) 0 -.5px rgba(0, 0, 0, .55),
+    0 calc(var(--w) * .04) calc(var(--w) * .1) rgba(0, 0, 0, .6);
+}
+.sk-item.r-epic .sk-tilt { --edge: var(--rar-edge-epic); box-shadow: calc(var(--nx) * -4px) calc(var(--ny) * -4px + 2px) 0 -.5px var(--edge), calc(var(--nx) * -5px) calc(var(--ny) * -5px + 3px) 0 -.5px rgba(0, 0, 0, .55), 0 calc(var(--w) * .04) calc(var(--w) * .1) rgba(0, 0, 0, .6), 0 0 calc(var(--w) * .09) var(--rar-glow-epic); }
+.sk-item.r-legendary .sk-tilt { --edge: var(--rar-edge-legendary); box-shadow: calc(var(--nx) * -4px) calc(var(--ny) * -4px + 2px) 0 -.5px var(--edge), calc(var(--nx) * -5px) calc(var(--ny) * -5px + 3px) 0 -.5px rgba(0, 0, 0, .55), 0 calc(var(--w) * .04) calc(var(--w) * .1) rgba(0, 0, 0, .6), 0 0 calc(var(--w) * .12) var(--rar-glow-legendary); }
+
+/* рідкісна: шліфована сталь, різкий дзеркальний блік, фаски */
+.sk-item.r-rare .sk-frame {
+  padding: calc(var(--w) * .046);
+  background:
+    linear-gradient(115deg, transparent calc(var(--px) - 9%), rgba(255, 255, 255, .95) var(--px), transparent calc(var(--px) + 9%)),
+    linear-gradient(115deg, transparent calc(var(--px) - 26%), rgba(190, 225, 255, .35) var(--px), transparent calc(var(--px) + 26%)),
+    var(--metal-brush),
+    linear-gradient(180deg, #d7ecff 0%, #6b97c8 18%, #1d3f6e 46%, #0e223f 52%, #3f72b0 78%, #b8dbff 100%);
+}
+/* епічна: анодований фіолетовий метал */
+.sk-item.r-epic .sk-frame {
+  padding: calc(var(--w) * .046);
+  background:
+    linear-gradient(115deg, transparent calc(var(--px) - 9%), rgba(255, 240, 255, .95) var(--px), transparent calc(var(--px) + 9%)),
+    linear-gradient(115deg, transparent calc(var(--px) - 26%), rgba(230, 190, 255, .35) var(--px), transparent calc(var(--px) + 26%)),
+    var(--metal-brush),
+    linear-gradient(180deg, #f2dcff 0%, #9b62d8 18%, #4a1c86 46%, #26094f 52%, #7a3cc4 78%, #e7c6ff 100%);
+}
+/* фаски: світла кромка зверху, тінь знизу; «вікно» арту втоплене в метал */
+.sk-bevel { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 5; }
+.sk-item.r-rare .sk-bevel, .sk-item.r-epic .sk-bevel, .sk-item.r-legendary .sk-bevel {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), inset 0 -1px 0 rgba(0, 0, 0, .55), inset 1px 0 0 rgba(255, 255, 255, .25), inset -1px 0 0 rgba(0, 0, 0, .35);
+}
+.sk-item.r-rare .sk-bevel::after, .sk-item.r-epic .sk-bevel::after, .sk-item.r-legendary .sk-bevel::after {
+  content: ""; position: absolute; inset: calc(var(--w) * .046); border-radius: calc(var(--w) * .035);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .7), inset 0 2px 5px rgba(0, 0, 0, .55), 0 -1px 0 1px rgba(255, 255, 255, .18);
+}
+.sk-item.r-legendary .sk-bevel::after { inset: calc(var(--w) * .052); }
+.wide .sk-bevel::after { inset: calc(var(--w) * .016) !important; border-radius: calc(var(--w) * .014) !important; }
+.round .sk-bevel::after { inset: calc(var(--w) * .055) !important; border-radius: 50% !important; }
+/* голографія епічної — стриманіша під важким металом */
+.sk-item.r-epic .sk-foil { opacity: calc(.22 + var(--hyp) * .3); }
+
+/* легендарна: благородна поліхромія — перламутр/опал замість кислотної веселки + гільйошна сітка */
+.sk-item.r-legendary .sk-foil {
+  background:
+    conic-gradient(from calc(var(--nx) * 90deg) at var(--px) var(--py), #ffe7c2, #ffc9d9, #e4cfff, #bfe6ff, #c9ffe6, #fff1b8, #ffe7c2),
+    repeating-linear-gradient(28deg, transparent 0 3px, rgba(255, 255, 255, .35) 3px 4px);
+  background-size: 100% 100%, 100% 100%;
+  mix-blend-mode: soft-light;
+  opacity: calc(.7 + var(--hyp) * .3);
+  -webkit-mask-image: radial-gradient(circle at var(--px) var(--py), #000 0%, rgba(0, 0, 0, .75) 30%, rgba(0, 0, 0, .3) 70%);
+  mask-image: radial-gradient(circle at var(--px) var(--py), #000 0%, rgba(0, 0, 0, .75) 30%, rgba(0, 0, 0, .3) 70%);
+}
+/* гільйош: тонкі хвилясті лінії, як на банкноті; переливаються від світла */
+.sk-item.r-legendary .sk-foil::before {
+  content: ""; position: absolute; inset: 0; mix-blend-mode: color-dodge; opacity: calc(.32 + var(--hyp) * .4);
+  background: linear-gradient(120deg, #ffd9a0, #ffb3c9 30%, #c7b0ff 55%, #9fe1ff 80%, #ffe9a6);
+  background-size: 200% 200%; background-position: var(--px) var(--py);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='24'%3E%3Cpath d='M0 12 Q7.5 2 15 12 T30 12 T45 12 T60 12' fill='none' stroke='%23000' stroke-width='.6'/%3E%3Cpath d='M0 6 Q7.5 -4 15 6 T30 6 T45 6 T60 6' fill='none' stroke='%23000' stroke-width='.4'/%3E%3Cpath d='M0 18 Q7.5 8 15 18 T30 18 T45 18 T60 18' fill='none' stroke='%23000' stroke-width='.4'/%3E%3C/svg%3E") 0 0 / 30px 12px;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='24'%3E%3Cpath d='M0 12 Q7.5 2 15 12 T30 12 T45 12 T60 12' fill='none' stroke='%23000' stroke-width='.6'/%3E%3Cpath d='M0 6 Q7.5 -4 15 6 T30 6 T45 6 T60 6' fill='none' stroke='%23000' stroke-width='.4'/%3E%3Cpath d='M0 18 Q7.5 8 15 18 T30 18 T45 18 T60 18' fill='none' stroke='%23000' stroke-width='.4'/%3E%3C/svg%3E") 0 0 / 30px 12px;
+}
+/* блискітки фольги — дрібніші й рідші, «дорогоцінні» */
+.sk-item.r-legendary .sk-foil::after { opacity: .4; }
+/* золото рамки з ледь помітною поліхромією (переливається від світла) */
+.sk-item.r-legendary .sk-frame {
+  background:
+    linear-gradient(115deg, transparent calc(var(--px) - 8%), rgba(255, 255, 245, 1) var(--px), transparent calc(var(--px) + 8%)),
+    linear-gradient(115deg, rgba(255, 190, 210, 0) calc(var(--px) - 30%), rgba(255, 190, 210, .55) calc(var(--px) - 12%), rgba(170, 220, 255, .55) calc(var(--px) + 12%), rgba(170, 220, 255, 0) calc(var(--px) + 30%)),
+    repeating-linear-gradient(45deg, rgba(90, 50, 0, .3) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #fff1c4 0%, #d79a1c 22%, #8a5600 48%, #5e3a00 52%, #c58612 76%, #ffe6a0 100%);
+}
+/* Кіберпанк лишає яскраву неонову веселку — вона пасує його стилю */
+.sk-item.r-legendary.sk-cyber .sk-foil {
+  background:
+    repeating-linear-gradient(115deg, #ff3d6e 0, #ffd23f 2.5%, #3dff9a 5%, #3dc7ff 7.5%, #a44dff 10%, #ff3d6e 12.5%),
+    repeating-linear-gradient(25deg, transparent 0 2px, rgba(255, 255, 255, .55) 2px 3px);
+  background-size: 400% 400%, 100% 100%; background-position: var(--px) var(--py), 0 0;
+  mix-blend-mode: color-dodge; opacity: calc(.42 + var(--hyp) * .4);
+}
+.sk-item.r-legendary.sk-cyber .sk-foil::before { display: none; }
+
+/* ═════════ Набір «Самурай» ═════════ */
+.sk-samurai .sk-tilt { background: #efe6d0; }
+/* легендарна: мазки туші промальовуються наново, туман дрейфує, пелюстки сакури летять */
+.sk-samurai .smflow, .sk-samurai .smenso { stroke-dasharray: 100; animation: smFlow 8s cubic-bezier(.5, 0, .3, 1) infinite; }
+.sk-samurai .smenso { animation-duration: 6s; }
+@keyframes smFlow { 0% { stroke-dashoffset: 100; } 35%, 82% { stroke-dashoffset: 0; opacity: 1; } 96% { stroke-dashoffset: 0; opacity: 0; } 100% { stroke-dashoffset: 100; opacity: 0; } }
+.sk-samurai .smmist { animation: smMist 14s ease-in-out infinite alternate; }
+@keyframes smMist { to { transform: translateX(12px); } }
+.sk-samurai .sp { position: absolute; width: calc(var(--w) * .035); height: calc(var(--w) * .024); border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffd9e4, #f39ab4); opacity: 0; animation: smPetal var(--d) linear var(--delay) infinite; }
+@keyframes smPetal { 0% { transform: translate(0, 0) rotate(0) scale(var(--s)); opacity: 0; } 10% { opacity: .95; } 85% { opacity: .9; } 100% { transform: translate(var(--dx), calc(var(--w) * 1.5)) rotate(520deg) scale(var(--s)); opacity: 0; } }
+.skwin .smp { position: absolute; top: -20px; width: 14px; height: 10px; border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffe0ea, #f08aa8); animation: smWinPetal 2.6s ease-in both; transform: scale(var(--s)); }
+@keyframes smWinPetal { to { transform: translate(var(--dx), 105vh) rotate(720deg) scale(var(--s)); } }
+.skwin .smstamp { position: absolute; left: 50%; top: 42%; padding: .2em .5em; font: 900 clamp(26px, 9vw, 54px)/1 'Playfair Display', Georgia, serif; letter-spacing: .05em; white-space: nowrap; color: #f6e7d2; background: #c4352b; border: 3px double #f6e7d2; border-radius: 6px; opacity: 0; animation: smStamp 2.4s cubic-bezier(.2, 1.6, .4, 1) .3s both; }
+@keyframes smStamp { 0% { transform: translate(-50%, -50%) rotate(-12deg) scale(2.6); opacity: 0; } 18% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); opacity: .95; } 85% { opacity: .95; } 100% { transform: translate(-50%, -50%) rotate(-6deg) scale(1); opacity: 0; } }
+.skwin .smsplash { position: absolute; left: 50%; top: 45%; width: 30px; height: 30px; margin: -15px; border-radius: 50%; background: radial-gradient(circle, rgba(20, 16, 12, .55), rgba(20, 16, 12, 0) 70%); animation: smSplash 1.6s ease-out both; }
+@keyframes smSplash { from { transform: scale(.2); opacity: 1; } to { transform: scale(14); opacity: 0; } }
+
+/* ═════════ Набір «Козацький» ═════════ */
+.sk-cossack .sk-tilt { background: #efe4cd; }
+.sk-cossack.r-legendary .sk-tilt { background: #1b1512; }
+/* легендарна: орнамент вишивається стовпчик за стовпчиком, тримається і зникає, щоб вишитись знову */
+.sk-cossack .kst { opacity: 0; animation: kStitch 7s steps(1) infinite; }
+@keyframes kStitch { 0% { opacity: 0; } 2%, 88% { opacity: 1; } 94%, 100% { opacity: 0; } }
+.sk-cossack .ksp { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 6px 2px #ff9a2a; opacity: 0; animation: kSpark var(--d) cubic-bezier(.2, .6, .4, 1) var(--delay) infinite; }
+@keyframes kSpark { 0% { transform: translate(0, 0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--tx), calc(var(--ty) * -.2 + 40px)) scale(.3); opacity: 0; } }
+.skwin .krush { position: absolute; left: 0; right: 0; top: 44%; height: 13%; transform-origin: left; transform: scaleX(0); animation: kRush 2.8s cubic-bezier(.3, .9, .3, 1) both;
+  background: repeating-linear-gradient(90deg, #b3201c 0 6px, transparent 6px 12px) top / 100% 4px no-repeat, repeating-linear-gradient(90deg, #b3201c 0 6px, transparent 6px 12px) bottom / 100% 4px no-repeat,
+  repeating-linear-gradient(45deg, transparent 0 9px, #1d1714 9px 11px, transparent 11px 20px), repeating-linear-gradient(-45deg, transparent 0 9px, #b3201c 9px 11px, transparent 11px 20px), #efe4cd; box-shadow: 0 6px 18px rgba(0, 0, 0, .4); }
+.skwin.r-legendary .krush { background-color: #1b1512; }
+@keyframes kRush { 0% { transform: scaleX(0); } 30% { transform: scaleX(1); } 85% { transform: scaleX(1); opacity: 1; } 100% { transform: scaleX(1); opacity: 0; } }
+.skwin .kspw { position: absolute; left: 50%; top: 52%; width: 4px; height: 4px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 8px 3px #ff9a2a; opacity: 0; animation: kSparkW 1.4s cubic-bezier(.1, .7, .3, 1) both; }
+@keyframes kSparkW { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(var(--tx), calc(var(--ty) + 160px)); opacity: 0; } }
+
+/* ═════════ Набір «Ар-деко казино» ═════════ */
+.sk-deco .sk-tilt { background: #0b0b0d; }
+/* легендарна: світло біжить по ступінчастій рамці, віяло «дихає», на лініях спалахують іскорки */
+.sk-deco .dkrun { stroke-dasharray: 7 93; animation: dkRun 4.5s linear infinite; filter: drop-shadow(0 0 1.5px #ffd66b); }
+@keyframes dkRun { to { stroke-dashoffset: -100; } }
+.sk-deco .dkfan { animation: dkFan 4s ease-in-out infinite; }
+@keyframes dkFan { 50% { opacity: .45; } }
+.sk-deco .dkglow { animation: dkGlow 3s ease-in-out infinite; }
+@keyframes dkGlow { 50% { opacity: .5; } }
+.sk-deco .dkg { position: absolute; width: calc(var(--w) * .07); aspect-ratio: 1; margin: calc(var(--w) * -.035); opacity: 0; animation: dkGlint var(--d) ease-in-out var(--delay) infinite;
+  background: radial-gradient(circle, #fff 0 15%, #ffe39a 40%, rgba(229, 176, 74, 0) 70%); clip-path: polygon(50% 0, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0 50%, 43% 43%); }
+@keyframes dkGlint { 0%, 70%, 100% { opacity: 0; transform: scale(.3); } 82% { opacity: 1; transform: scale(1); } }
+.skwin .dkbeam { position: absolute; left: 50%; bottom: -10%; width: 22%; height: 130%; margin-left: -11%; transform-origin: 50% 100%; transform: rotate(var(--r)) scaleY(0); background: linear-gradient(to top, rgba(255, 228, 160, .55), rgba(255, 228, 160, 0)); clip-path: polygon(40% 100%, 60% 100%, 100% 0, 0 0); mix-blend-mode: screen; animation: dkBeam 3s ease-out both; }
+@keyframes dkBeam { 0% { transform: rotate(var(--r)) scaleY(0); opacity: 0; } 25% { transform: rotate(var(--r)) scaleY(1); opacity: 1; } 80% { opacity: 1; } 100% { transform: rotate(calc(var(--r) * 1.4)) scaleY(1); opacity: 0; } }
+.skwin .dkr { position: absolute; top: -20%; width: 4px; height: 26px; background: var(--c); border-radius: 2px; box-shadow: 0 0 6px rgba(229, 176, 74, .6); animation: dkRibbon 2.4s cubic-bezier(.4, .1, .7, 1) both; }
+@keyframes dkRibbon { 0% { transform: translateY(0) rotate(var(--rot)) skewY(0); } 50% { transform: translateY(70vh) rotate(calc(var(--rot) * -1)) skewY(20deg); } 100% { transform: translateY(130vh) rotate(var(--rot)) skewY(-20deg); } }
+
+/* ═════════ Набір «Безодня» ═════════ */
+.sk-abyss .sk-tilt { background: #03263c; }
+/* легендарна: медузи пульсують і дрейфують, планктон мерехтить, світло цифр дихає, бульбашки піднімаються */
+.sk-abyss .abj { transform-box: fill-box; transform-origin: 50% 0; animation: abJelly 3.4s ease-in-out infinite; }
+@keyframes abJelly { 0%, 100% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-3px) scale(1.08, .86); } 60% { transform: translateY(-6px) scale(.96, 1.06); } }
+.sk-abyss .abpl { animation: abPl 2.8s ease-in-out infinite; }
+@keyframes abPl { 50% { opacity: .1; } }
+.sk-abyss .abglow { animation: abGlow 3.4s ease-in-out infinite; }
+@keyframes abGlow { 50% { opacity: .62; } }
+.sk-abyss .abping { transform-box: fill-box; transform-origin: center; animation: abPing 3s ease-out infinite; }
+@keyframes abPing { from { transform: scale(.4); opacity: .9; } to { transform: scale(5.5); opacity: 0; } }
+.sk-abyss .abb { position: absolute; width: calc(var(--w) * .03); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(200, 245, 255, .75); background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, .8) 0 18%, transparent 30%); opacity: 0; animation: abRise var(--d) linear var(--delay) infinite; }
+@keyframes abRise { 0% { transform: translate(0, 0) scale(var(--s)); opacity: 0; } 10% { opacity: .9; } 50% { transform: translate(6px, calc(var(--w) * -.7)) scale(var(--s)); } 100% { transform: translate(-4px, calc(var(--w) * -1.5)) scale(var(--s)); opacity: 0; } }
+.skwin .abring { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px; border-radius: 50%; border: 2px solid #7fe6ff; box-shadow: 0 0 18px #3ff7ff, inset 0 0 12px #3ff7ff; animation: abRing 1.8s ease-out both; }
+.skwin.r-legendary .abring:nth-child(even) { border-color: #ff5fd2; box-shadow: 0 0 18px #ff5fd2, inset 0 0 12px #ff5fd2; }
+@keyframes abRing { from { transform: scale(.2); opacity: 1; } to { transform: scale(12); opacity: 0; } }
+.skwin .abw { position: absolute; bottom: -20px; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid rgba(200, 245, 255, .9); background: radial-gradient(circle at 30% 30%, #fff 0 15%, transparent 30%); animation: abWinRise 2s ease-in both; transform: scale(var(--s)); }
+@keyframes abWinRise { to { transform: translate(var(--dx), -110vh) scale(var(--s)); } }
+
+/* ═════════ Набір «Піксель» ═════════ */
+.sk-pixel .sk-tilt { background: #1d2b53; }
+.sk-pixel svg { image-rendering: pixelated; }
+/* легендарна: монетка крутиться покадрово, зірки блимають, цифра переливається, аркадні зорі летять */
+.sk-pixel .pxspin { animation: pxSpin 1.2s steps(4) infinite; }
+@keyframes pxSpin { 0% { transform: scaleX(1); } 25% { transform: scaleX(.5); } 50% { transform: scaleX(.12); } 75% { transform: scaleX(.5); } 100% { transform: scaleX(1); } }
+.sk-pixel .pxtw { animation: pxTw 1.6s steps(2) infinite; }
+@keyframes pxTw { 50% { opacity: 0; } }
+.sk-pixel .pxstar { animation: pxTw .8s steps(2) infinite; }
+.sk-pixel .pxblink { animation: pxTw 1s steps(1) infinite; }
+.sk-pixel .pxrain { animation: pxRain 2.4s steps(1) infinite; }
+@keyframes pxRain { 0% { fill: #ffec27; } 20% { fill: #ffa300; } 40% { fill: #ff77a8; } 60% { fill: #29adff; } 80% { fill: #00e436; } 100% { fill: #ffec27; } }
+.sk-pixel .pxf { position: absolute; top: -4%; width: calc(var(--w) * .022); height: calc(var(--w) * .022); background: var(--c); box-shadow: 0 calc(var(--w) * -.03) 0 0 color-mix(in srgb, var(--c) 50%, transparent); animation: pxFall var(--d) steps(14) var(--delay) infinite; }
+@keyframes pxFall { to { transform: translateY(calc(var(--w) * 1.5)); } }
+.skwin .pxwin { position: absolute; left: 50%; top: 40%; width: min(86%, 520px); transform: translate(-50%, -50%); animation: pxWin 2.8s steps(8) both; }
+.skwin .pxwin svg { width: 100%; height: auto; display: block; image-rendering: pixelated; }
+@keyframes pxWin { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 20% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; } 30%, 85% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+.skwin.r-legendary .pxwin { animation-name: pxWin, pxWinBlink; animation-duration: 2.8s, .4s; animation-timing-function: steps(8), steps(1); animation-iteration-count: 1, 6; }
+@keyframes pxWinBlink { 50% { filter: brightness(1.6); } }
+
+/* ═════════ Набір «Космос» ═════════ */
+.sk-space .sk-tilt { background: #05030f; }
+/* легендарна: туманність дрейфує й переливається, планета йде орбітою, зорі мерехтять і падають */
+.sk-space .csneb { transform-box: view-box; transform-origin: center; animation: csNeb 18s ease-in-out infinite alternate; }
+@keyframes csNeb { from { transform: rotate(-6deg) scale(1); filter: hue-rotate(0deg); } to { transform: rotate(8deg) scale(1.15); filter: hue-rotate(50deg); } }
+@keyframes csOrb { to { transform: rotate(360deg); } }
+.sk-space .csgal { animation: csOrb 60s linear infinite; }
+.sk-space .cstw { animation: csTw 2.6s ease-in-out infinite; }
+@keyframes csTw { 50% { opacity: .2; } }
+.sk-space .csf { position: absolute; width: calc(var(--w) * .28); height: 1.5px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff); border-radius: 2px; opacity: 0; transform: rotate(-35deg); animation: csFall var(--d) ease-in var(--delay) infinite; }
+@keyframes csFall { 0%, 70% { opacity: 0; translate: 0 0; } 74% { opacity: 1; } 90% { opacity: 0; translate: calc(var(--w) * -.6) calc(var(--w) * .42); } 100% { opacity: 0; translate: calc(var(--w) * -.6) calc(var(--w) * .42); } }
+.skwin .cswarp { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; background: var(--c); border-radius: 2px; transform-origin: 0 50%; transform: rotate(var(--a)) translateX(10px); opacity: 0; animation: csWarp 1.4s cubic-bezier(.6, 0, .9, .4) both; }
+@keyframes csWarp { 0% { opacity: 0; width: 3px; transform: rotate(var(--a)) translateX(10px); } 20% { opacity: 1; } 100% { opacity: 0; width: 160px; transform: rotate(var(--a)) translateX(60vmax); } }
+.skwin .csfw { position: absolute; width: 120px; height: 2px; background: linear-gradient(90deg, transparent, #fff); transform: rotate(-30deg); opacity: 0; animation: csFw 1.2s ease-in both; }
+@keyframes csFw { 0% { opacity: 0; translate: 0 0; } 20% { opacity: 1; } 100% { opacity: 0; translate: -220px 130px; } }
+
+/* ═════════ У грі: карти, сорочки, сукно, фішки ═════════ */
+.card .face .sk-item, .card .back .sk-item { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; touch-action: auto; }
+.card .face .sk-tilt, .card .back .sk-tilt { box-shadow: none; transform: none; transition: none; }
+.card.skinned .face { background: #111; }
+.card .back.skinned::after, .card .back.skinned > span { display: none; }
+/* рука: легендарна карта ледь світиться (лише opacity — дешево), епічна — тонкий фіолетовий ореол */
+.hand .card[data-skr="legendary"]::after, .hand .card[data-skr="epic"]::after { content: ""; position: absolute; inset: -3px; border-radius: calc(var(--r-card) + 3px); pointer-events: none; z-index: -1; opacity: .35; }
+.hand .card[data-skr="legendary"]::after { box-shadow: 0 0 12px 3px rgba(255, 194, 61, .7); animation: skHandGlow 3.4s ease-in-out infinite; }
+.hand .card[data-skr="epic"]::after { box-shadow: 0 0 9px 2px rgba(181, 108, 255, .55); opacity: .45; }
+@keyframes skHandGlow { 50% { opacity: .85; } }
+/* відкрита карта суперника — повний блиск рідкості: світло трохи збоку */
+.slot .card .face .sk-item { --px: 64%; --py: 34%; --hyp: .5; }
+/* сукно набору під столом */
+.table.skinned { border-color: var(--rc, var(--brass)); background: #05060c; }
+.table > .felt-skin { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; z-index: 0; }
+.table > .felt-skin .sk-item { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; touch-action: auto; }
+.table > .felt-skin .sk-tilt { border-radius: 0; box-shadow: none; transform: none; }
+.table > .felt-skin :is(.sk-frame, .sk-bevel, .sk-gem, .sk-glare, .sk-foil) { display: none; }
+.table > .felt-skin::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, .1), rgba(0, 0, 0, .45)); }
+.table.skinned > .tbar, .table.skinned > .arena { position: relative; z-index: 1; }
+/* фішка набору в стосі гравця */
+.stack .stack-chip { flex-shrink: 0; }
+.stack .stack-chip :is(.sk-gem, .sk-bevel, .sk-glare) { display: none; }
+.stack .stack-chip .sk-tilt { box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .hand .card[data-skr]::after { animation: none; } }

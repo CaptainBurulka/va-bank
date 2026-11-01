@@ -4,11 +4,21 @@
 
 import { META, MODE_IDS } from '../config.js';
 import { JOKERS, JOKER_BY_ID, RARITIES, sanitizeSet } from '../game/jokers.js';
-import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID, SETS } from './catalog.js';
+import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID, SETS, SKIN_ITEMS, SKIN_BY_ID, SKIN_KINDS, LEGACY_SKINS } from './catalog.js';
 import { newPid, isPid, cleanNick, normalizeLife, normalizeRivals, cleanTitle, emptyLife } from './rivals.js';
 
 export const SCHEMA = META.schema;
 const int = (x) => (Number.isFinite(x) ? Math.max(0, Math.floor(x)) : 0);
+/** Ранг рідкості: звичайна 0 … легендарна 3. */
+export const RANK = Object.freeze({ common: 0, rare: 1, epic: 2, legendary: 3 });
+const fnv = (str) => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h; };
+/** Серійний номер екземпляра 1…9999 (детермінований із зерна, якщо немає генератора). */
+const serialFrom = (seed) => (fnv(String(seed)) % 9999) + 1;
+export const serialText = (n) => `№ ${String(n).padStart(4, '0')}`;
+/** Чи є предмет (косметика або предмет набору будь-якої рідкості). */
+export const owns = (p, id) => !!(p.cosmetics?.[id] || p.skins?.[id]);
+/** Рідкість предмета для показу: екземпляр набору або рідкість каталогу. */
+export const rarityOf = (p, id) => p.skins?.[id]?.r || COSMETIC_BY_ID[id]?.rarity || 'common';
 
 export function defaultProfile() {
   return {
@@ -18,6 +28,7 @@ export function defaultProfile() {
     jokers: Object.fromEntries(META.startJokers.map((id) => [id, 1])),
     cosmetics: Object.fromEntries(COSMETICS.filter((c) => c.source === 'start').map((c) => [c.id, true])),
     equipped: { ...DEFAULT_EQUIPPED },
+    skins: {}, // предмети наборів: { id: { r: рідкість, n: серійний номер } } (схема 3)
     set: [...META.startJokers],
     pity: { epic: 0, legendary: 0 },
     spins: 0,
@@ -92,8 +103,36 @@ export function migrate(raw) {
     p.rivals = {};
     p.v = 2;
   }
-  // майбутні міграції: if (p.v === 2) { …; p.v = 3; }
+  if (p.v === 2) {
+    // v2 → v3: стара косметика → предмети тематичних наборів із рідкістю і серійним номером
+    p = legacyToSkins(p);
+    p.v = 3;
+  }
+  // майбутні міграції: if (p.v === 3) { …; p.v = 4; }
   return normalize(p);
+}
+
+/**
+ * Перенести старі предмети (LEGACY_SKINS) у набори. Нічого не зникає: якщо два старі предмети
+ * лягають в один новий, лишається вища рідкість, а за нижчу нараховуються уламки як за дублікат.
+ */
+export function legacyToSkins(p) {
+  const cos = { ...(p.cosmetics && typeof p.cosmetics === 'object' ? p.cosmetics : {}) };
+  const skins = { ...(p.skins && typeof p.skins === 'object' ? p.skins : {}) };
+  let shards = int(p.shards);
+  const moved = [];
+  for (const [old, [id, r]] of Object.entries(LEGACY_SKINS)) {
+    if (!cos[old]) continue;
+    delete cos[old];
+    const cur = skins[id];
+    if (!cur) skins[id] = { r, n: serialFrom(`${p.pid || ''}:${id}`) };
+    else if (RANK[r] > RANK[cur.r]) { shards += META.shards.dupe[cur.r]; skins[id] = { r, n: cur.n }; }
+    else shards += META.shards.dupe[r];
+    moved.push(old);
+  }
+  const equipped = { ...(p.equipped && typeof p.equipped === 'object' ? p.equipped : {}) };
+  for (const [cat, id] of Object.entries(equipped)) if (LEGACY_SKINS[id]) equipped[cat] = LEGACY_SKINS[id][0];
+  return { ...p, cosmetics: cos, skins, shards, equipped, migratedCosmetics: moved };
 }
 
 /** Перевірка і лікування даних: зламаний профіль не повинен ламати гру. */
@@ -112,11 +151,15 @@ export function normalize(p) {
   }
   out.cosmetics = { ...d.cosmetics };
   if (p.cosmetics && typeof p.cosmetics === 'object') for (const id of Object.keys(p.cosmetics)) if (COSMETIC_BY_ID[id] && p.cosmetics[id]) out.cosmetics[id] = true;
+  out.skins = {};
+  if (p.skins && typeof p.skins === 'object') {
+    for (const [id, x] of Object.entries(p.skins)) if (SKIN_BY_ID[id] && x && RANK[x.r] !== undefined) out.skins[id] = { r: x.r, n: Math.min(9999, Math.max(1, int(x.n) || 1)) };
+  }
   out.equipped = { ...d.equipped };
   if (p.equipped && typeof p.equipped === 'object') {
     for (const cat of Object.keys(COSMETIC_CATS)) {
       const id = p.equipped[cat];
-      if (COSMETIC_BY_ID[id]?.cat === cat && out.cosmetics[id]) out.equipped[cat] = id;
+      if ((COSMETIC_BY_ID[id]?.cat === cat && out.cosmetics[id]) || (SKIN_BY_ID[id]?.cat === cat && out.skins[id])) out.equipped[cat] = id;
     }
   }
   out.set = sanitizeSet(p.set ?? d.set).filter((id) => out.jokers[id]);
@@ -140,9 +183,27 @@ const clone = (p) => JSON.parse(JSON.stringify(p));
 
 // ───────── володіння, уламки ─────────
 
-/** Додати предмет. Дублікат автоматично стає уламками. */
-export function grant(p, kind, id) {
+/**
+ * Додати предмет. Дублікат автоматично стає уламками.
+ * kind 'skin': предмет набору конкретної рідкості (opts.rarity, opts.serial). Вища рідкість за наявну —
+ * покращення (новий серійний номер), така сама чи нижча — дублікат → уламки за рідкістю, що випала.
+ */
+export function grant(p, kind, id, opts = {}) {
   const q = clone(p);
+  if (kind === 'skin') {
+    const r = opts.rarity;
+    if (!SKIN_BY_ID[id] || RANK[r] === undefined) return { profile: p, duplicate: false, shards: 0 };
+    const cur = q.skins[id];
+    if (cur && RANK[cur.r] >= RANK[r]) {
+      const sh = META.shards.dupe[r];
+      q.shards += sh;
+      return { profile: q, duplicate: true, shards: sh, rarity: cur.r, serial: cur.n };
+    }
+    const serial = opts.serial || serialFrom(`${q.pid}:${id}:${r}:${q.spins}:${q.points}:${q.shards}`);
+    q.skins[id] = { r, n: serial };
+    const completed = completeSets(q);
+    return { profile: q, duplicate: false, upgraded: !!cur, from: cur?.r || null, shards: 0, serial, rarity: r, completed };
+  }
   const item = kind === 'joker' ? JOKER_BY_ID[id] : COSMETIC_BY_ID[id];
   if (!item) return { profile: p, duplicate: false, shards: 0 };
   const owned = kind === 'joker' ? !!q.jokers[id] : !!q.cosmetics[id];
@@ -162,49 +223,56 @@ export function completeSets(q) {
   const done = [];
   for (const st of SETS) {
     if (q.cosmetics[st.frame]) continue;
-    if (st.items.every((id) => q.cosmetics[id])) { q.cosmetics[st.frame] = true; done.push(st.id); }
+    if (st.items.every((id) => q.skins?.[id])) { q.cosmetics[st.frame] = true; done.push(st.id); }
   }
   return done;
 }
 
 /** Прогрес наборів: [{ id, name, icon, have, total, frame, done }] */
 export function setProgress(p) {
-  return SETS.map((st) => ({ ...st, have: st.items.filter((id) => p.cosmetics[id]).length, total: st.items.length, done: !!p.cosmetics[st.frame] }));
+  return SETS.map((st) => ({ ...st, have: st.items.filter((id) => p.skins?.[id]).length, total: st.items.length, done: !!p.cosmetics[st.frame] }));
 }
 
 // ───────── магазин ─────────
 
-export function priceOf(kind, id) {
+/** Ціна в балах. Предмет набору купується в конкретній рідкості (вищій за наявну); легендарні — лише автомат. */
+export function priceOf(kind, id, rarity) {
   if (kind === 'joker') {
     const j = JOKER_BY_ID[id];
     if (!j || j.rarity === 'legendary') return null; // легендарні — лише з автомата
     return META.prices.joker[j.rarity];
+  }
+  if (kind === 'skin') {
+    if (!SKIN_BY_ID[id] || RANK[rarity] === undefined || rarity === 'legendary') return null;
+    return META.prices.cosmetic[rarity];
   }
   const c = COSMETIC_BY_ID[id];
   if (!c || c.source !== 'shop') return null; // стартова, автоматна чи за досягнення — не продається
   return META.prices.cosmetic[c.rarity];
 }
 
-export function shardPriceOf(kind, id) {
+export function shardPriceOf(kind, id, rarity) {
+  if (kind === 'skin') return SKIN_BY_ID[id] && RANK[rarity] !== undefined && rarity !== 'legendary' ? META.shards.exchange[rarity] : null;
   const item = kind === 'joker' ? JOKER_BY_ID[id] : COSMETIC_BY_ID[id];
   if (!item) return null;
   if (kind === 'joker' && item.rarity === 'legendary') return null;
-  if (kind === 'cosmetic' && (item.source === 'ach' || item.source === 'start')) return null;
+  if (kind === 'cosmetic' && (item.source === 'ach' || item.source === 'start' || item.source === 'set')) return null;
   return META.shards.exchange[item.rarity];
 }
 
-function purchase(p, kind, id, currency, price) {
+function purchase(p, kind, id, currency, price, rarity) {
   if (price == null) return { ok: false, profile: p, error: 'not-for-sale' };
-  const owned = kind === 'joker' ? !!p.jokers[id] : !!p.cosmetics[id];
+  const owned = kind === 'joker' ? !!p.jokers[id] : kind === 'skin' ? p.skins[id] && RANK[p.skins[id].r] >= RANK[rarity] : !!p.cosmetics[id];
   if (owned) return { ok: false, profile: p, error: 'owned' };
   if (p[currency] < price) return { ok: false, profile: p, error: currency === 'points' ? 'no-points' : 'no-shards' };
   const q = clone(p);
   q[currency] -= price;
-  return { ok: true, profile: grant(q, kind, id).profile };
+  const g = grant(q, kind, id, { rarity });
+  return { ok: true, profile: g.profile, serial: g.serial };
 }
 
-export const buy = (p, kind, id) => purchase(p, kind, id, 'points', priceOf(kind, id));
-export const exchange = (p, kind, id) => purchase(p, kind, id, 'shards', shardPriceOf(kind, id));
+export const buy = (p, kind, id, rarity) => purchase(p, kind, id, 'points', priceOf(kind, id, rarity), rarity);
+export const exchange = (p, kind, id, rarity) => purchase(p, kind, id, 'shards', shardPriceOf(kind, id, rarity), rarity);
 
 // ───────── набір і косметика ─────────
 
@@ -215,7 +283,8 @@ export function setJokers(p, ids) {
 }
 
 export function equip(p, cat, id) {
-  if (COSMETIC_BY_ID[id]?.cat !== cat || !p.cosmetics[id]) return p;
+  const ok = (COSMETIC_BY_ID[id]?.cat === cat && p.cosmetics[id]) || (SKIN_BY_ID[id]?.cat === cat && p.skins[id]);
+  if (!ok) return p;
   const q = clone(p);
   q.equipped[cat] = id;
   return q;
@@ -228,7 +297,10 @@ export const SPECIAL_SYMBOL = 'crown';
 
 function rarityPool(rarity) {
   const jokers = JOKERS.filter((j) => j.rarity === rarity).map((j) => ({ kind: 'joker', id: j.id }));
-  const cos = COSMETICS.filter((c) => c.rarity === rarity && (c.source === 'shop' || c.source === 'slot')).map((c) => ({ kind: 'cosmetic', id: c.id }));
+  const cos = [
+    ...COSMETICS.filter((c) => c.rarity === rarity && (c.source === 'shop' || c.source === 'slot')).map((c) => ({ kind: 'cosmetic', id: c.id })),
+    ...SKIN_ITEMS.map((x) => ({ kind: 'skin', id: x.id })), // предмет набору випадає саме в цій рідкості
+  ];
   return { jokers, cos };
 }
 
@@ -284,9 +356,9 @@ export function spin(p, rng) {
   const useJoker = pool.jokers.length && (!pool.cos.length || rng() < META.spin.jokerShare);
   const list = useJoker ? pool.jokers : pool.cos;
   const item = list[Math.floor(rng() * list.length)];
-  const g = grant(q, item.kind, item.id);
+  const g = grant(q, item.kind, item.id, { rarity, serial: 1 + Math.floor(rng() * 9999) });
   q = g.profile;
-  return { ok: true, profile: q, result: { reels: reelsFor(rarity, rng), rarity, kind: item.kind, id: item.id, duplicate: g.duplicate, shards: g.shards, pityHit } };
+  return { ok: true, profile: q, result: { reels: reelsFor(rarity, rng), rarity, kind: item.kind, id: item.id, duplicate: g.duplicate, shards: g.shards, pityHit, upgraded: !!g.upgraded, from: g.from || null, serial: g.serial || null, completed: g.completed || [] } };
 }
 
 // ───────── бали за партію і досягнення ─────────
@@ -340,6 +412,7 @@ export function checkAchievements(p, summary) {
     q.achievements[a.id] = 1;
     if (a.reward.points) q.points += a.reward.points;
     if (a.reward.cosmetic) q = grant(q, 'cosmetic', a.reward.cosmetic).profile;
+    if (a.reward.skin) q = grant(q, 'skin', a.reward.skin, { rarity: a.reward.rarity }).profile;
     unlocked.push(a.id);
   }
   return { profile: q, unlocked };
@@ -372,14 +445,38 @@ export function importCode(code) {
   }
 }
 
-/** Дані профілю для суперника (онлайн): лише вибрана косметика. */
+/** Дані профілю для суперника (онлайн): лише вибрана косметика і рідкість вдягнутих предметів наборів. */
 export function publicLook(p) {
-  return { ...p.equipped };
+  const rar = {};
+  const ser = {};
+  for (const cat of SKIN_KINDS) {
+    const x = SKIN_BY_ID[p.equipped[cat]] && p.skins?.[p.equipped[cat]];
+    if (!x) continue;
+    rar[cat] = x.r;
+    ser[cat] = x.n;
+  }
+  return { ...p.equipped, rar, ser };
 }
 
-/** Перевірка чужої «зовнішності» (може бути зламаною): лише відомі id потрібної категорії. */
+/**
+ * Перевірка чужої «зовнішності» (може бути зламаною): лише відомі id потрібної категорії.
+ * Старі клієнти надсилають id старої косметики — вони перекладаються в предмети наборів.
+ */
 export function sanitizeLook(look) {
-  const out = { ...DEFAULT_EQUIPPED };
-  if (look && typeof look === 'object') for (const cat of Object.keys(COSMETIC_CATS)) if (COSMETIC_BY_ID[look[cat]]?.cat === cat) out[cat] = look[cat];
+  const out = { ...DEFAULT_EQUIPPED, rar: {}, ser: {} };
+  if (!look || typeof look !== 'object') return out;
+  for (const cat of Object.keys(COSMETIC_CATS)) {
+    let id = look[cat];
+    let legacyR = null;
+    if (LEGACY_SKINS[id]) [id, legacyR] = LEGACY_SKINS[id];
+    if (COSMETIC_BY_ID[id]?.cat === cat) out[cat] = id;
+    else if (SKIN_BY_ID[id]?.cat === cat) {
+      out[cat] = id;
+      const r = look.rar?.[cat];
+      out.rar[cat] = RANK[r] !== undefined ? r : legacyR || 'common';
+      const n = look.ser?.[cat];
+      if (Number.isInteger(n) && n >= 1 && n <= 9999) out.ser[cat] = n;
+    }
+  }
   return out;
 }

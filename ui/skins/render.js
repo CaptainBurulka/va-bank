@@ -4,6 +4,12 @@ import { SKINS } from '../../config.js';
 import { SETS, reducedMotion, RAR } from './core.js';
 import './sets/kyiv.js';
 import './sets/cyber.js';
+import './sets/samurai.js';
+import './sets/cossack.js';
+import './sets/deco.js';
+import './sets/abyss.js';
+import './sets/pixel.js';
+import './sets/space.js';
 
 export { SETS };
 export const ITEM_KINDS = {
@@ -27,7 +33,7 @@ const io = typeof IntersectionObserver === 'function'
   : null;
 
 /**
- * @param {object} o { set, kind: 'card'|'back'|'felt'|'chip', card?, rarity, w?, live? }
+ * @param {object} o { set, kind: 'card'|'back'|'felt'|'chip', card?, rarity, w?, live?, observe? (false — без паузи поза екраном, для статичних) }
  * @returns HTMLElement .sk-item
  */
 export function renderItem(o) {
@@ -43,12 +49,12 @@ export function renderItem(o) {
       : o.kind === 'felt' ? set.felt(rarity, { live })
         : set.chip(rarity, { live });
   el.innerHTML = `<div class="sk-tilt ${built.cls || ''}"><div class="sk-art">${built.layers.map((l) => `<div class="plx d${l.d}">${l.svg}</div>`).join('')}</div>`
-    + `<div class="sk-ink">${built.ink || ''}</div><div class="sk-live"></div><div class="sk-foil"></div><div class="sk-glare"></div><div class="sk-frame"></div>${rarity === 'legendary' && !shape ? ORN : ''}<div class="sk-gem" title="${RAR[rarity].name}"></div></div>`;
+    + `<div class="sk-ink">${built.ink || ''}</div><div class="sk-live"></div><div class="sk-foil"></div><div class="sk-glare"></div><div class="sk-frame"></div><div class="sk-bevel"></div>${rarity === 'legendary' && !shape ? ORN : ''}<div class="sk-gem" title="${RAR[rarity].name}"></div></div>`;
   if (built.live && live && rarity === 'legendary') {
     const stop = built.live(el.querySelector('.sk-live'), SKINS.particles.legendary);
     if (typeof stop === 'function') el._stop = stop;
   }
-  io?.observe(el);
+  if (o.observe !== false) io?.observe(el);
   el.dataset.rarity = rarity;
   el.dataset.set = o.set;
   return el;
