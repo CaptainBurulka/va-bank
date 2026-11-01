@@ -6,7 +6,7 @@ import { buildDeck, shuffle, compareDetail, scoutClass, donOdds, SUITS } from '.
 import { resolveJokers, jokerCard, sanitizeSet, JOKER_BY_ID, jokerSlot } from './jokers.js';
 import { slotOf, slotsOf, evaluate, compareCombos, knifeCut, explain, bestSet, COMBO_RANK } from './combos.js';
 
-export const STATE_VERSION = 4;
+export const STATE_VERSION = 5; // 5 — покроковий раунд комбінацій (step: open → closed), openPick, timerScale
 /** Основа раунду: 'combo' — 3 карти з 6, комбінації; 'single' — стара гра однією картою. */
 export const isCombo = (s) => s.cfg.core !== 'single';
 
@@ -109,6 +109,7 @@ export function createGame(opts = {}, ctx) {
       hand: [],
       played: null,
       openId: null, // комбінації: id відкритої карти з трьох
+      openPick: null, // покроковий раунд: відкрита карта, покладена на кроці «відкрита» (до закритих)
       swapped: false,
       scouted: false,
       scoutDecided: false,
@@ -157,11 +158,20 @@ export function createGame(opts = {}, ctx) {
 export function upgradeState(raw) {
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.players)) return null;
   if (raw.v === STATE_VERSION) return raw;
+  if (raw.v === 4) {
+    // 4 → 5: у комбінаціях раунд став покроковим. Посеред раунду: хто вже поклав 3 карти — поклав;
+    // решта доклада́є старим способом (playSet), тож крок — «закриті».
+    const s = clone(raw);
+    s.players.forEach((pl) => { pl.openPick = null; });
+    s.step = s.cfg?.core === 'single' ? null : (s.phase === 'play' ? 'closed' : null);
+    s.v = STATE_VERSION;
+    return s;
+  }
   if (raw.v === 3) {
     // 3 → 4: партії, початі до комбінацій, доігруються за старими правилами однією картою
     const s = clone(raw);
     s.cfg = { ...s.cfg, core: 'single' };
-    s.players.forEach((pl) => { pl.openId = null; });
+    s.players.forEach((pl) => { pl.openId = null; pl.openPick = null; });
     s.v = STATE_VERSION;
     return s;
   }
@@ -257,7 +267,8 @@ function transfer(s, from, to, amount) {
 
 function setTimer(s, phase, ctx) {
   if (!s.timersEnabled) { s.timer = null; return; }
-  const duration = s.cfg.timers[phase] * 1000;
+  if (s.cfg.timerScale === 0) { s.timer = null; return; } // «без таймера»
+  const duration = Math.round((s.cfg.timers[phase] ?? s.cfg.timers.play) * (s.cfg.timerScale || 1)) * 1000;
   const paused = s.timer?.paused || false;
   s.timer = paused
     ? { phase, duration, deadline: null, remaining: duration, paused: true }
@@ -278,7 +289,7 @@ function startRound(s, ctx, first = false) {
   s.jokerTrash = [];
   if (s.pot === 0) s.jackpot = 0;
   for (const pl of s.players) {
-    Object.assign(pl, { played: null, openId: null, swapped: false, scouted: false, scoutDecided: false, scoutSeen: null, scoutTarget: null, shown: false, ready: false, folded: false });
+    Object.assign(pl, { played: null, openId: null, openPick: null, swapped: false, scouted: false, scoutDecided: false, scoutSeen: null, scoutTarget: null, shown: false, ready: false, folded: false });
   }
   // Козир раунду
   s.trump = s.cfg.features.trump
@@ -317,7 +328,9 @@ function startRound(s, ctx, first = false) {
     log(s, { t: 'jokerDeal', who: live.filter((p) => s.jokerSets[p].length) });
   }
   s.phase = 'play';
-  setTimer(s, 'play', ctx);
+  // Комбінації — покроково: 1) усі кладуть відкриту карту, 2) бачачи відкриті карти суперників — дві закриті
+  s.step = isCombo(s) ? 'open' : null;
+  setTimer(s, isCombo(s) ? 'open' : 'play', ctx);
 }
 
 function enterScout(s, ctx) {
@@ -484,6 +497,7 @@ function endRound(s, ctx) {
     for (const c of [].concat(pl.played || [])) if (c.kind !== 'joker') s.discard.push(c);
     pl.played = null;
     pl.openId = null;
+    pl.openPick = null;
   }
   for (const c of s.jokerTrash) if (c.kind !== 'joker') s.discard.push(c);
   s.jokerTrash = [];
@@ -575,7 +589,12 @@ export function legalActions(s, p) {
         if (s.cfg.features.swap && !me.swapped && me.chips >= s.cfg.swapCost) {
           for (const c of me.hand) if (c.kind !== 'joker') out.push({ type: 'swap', cardId: c.id });
         }
-        if (isCombo(s)) { if (me.hand.length) out.push({ type: 'playSet', count: Math.min(s.cfg.playCount, me.hand.length) }); }
+        if (isCombo(s)) {
+          if (!me.hand.length) break;
+          if (s.step === 'open') { if (!me.openPick) out.push({ type: 'playOpen' }); }
+          else if (me.openPick) out.push({ type: 'playClosed', count: Math.min(s.cfg.playCount - 1, me.hand.length) });
+          else out.push({ type: 'playSet', count: Math.min(s.cfg.playCount, me.hand.length) }); // збереження старої версії
+        }
         else for (const c of me.hand) out.push({ type: 'play', cardId: c.id });
       }
       break;
@@ -680,11 +699,42 @@ export function reduce(state, action, ctx) {
       log(s, { t: 'swap', p, amount: s.cfg.swapCost });
       break;
     }
+    case 'playOpen': {
+      // Крок 1: відкрита карта. Усі відкриті показуються разом, щойно кожен поклав свою.
+      if (!isCombo(s)) return err('wrong-core');
+      if (s.phase !== 'play' || s.step !== 'open') return err('wrong-phase');
+      if (me.played || me.openPick) return err('already-played');
+      const idx = me.hand.findIndex((c) => c.id === action.cardId);
+      if (idx < 0) return err('no-such-card');
+      me.openPick = me.hand.splice(idx, 1)[0];
+      me.openId = me.openPick.id;
+      log(s, { t: 'playOpen', p });
+      if (s.players.every((pl) => pl.out || pl.openPick || pl.played)) enterClosed(s, ctx);
+      break;
+    }
+    case 'playClosed': {
+      // Крок 2: дві закриті карти — уже бачачи відкриті карти суперників
+      if (!isCombo(s)) return err('wrong-core');
+      if (s.phase !== 'play' || s.step !== 'closed') return err('wrong-phase');
+      if (me.played) return err('already-played');
+      if (!me.openPick) return err('no-open');
+      const k = Math.min(s.cfg.playCount - 1, me.hand.length);
+      const ids = action.cards;
+      if (!Array.isArray(ids) || ids.length !== k || new Set(ids).size !== k) return err('bad-cards');
+      const cards = ids.map((id) => me.hand.find((c) => c.id === id));
+      if (cards.some((c) => !c)) return err('no-such-card');
+      me.hand = me.hand.filter((c) => !ids.includes(c.id));
+      me.played = [me.openPick, ...cards];
+      me.openPick = null;
+      log(s, { t: 'play', p, set: true });
+      if (s.players.every((pl) => pl.out || pl.played)) enterScout(s, ctx);
+      break;
+    }
     case 'playSet': {
-      // Комбінації: 3 карти одним кроком, одна з них — відкрита (її побачать усі до торгів)
+      // Комбінації одним кроком (збереження старої версії; на кроці «відкрита» — теж можна)
       if (!isCombo(s)) return err('wrong-core');
       if (s.phase !== 'play') return err('wrong-phase');
-      if (me.played) return err('already-played');
+      if (me.played || me.openPick) return err('already-played');
       const k = Math.min(s.cfg.playCount, me.hand.length);
       const ids = action.cards;
       if (!Array.isArray(ids) || ids.length !== k || new Set(ids).size !== k) return err('bad-cards');
@@ -695,7 +745,8 @@ export function reduce(state, action, ctx) {
       me.played = cards;
       me.openId = action.open;
       log(s, { t: 'play', p, set: true });
-      if (s.players.every((pl) => pl.out || pl.played)) revealOpen(s, ctx);
+      if (s.step === 'open') { if (s.players.every((pl) => pl.out || pl.openPick || pl.played)) enterClosed(s, ctx); }
+      else if (s.players.every((pl) => pl.out || pl.played)) revealOpen(s, ctx);
       break;
     }
     case 'play': {
@@ -858,9 +909,31 @@ function showdown(s, ctx) {
 // ───────────── комбінації з 3 карт ─────────────
 
 /** Відкрита карта гравця (комбінації). */
-const openCard = (pl) => (Array.isArray(pl.played) ? pl.played.find((c) => c.id === pl.openId) || null : null);
+const openCard = (pl) => pl.openPick || (Array.isArray(pl.played) ? pl.played.find((c) => c.id === pl.openId) || null : null);
 
 /** Усі поклали карти: відкриті карти бачать усі (до розвідки й торгів). */
+/** Усі поклали відкриті карти — показуємо їх і переходимо до закритих. */
+function enterClosed(s, ctx) {
+  s.step = 'closed';
+  log(s, { t: 'open', cards: s.players.map((pl) => (pl.out ? null : openCard(pl))) });
+  if (s.players.every((pl) => pl.out || pl.played)) return enterScout(s, ctx);
+  setTimer(s, 'closed', ctx);
+}
+
+/** Тайм-аут на кроці «відкрита»: найкраща трійка з руки, відкрита — найслабша з неї (як і раніше). */
+export function autoOpen(s, hand) {
+  const id = autoSet(s, hand).open;
+  return hand.find((c) => c.id === id);
+}
+
+/** Тайм-аут на кроці «закриті»: дві карти, що з уже покладеною відкритою дають найсильнішу комбінацію. */
+export function autoClosed(s, open, hand) {
+  const k = Math.min(s.cfg.playCount - 1, hand.length);
+  const cards = [open, ...hand];
+  const best = bestSet(cards, s.trump, { k: k + 1, joker: jokerSlot, filter: (idx) => idx.includes(0) });
+  return best.idx.filter((i) => i !== 0).map((i) => cards[i]);
+}
+
 function revealOpen(s, ctx) {
   log(s, { t: 'open', cards: s.players.map((pl) => (pl.out ? null : openCard(pl))) });
   enterScout(s, ctx);
@@ -1133,8 +1206,30 @@ function applyTimeout(s, ctx) {
   log(s, { t: 'timeout', phase: s.phase });
   switch (s.phase) {
     case 'play':
+      if (isCombo(s) && s.step === 'open') {
+        // за гравця — найкращий варіант, а не випадковий
+        for (const p of seats(s)) {
+          const me = s.players[p];
+          if (me.out || me.played || me.openPick || !me.hand.length) continue;
+          const o = autoOpen(s, me.hand);
+          me.openPick = o;
+          me.openId = o.id;
+          me.hand = me.hand.filter((c) => c !== o);
+          log(s, { t: 'playOpen', p, auto: true });
+        }
+        enterClosed(s, ctx);
+        break;
+      }
       for (const p of seats(s)) {
         const me = s.players[p];
+        if (!me.out && !me.played && me.openPick) {
+          const cs = autoClosed(s, me.openPick, me.hand);
+          me.played = [me.openPick, ...cs];
+          me.openPick = null;
+          me.hand = me.hand.filter((c) => !cs.includes(c));
+          log(s, { t: 'play', p, auto: true, set: true });
+          continue;
+        }
         if (!me.out && !me.played && me.hand.length) {
           if (isCombo(s)) {
             // за гравця: найсильніша комбінація, відкрита — найслабша з трьох
@@ -1149,7 +1244,8 @@ function applyTimeout(s, ctx) {
           log(s, { t: 'play', p, auto: true, set: isCombo(s) || undefined });
         }
       }
-      if (isCombo(s)) revealOpen(s, ctx); else enterScout(s, ctx);
+      if (isCombo(s) && s.step === 'closed') enterScout(s, ctx);
+      else if (isCombo(s)) revealOpen(s, ctx); else enterScout(s, ctx);
       break;
     case 'scout':
       for (const pl of s.players) pl.scoutDecided = true;
@@ -1180,8 +1276,9 @@ function playedVisible(s, viewer, p) {
 
 /** Відкрита карта гравця q видна глядачу viewer. */
 function openVisible(s, viewer, q) {
-  if (!isCombo(s) || !s.players[q].played) return false;
-  return viewer === q || s.phase !== 'play';
+  const pl = s.players[q];
+  if (!isCombo(s) || !(pl.played || pl.openPick)) return false;
+  return viewer === q || s.phase !== 'play' || s.step === 'closed';
 }
 
 /** Публічна інформація про місце q (те, що бачить кожен за столом). */
@@ -1193,6 +1290,7 @@ function seatView(s, viewer, q) {
     chips: pl.chips,
     handCount: pl.hand.length,
     hasPlayed: !!pl.played,
+    hasOpen: !!(pl.openPick || pl.played), // покроковий раунд: відкрита карта вже лежить
     played: pl.played && playedVisible(s, viewer, q) ? pl.played : null,
     // комбінації: відкриту карту бачать усі, щойно всі поклали (до торгів); до того — лише власник
     open: openVisible(s, viewer, q) ? openCard(pl) : null,
@@ -1243,6 +1341,7 @@ export function viewFor(s, p, now) {
     seq: s.seq,
     you: p,
     phase: s.phase,
+    step: s.step || null, // комбінації: 'open' — кладуть відкриту, 'closed' — дві закриті
     round: s.round,
     maxRounds: s.cfg.maxRounds,
     n: N(s),
@@ -1268,6 +1367,7 @@ export function viewFor(s, p, now) {
       hand: me.hand,
       played: me.played,
       openId: me.openId,
+      openPick: me.openPick || null,
       swapped: me.swapped,
       jokerSet: s.jokerSets[p],
       scouted: me.scouted,
@@ -1286,6 +1386,7 @@ export function viewFor(s, p, now) {
       chips: op.chips,
       handCount: op.hand.length,
       hasPlayed: !!op.played,
+      hasOpen: !!(op.openPick || op.played),
       played: playedVisible(s, p, oppSeat) ? op.played : null,
       open: openVisible(s, p, oppSeat) ? openCard(op) : null,
       swapped: op.swapped,

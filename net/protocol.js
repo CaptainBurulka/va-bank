@@ -1,6 +1,6 @@
 // Протокол обміну повідомленнями між хостом і гостем. Без DOM і без PeerJS — тестується в node.
 
-export const PROTOCOL_VERSION = 6; // 5 — комбінації з 3 карт (playSet); 6 — «away» (згорнуто), епохи ID хоста
+export const PROTOCOL_VERSION = 7; // 5 — комбінації з 3 карт (playSet); 6 — «away», епохи ID хоста; 7 — покроковий раунд (playOpen/playClosed)
 
 /** Порівняння версій «2.0.1» → -1 / 0 / 1. */
 export function compareVersions(a, b) {
@@ -70,7 +70,7 @@ export function cleanName(x) {
   return t || null;
 }
 
-const ACTION_TYPES = new Set(['play', 'playSet', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
+const ACTION_TYPES = new Set(['play', 'playSet', 'playOpen', 'playClosed', 'swap', 'donStart', 'scout', 'skipScout', 'check', 'raise', 'call', 'fold', 'don', 'show', 'ready', 'rematch']);
 
 /**
  * Перевірка повідомлення від гостя на боці хоста.
@@ -99,7 +99,7 @@ export function parseGuestMessage(m) {
       const a = m.action;
       if (!a || typeof a !== 'object' || !ACTION_TYPES.has(a.type)) return { ok: false, error: 'bad-action' };
       const clean = { type: a.type };
-      if (typeof a.cardId === 'string' && a.cardId.length <= 10) clean.cardId = a.cardId;
+      if (typeof a.cardId === 'string' && a.cardId.length <= 24) clean.cardId = a.cardId; // id джокера довший за звичайну карту
       // комбінації: 3 карти одним кроком (id джокерів довші за id звичайних карт)
       if (Array.isArray(a.cards) && a.cards.length <= 3 && a.cards.every((x) => typeof x === 'string' && x.length <= 24)) clean.cards = a.cards.slice();
       if (typeof a.open === 'string' && a.open.length <= 24) clean.open = a.open;

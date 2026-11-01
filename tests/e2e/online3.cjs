@@ -51,7 +51,8 @@ const os = require('os');
     for (const want of ['Чек', 'Колл', 'Далі без розвідки', 'Далі', 'Забрати']) for (const b of btns) if ((await b.textContent().catch(() => '')).includes(want)) { await b.click({ timeout: 1500 }).catch(() => {}); return; }
     const cards = await p.$$('#hand .card'); const hint = await p.textContent('#actions');
     if (cards.length && hint.includes('спершу торкнись')) { await cards[0].click().catch(() => {}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(() => {}); }
-    if (cards.length && hint.includes('торкайся карт')) { const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, 3)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500 }).catch(() => {}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(() => {}); }
+    // покроково: «Покласти відкриту» — 1 карта, «Покласти 2 закриті» — 2 (у віялі тиснемо на видиму ліву смугу)
+    if (cards.length && /відкриту|закриті|торкайся карт/i.test(hint)) { const need = /закриті/i.test(hint) ? 2 : /відкриту/i.test(hint) ? 1 : 3; const ids = await p.$$eval('#hand .card:not(.joker)', (els) => els.map((e) => e.dataset.id)); for (const id of ids.slice(0, need)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500, position: { x: 14, y: 40 } }).catch(()=>{}); await p.click('#actions .btn.primary', { timeout: 1500 }).catch(()=>{}); }
   };
   const play = async (n) => { for (let i = 0; i < n; i++) { for (const P of [A, B, C]) await step(P); await A.waitForTimeout(120); } };
   await play(30);

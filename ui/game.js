@@ -5,11 +5,12 @@ import { animateNumber, setNumber, flyChips, floatEmoji, floatText } from './fx.
 import { sfx } from './sound.js';
 import { SUIT, SPECIAL, SCOUT, REACTIONS, logLine, explain } from './text.js';
 import { ms, reducedMotion } from './motion.js';
-import { JOKER_BY_ID, RARITIES, RARITY_NAME, jokerDesc } from '../game/jokers.js';
+import { JOKER_BY_ID, RARITIES, RARITY_NAME, JOKER_ROLES, jokerDesc } from '../game/jokers.js';
+const jkLine = (id, n) => `${JOKER_ROLES[JOKER_BY_ID[id].role]?.icon || ''} ${jokerDesc(id, n)}`;
 import { playWin } from './cosmetics.js';
 import { PHRASES, isPhrase } from '../meta/rivals.js';
 import { MODES, FEEL } from '../config.js';
-import { liveCombo, weakestId, possibleCombos, comboOf, cheatSheetHTML } from './combo-ui.js';
+import { liveCombo, weakestId, possibleCombos, comboOf, cheatSheetHTML, bestWith } from './combo-ui.js';
 import { COMBO_NAME } from '../game/combos.js';
 import { setGlyph } from './glyph.js';
 
@@ -144,9 +145,22 @@ export class GameScreen {
   /** Комбінації: тап по карті — вибрати/зняти (до 3); тап по 👁 на вибраній — зробити її відкритою. */
   pickCombo(id, eye) {
     const v = this.view;
-    if (!v.legal.some((a) => a.type === 'playSet' || a.type === 'swap')) return;
+    if (!v.legal.some((a) => ['playSet', 'playOpen', 'playClosed', 'swap'].includes(a.type))) return;
     sfx.tap();
     const i = this.picks.indexOf(id);
+    // покроково: на кроці «відкрита» — одна карта, на кроці «закриті» — до двох
+    const stepMax = v.legal.some((a) => a.type === 'playOpen') ? 1 : v.legal.some((a) => a.type === 'playClosed') ? Math.min(2, (v.cfg.playCount || 3) - 1) : 0;
+    if (stepMax) {
+      if (i >= 0) this.picks.splice(i, 1);
+      else if (this.picks.length < stepMax) this.picks.push(id);
+      else this.picks[this.picks.length - 1] = id;
+      this.openPick = null;
+      this.focusId = this.picks.includes(id) ? id : null;
+      this.renderHandSelection();
+      this.renderActions();
+      this.onPick?.();
+      return;
+    }
     if (eye && i >= 0) { this.openPick = id; this.openManual = true; }
     else if (i >= 0) { this.picks.splice(i, 1); if (this.openPick === id) { this.openPick = null; this.openManual = false; } }
     else if (this.picks.length < (v.cfg.playCount || 3)) this.picks.push(id);
@@ -241,7 +255,7 @@ export class GameScreen {
   act(a) {
     if (this.pending) return;
     sfx.tap();
-    if (a.type === 'play' || a.type === 'playSet') { this.selected = null; this.picks = []; this.openPick = null; this.openManual = false; sfx.place(); }
+    if (['play', 'playSet', 'playOpen', 'playClosed'].includes(a.type)) { this.selected = null; this.picks = []; this.openPick = null; this.openManual = false; sfx.place(); }
     if (a.type === 'swap') { this.selected = null; this.picks = this.picks.filter((id) => id !== a.cardId); this.fixOpenPick(); }
     this.pending = true;
     setTimeout(() => (this.pending = false), 250);
@@ -432,7 +446,10 @@ export class GameScreen {
     switch (v.phase) {
       case 'play':
         if (this.isCombo(v)) {
-          if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери 3 карти'; sub = 'Одна з них — відкрита 👁, її побачать усі'; }
+          if (v.legal.some((a) => a.type === 'playOpen')) { kind = 'act'; title = 'Обери відкриту карту 👁'; sub = 'Її побачать усі. Потім — 2 закриті'; }
+          else if (v.legal.some((a) => a.type === 'playClosed')) { kind = 'act'; title = 'Обери 2 закриті карти'; sub = 'Відкриті карти суперників уже на столі'; }
+          else if (v.step === 'open' && v.me.openPick) { const w = three ? this.waitingNames(v, (x) => !x.hasOpen) : 'суперник'; title = 'Відкриту покладено'; sub = w ? `Обирає відкриту: ${w}` : ''; }
+          else if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери 3 карти'; sub = 'Одна з них — відкрита 👁, її побачать усі'; }
           else { const w = three ? this.waitingNames(v, (x) => !x.hasPlayed) : (v.opp.hasPlayed ? '' : 'Суперник'); title = w ? `Обирають карти: ${w}` : 'Карти на столі'; sub = v.me.out ? '' : 'Твої карти покладено'; }
           break;
         }
@@ -523,7 +540,7 @@ export class GameScreen {
         let s = '';
         switch (v.phase) {
           // коротко, щоб ніколи не обрізалось: значок + 1 слово
-          case 'play': s = o.hasPlayed ? '✓ готово' : '⏳ обирає'; break;
+          case 'play': s = (v.step === 'open' ? o.hasOpen : o.hasPlayed) ? '✓ готово' : '⏳ обирає'; break;
           case 'scout': s = o.scoutDecided ? '' : '⏳ думає'; break;
           case 'bet':
             if (o.folded) s = '✋ пас';
@@ -770,9 +787,12 @@ export class GameScreen {
       const o = list.find((c) => c.id === openId);
       return [...(o ? [o] : []), ...list.filter((c) => c !== o)].map((c) => ({ card: c, open: c.id === openId }));
     }
-    if (mine || !x.hasPlayed) return [];
+    // покроково: моя відкрита вже лежить, а закриті ще ні
+    if (mine) return v.me.openPick ? [{ card: v.me.openPick, open: true }] : [];
+    if (!x.hasPlayed && !x.hasOpen) return [];
     const n = v.cfg.playCount || 3;
-    return [{ card: x.open || null, open: !!x.open }, ...Array.from({ length: n - 1 }, () => ({ card: null, open: false }))];
+    const backs = x.hasPlayed ? n - 1 : 0;
+    return [{ card: x.open || null, open: !!x.open }, ...Array.from({ length: backs }, () => ({ card: null, open: false }))];
   }
 
   slotOfSeat(v, q) {
@@ -835,13 +855,13 @@ export class GameScreen {
     }
     if (q === v.you) {
       const played = arr(v.me.played);
-      if (!played.length) return '';
+      if (!played.length) return v.me.openPick ? '<span class="combo-tag mine">👁 відкрита</span>' : '';
       const c = comboOf(played, v.trump, v.me.hand);
       const peeked = three ? v.players.some((x) => x.seat !== v.you && x.scouted && x.scoutTarget === v.you) : v.opp.scouted;
       return `<span class="combo-tag mine">${esc(c.label)}${peeked && v.phase !== 'result' ? ` · ${ico('eye')}` : ''}</span>`;
     }
     const x = this.seat(v, q);
-    if (!x.hasPlayed || x.folded) return x.folded && x.hasPlayed ? '<span class="combo-tag">пас</span>' : '';
+    if (!(x.hasPlayed || x.hasOpen) || x.folded) return x.folded && x.hasPlayed ? '<span class="combo-tag">пас</span>' : '';
     const sc = v.me.scoutSeen && (three ? v.me.scoutTarget === q : true) && v.phase !== 'result' ? v.me.scoutSeen : null;
     const scTxt = sc ? `<span class="pill ${sc === 'high' ? 'hi' : 'lo'}">${SCOUT_COMBO[sc].short}</span>` : '';
     if (!x.open) return scTxt ? `<span class="combo-tag">${scTxt}</span>` : '';
@@ -926,6 +946,7 @@ export class GameScreen {
         c.classList.toggle('focus', on && c.dataset.id === this.focusId); // повна анімація скіна — лише тут
         c.classList.toggle('open-pick', on && c.dataset.id === this.openPick);
         let eye = c.querySelector('.eye-tog');
+        if (this.view.legal.some((a) => a.type === 'playOpen' || a.type === 'playClosed')) { eye?.remove(); continue; } // покроково 👁 не потрібен
         if (on && !eye) { eye = document.createElement('button'); eye.className = 'eye-tog'; eye.type = 'button'; c.append(eye); }
         if (!on) eye?.remove();
         if (eye) {
@@ -1039,7 +1060,43 @@ export class GameScreen {
   comboActions(v, btn, waitCard) {
     const me = v.me, L = v.legal;
     const need = v.cfg.playCount || 3;
-    if (!L.some((a) => a.type === 'playSet')) return waitCard('Карти покладено', this.isThree(v) ? 'Чекаємо на інших' : v.opp.hasPlayed ? '' : 'Суперник ще обирає');
+    const swapRow = (sel) => {
+      const canSwap = !!sel && L.some((a) => a.type === 'swap' && a.cardId === sel.id);
+      const why = sel?.kind === 'joker' ? 'джокера не обміняти' : me.swapped ? 'вже використано' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'вибери 1 карту' : `нова замість ${cardTitle(sel)}`;
+      return `<div class="row" style="--n:1">${btn(`${ico('swap', 'ico')} Обмін −${v.cfg.swapCost}`, { type: 'swap', cardId: sel?.id }, 'secondary', canSwap, why)}</div>`;
+    };
+    // Крок 1: відкрита карта
+    if (L.some((a) => a.type === 'playOpen')) {
+      const card = me.hand.find((c) => c.id === this.picks[0]);
+      const best = card ? bestWith(card, me.hand, v.trump) : null;
+      let html = `<div class="combo-live${card ? '' : ' empty'}"><b>${card ? `👁 ${esc(cardTitle(card))}` : 'Обери відкриту карту'}</b><span class="pc">${best ? `найкраще з нею: ${esc(best.label)}` : 'її побачать усі'}</span></div>`;
+      html += swapRow(card || null);
+      html += card
+        ? btn('Покласти відкриту 👁', { type: 'playOpen', cardId: card.id }, 'primary stack-label', true, card.kind === 'joker' ? jkLine(card.joker, v.n || 2) : 'далі — 2 закриті, бачачи відкриті суперників')
+        : btn('Покласти відкриту 👁', { type: 'playOpen' }, 'primary stack-label', false, 'торкнись карти в руці');
+      return html;
+    }
+    // Крок 2: дві закриті до вже покладеної відкритої
+    if (L.some((a) => a.type === 'playClosed')) {
+      const k = L.find((a) => a.type === 'playClosed').count;
+      const cards = this.picks.map((id) => me.hand.find((c) => c.id === id)).filter(Boolean);
+      const live = liveCombo([me.openPick, ...cards], v.trump, me.hand);
+      const left = k - cards.length;
+      const meter = cards.length === k && live?.strength != null
+        ? `<span class="meter" title="Яку частку типових комбінацій суперника б'є"><i style="width:${Math.round(live.strength * 100)}%"></i></span><span class="pc">сила ${pct(live.strength)}</span>`
+        : `<span class="pc">ще ${left} ${left === 1 ? 'карта' : 'карти'}</span>`;
+      let html = `<div class="combo-live"><b>${esc(live?.combo.label || '')}</b>${meter}</div>`;
+      html += swapRow(cards.length === 1 ? cards[0] : null);
+      const jk = cards.find((c) => c.kind === 'joker');
+      html += cards.length === k
+        ? btn(`Покласти ${k} закриті`, { type: 'playClosed', cards: this.picks.slice() }, 'primary stack-label', true, jk ? jkLine(jk.joker, v.n || 2) : `разом із 👁 ${cardTitle(me.openPick)}`)
+        : btn(`Покласти ${k} закриті`, { type: 'playClosed' }, 'primary stack-label', false, 'торкнись карт у руці');
+      return html;
+    }
+    if (!L.some((a) => a.type === 'playSet')) {
+      const waitingOpen = v.step === 'open' && me.openPick;
+      return waitCard(waitingOpen ? 'Відкриту покладено' : 'Карти покладено', this.isThree(v) ? 'Чекаємо на інших' : waitingOpen ? 'Суперник обирає відкриту' : v.opp.hasPlayed ? '' : 'Суперник ще обирає');
+    }
     const cards = this.picks.map((id) => me.hand.find((c) => c.id === id)).filter(Boolean);
     const live = liveCombo(cards, v.trump, me.hand);
     const left = need - cards.length;
@@ -1425,7 +1482,7 @@ ${jkLines || changed ? `<ul class="rv-jokers"><li class="rv-jh">Що зроби�
       this.oppSeats(v).forEach((q, i) => {
         const x = this.seat(v, q);
         const a = this.panels[i].ava;
-        const w = !x.out && !x.folded && (v.phase === 'play' ? !x.hasPlayed : v.phase === 'scout' ? !x.scoutDecided : v.phase === 'bet' ? v.bet.toAct === q : v.phase === 'result' ? !x.ready : false);
+        const w = !x.out && !x.folded && (v.phase === 'play' ? (v.step === 'open' ? !x.hasOpen : !x.hasPlayed) : v.phase === 'scout' ? !x.scoutDecided : v.phase === 'bet' ? v.bet.toAct === q : v.phase === 'result' ? !x.ready : false);
         a.classList.toggle('ticking', w);
         a.classList.toggle('low', w && low);
         if (w) setDash(a.querySelector('.tring .val'), 160.2 * (1 - k));

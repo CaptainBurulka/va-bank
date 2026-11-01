@@ -35,7 +35,10 @@ export const CONFIG = Object.freeze({
     secondFromRound: 6, // з якого раунду дозволена друга спроба поспіль
   }),
   // Таймери у секундах (у режимі «передай телефон» вимкнені)
-  timers: Object.freeze({ play: 20, scout: 12, bet: 25, result: 20 }),
+  // Комбінації — окремий таймер на кожен крок: open — відкрита карта, closed — дві закриті (бачачи відкриті суперників)
+  timers: Object.freeze({ play: 20, open: 15, closed: 30, scout: 12, bet: 25, result: 20 }),
+  // Швидкість гри (хост обирає в лобі): множник таймерів; 0 — без таймера
+  timerSpeeds: Object.freeze({ fast: 0.6, normal: 1, slow: 1.6, off: 0 }),
   // WebRTC: STUN безкоштовні; TURN — ретранслятор для мобільних мереж (LTE/5G часто за «симетричним» NAT,
   // де пряме з'єднання без TURN не встановлюється). Можна вказати кілька серверів масивом, напр.:
   // turn: [{ urls: ['turn:a.relay.example.com:80', 'turn:a.relay.example.com:443?transport=tcp', 'turns:a.relay.example.com:443?transport=tcp'], username: 'user', credential: 'pass' }],
@@ -74,13 +77,13 @@ export const JOKER_TUNING = Object.freeze({
   roulette: { k: 8 },
   thief: { max: 3, loseTie: false },     // Дикун
   fist: { v: 8, fee: 10 },
-  insurance: { v: 2 },                   // Чет-нечет
+  insurance: { v: 1 },                   // Чет-нечет
   twin: {},
-  chameleon: { v: 6 },
-  modest: { alt: 8 },                    // Підробка
+  chameleon: { v: 7 },
+  modest: { alt: 6 },                    // Підробка
   tax: { v: 6, fee: 5 },
   dice: { d: 2 },                        // Стрибок
-  counter: { v: 1, ranks: 1, loseTie: true },           // Сходинка
+  counter: { v: null, ranks: 1, loseTie: false },           // Сходинка
   brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
   magnet: { v: 6 },
   temptation: { v: 1, gap: 60 },         // Аутсайдер
@@ -88,14 +91,14 @@ export const JOKER_TUNING = Object.freeze({
   swap: {},
   shadow: { v: 2 },
   trap: { v: 2, ranks: 1 },
-  highroller: { v: 7 },
+  highroller: { v: 6 },
   pocket: { v: 6 },
-  sharper: { v: 4, alt: 8 },
+  sharper: { v: 4, alt: 7 },
   luck: { v: 5, up: 1 },
   brave: { v: 6, perRaise: 1 },
-  antitrump: { ranks: 3 },               // Ламач
+  antitrump: { ranks: 2 },               // Ламач
   echo: { v: 7 },
-  quake: { v: 6 },
+  quake: { v: 7 },
   castling: { v: 6, myTie: true },
   frenzy: { v: 6 },
   mirrorworld: { v: 7 },

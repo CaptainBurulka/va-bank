@@ -103,3 +103,11 @@ test('протокол 6: номер дії (aid), «згорнув гру», е
   const ids = Array.from({ length: HOST_EPOCHS }, (_, k) => peerIdFor('ABCD', k));
   assert.equal(new Set(ids).size, HOST_EPOCHS);
 });
+
+test('протокол 7: покроковий раунд — відкрита (зокрема джокер) і дві закриті', () => {
+  const o = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'playOpen', cardId: 'J1-mirrorworld' } });
+  assert.equal(o.ok, true);
+  assert.equal(o.m.action.cardId, 'J1-mirrorworld');
+  const c = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'playClosed', cards: ['w1', 'J2-storm'] } });
+  assert.deepEqual(c.m.action.cards, ['w1', 'J2-storm']);
+});

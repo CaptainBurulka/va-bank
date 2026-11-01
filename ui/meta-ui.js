@@ -1,5 +1,5 @@
 // Екрани клубу: гаманець, колекція, магазин, ігровий автомат, нагороди після партії.
-import { JOKERS, JOKER_BY_ID, RARITY_NAME, RARITIES, JOKER_TYPES } from '../game/jokers.js';
+import { JOKERS, JOKER_BY_ID, RARITY_NAME, RARITIES, JOKER_ROLES } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, ACH_BY_ID, SETS, SKIN_BY_ID, SKIN_KINDS, SKIN_SET_BY_ID } from '../meta/catalog.js';
 import {
   buy, exchange, priceOf, shardPriceOf, setJokers, equip, spin, spinOdds, awardGame, checkAchievements, REEL_SYMBOLS, SPECIAL_SYMBOL, setProgress, completeSets, recordJokers, jokerStatsCsv,
@@ -213,7 +213,7 @@ function jokerSheet(id) {
   else if (own) btns.push({ label: p.set.length >= 3 ? 'Набір повний (3)' : 'Додати до набору', cls: 'primary', onClick: () => { if (p.set.length < 3) { update(setJokers(p, [...p.set, id])); renderCollection('jokers'); } } });
   else if (priceOf('joker', id) != null) btns.push({ label: `Купити за ★ ${priceOf('joker', id)}`, cls: 'primary', onClick: () => tryBuy('joker', id, () => renderCollection('jokers')) });
   btns.push({ label: 'Закрити', cls: 'tertiary' });
-  ui.modal(`<h3>${j.icon} ${esc(j.name)}</h3><p>${RARITY_NAME[j.rarity]} джокер · ${JOKER_TYPES[j.type]}${own ? '' : ' · ще не відкрито'}</p><p style="color:var(--ink)">${esc(j.desc)}</p>${j.rarity === 'legendary' && !own ? '<p>Легендарних можна вибити лише з автомата.</p>' : ''}`, btns);
+  ui.modal(`<h3>${j.icon} ${esc(j.name)}</h3><p>${RARITY_NAME[j.rarity]} джокер · ${JOKER_ROLES[j.role].icon} ${JOKER_ROLES[j.role].name}${own ? '' : ' · ще не відкрито'}</p><p style="color:var(--ink)">${esc(j.desc)}</p>${j.rarity === 'legendary' && !own ? '<p>Легендарних можна вибити лише з автомата.</p>' : ''}`, btns);
 }
 
 // ───────── магазин ─────────

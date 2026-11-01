@@ -1,7 +1,7 @@
 // Джокери в грі комбінаціями з 3 карт: каталог, роздача, кожен джокер, порядок спрацювання, фішки.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { JOKERS, JOKER_BY_ID, JOKER_TYPES, jokerDesc } from '../game/jokers.js';
+import { JOKERS, JOKER_BY_ID, JOKER_TYPES, JOKER_ROLES, jokerDesc } from '../game/jokers.js';
 import { createGame, reduce, viewFor, legalActions } from '../game/engine.js';
 import { buildDeck } from '../game/cards.js';
 import { JOKER_TUNING as T } from '../config.js';
@@ -53,6 +53,9 @@ test('каталог: 36 джокерів, рідкості 14/10/7/5, три т
   assert.deepEqual(by, { common: 14, rare: 10, epic: 7, legendary: 5 });
   for (const j of JOKERS) {
     assert.ok(JOKER_TYPES[j.type], `${j.id}: тип`);
+    // режим комбінацій: рівно одна роль і жодної «сили»
+    assert.ok(JOKER_ROLES[j.role], `${j.id}: роль`);
+    for (const n of [2, 3]) assert.ok(!/сил[аиу]/i.test(jokerDesc(j, n)), `${j.id}: без «сили»`);
     for (const n of [2, 3]) { const d = jokerDesc(j, n); assert.ok(d && !d.includes('\n') && d.length <= 130, `${j.id}: ${d}`); }
     assert.ok(j.icon && j.name, j.id);
   }
@@ -116,10 +119,12 @@ test('Двійник: копіює найкраще значення з руки
   assert.equal(combo(0).label, 'Пара 7');
 });
 test('Хамелеон: масть будь-яка (стріт у масть), нічию виграє', () => {
-  const { combo } = duel({ j0: 'chameleon', h0: ['w4', 'w5', 's9', 'f4', 'f9', 's5'], p0: ['J0-chameleon', 'w4', 'w5'] });
+  // значення Хамелеона — T.chameleon.v (зараз 7): разом із 5 і 6 тієї ж масті — стріт у масть
+  const v = T.chameleon.v;
+  const { combo } = duel({ j0: 'chameleon', h0: [`w${v - 2}`, `w${v - 1}`, 's9', 'f4', 'f9', 's5'].map((x) => x), p0: ['J0-chameleon', `w${v - 2}`, `w${v - 1}`] });
   assert.equal(combo(0).id, 'sflush');
-  const tie = duel({ j0: 'chameleon', h0: ['w2', 'f3', 's9', 'f4', 'f9', 's5'], h1: ['s6', 'w3', 'f2', 'w1', 'f8', 's8'], p0: ['J0-chameleon', 'w2', 'f3'], p1: ['s6', 'w3', 'f2'] });
-  assert.equal(tie.s.result.winner, 0, 'рівні «Старша 6» — нічия Хамелеона');
+  const tie = duel({ j0: 'chameleon', h0: ['w2', 'f3', 's9', 'f4', 'f9', 's5'], h1: [`s${v}`, 'w3', 'f2', 'w1', 'f8', 's8'], p0: ['J0-chameleon', 'w2', 'f3'], p1: [`s${v}`, 'w3', 'f2'] });
+  assert.equal(tie.s.result.winner, 0, `рівні «Старша ${v}» — нічия Хамелеона`);
 });
 test('Підробка: значення відкритої карти суперника — трійка', () => {
   const { combo } = duel({ j0: 'modest', h0: ['w9', 'f9', 's2', 'w4', 'f4', 's5'], h1: ['s9', 'f8', 's3', 'w1', 'f2', 's6'], p0: ['J0-modest', 'w9', 'f9'], p1: ['s9', 'f8', 's3'], o1: 's9' });

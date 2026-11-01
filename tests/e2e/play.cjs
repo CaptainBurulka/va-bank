@@ -40,9 +40,10 @@ const os = require('os');
     }
     if (!done) {
       // комбінації — вибрати 3 карти (іноді змінити відкриту 👁), класика — 1
-      const need = (await p.$('#scr-game.combo')) ? 3 : 1;
+      const acts = await p.textContent('#actions').catch(() => '');
+      const need = !(await p.$('#scr-game.combo')) ? 1 : /закриті/i.test(acts) ? 2 : /відкриту/i.test(acts) ? 1 : 3;
       const c = await p.$$('#hand .card:not(.selected)');
-      if (c.length && (await p.$$('#hand .card.selected')).length < need) await c[Math.floor(Math.random() * c.length)].click({ timeout: 2000 }).catch(() => {});
+      if (c.length && (await p.$$('#hand .card.selected')).length < need) await c[Math.floor(Math.random() * c.length)].click({ timeout: 2000, position: { x: 14, y: 40 } }).catch(() => {});
       else if (need === 3 && Math.random() < 0.3) { const e = await p.$$('#hand .eye-tog'); if (e.length) await e[Math.floor(Math.random() * e.length)].click({ timeout: 2000 }).catch(() => {}); }
     }
     await p.waitForTimeout(mode === 'bot' ? 250 : 120);

@@ -95,11 +95,12 @@ const g2 = (ids, opts = {}) => createGame({ deck: deckWith(ids), firstToAct: 0, 
 const playSet = (p, cards, open = cards[0]) => ({ type: 'playSet', player: p, cards, open });
 const H0 = ['w7', 'f7', 's7', 'w1', 'f2', 's3'], H1 = ['w4', 'f5', 's6', 'w9', 'f9', 's2'];
 
-test('рушій: за замовчуванням комбінації, рука 6, гра 3 карти одним кроком', () => {
+test('рушій: за замовчуванням комбінації, рука 6; набір одним кроком (playSet) теж приймається', () => {
   const s = g2([...H0, ...H1]);
   assert.ok(isCombo(s));
   assert.equal(s.players[0].hand.length, 6);
-  assert.ok(viewFor(s, 0, 0).legal.some((a) => a.type === 'playSet' && a.count === 3));
+  assert.equal(s.step, 'open');
+  assert.ok(viewFor(s, 0, 0).legal.some((a) => a.type === 'playOpen'));
   const bad = (a) => reduce(s, a, ctx()).error;
   assert.equal(bad(playSet(0, ['w7', 'f7'])), 'bad-cards');
   assert.equal(bad(playSet(0, ['w7', 'f7', 'f7'])), 'bad-cards');
@@ -165,13 +166,51 @@ test('рушій: розвідка — «є висока закрита» (ві�
   assert.equal(t.players[0].scoutSeen, 'low', 'висока відкрита — закриті низькі');
 });
 
-test('рушій: тайм-аут — найсильніша комбінація, відкрита найслабша', () => {
+test('рушій: тайм-аут на кожному кроці — найкращий варіант (не випадковий)', () => {
   let s = createGame({ deck: deckWith([...H0, ...H1]), firstToAct: 0, core: 'combo', config: { features: { trump: false, swap: true } } }, ctx());
-  const r = reduce(s, { type: 'timeout' }, { ...ctx(), now: s.timer.deadline + 1 });
+  assert.equal(s.timer.phase, 'open');
+  assert.equal(s.timer.duration, 15000);
+  let r = reduce(s, { type: 'timeout' }, { ...ctx(), now: s.timer.deadline + 1 });
   s = r.state;
+  // крок 1: відкрита — найслабша карта найкращої трійки (трійка сімок → будь-яка сімка)
+  assert.equal(s.step, 'closed');
+  assert.ok(['w7', 'f7', 's7'].includes(s.players[0].openPick.id));
+  assert.equal(s.timer.phase, 'closed');
+  assert.equal(s.timer.duration, 30000);
+  r = reduce(s, { type: 'timeout' }, { ...ctx(), now: s.timer.deadline + 1 });
+  s = r.state;
+  // крок 2: закриті доповнюють відкриту до найсильнішої комбінації
   assert.deepEqual(s.players[0].played.map((c) => c.id).sort(), ['f7', 's7', 'w7']);
   assert.equal(s.phase, 'scout');
   assert.equal(s.players[1].played.length, 3);
+});
+
+test('покроковий раунд: відкриті — разом, закриті — бачачи відкриті суперника', () => {
+  let s = g2([...H0, ...H1]);
+  s = run(s, [{ type: 'playOpen', player: 0, cardId: 'w7' }], ctx());
+  assert.equal(s.step, 'open');
+  assert.equal(viewFor(s, 1, 0).opp.open, null, 'поки P1 не поклав відкриту — не бачить');
+  assert.equal(viewFor(s, 1, 0).opp.hasOpen, true);
+  assert.equal(reduce(s, { type: 'playClosed', player: 0, cards: ['f7', 's7'] }, ctx()).error, 'wrong-phase');
+  s = run(s, [{ type: 'playOpen', player: 1, cardId: 's6' }], ctx());
+  assert.equal(s.step, 'closed');
+  assert.equal(viewFor(s, 1, 0).opp.open.id, 'w7');
+  assert.equal(viewFor(s, 0, 0).opp.open.id, 's6');
+  assert.ok(viewFor(s, 0, 0).legal.some((a) => a.type === 'playClosed' && a.count === 2));
+  assert.equal(reduce(s, { type: 'playClosed', player: 0, cards: ['f7'] }, ctx()).error, 'bad-cards');
+  assert.equal(reduce(s, { type: 'playClosed', player: 0, cards: ['f7', 'w7'] }, ctx()).error, 'no-such-card');
+  s = run(s, [{ type: 'playClosed', player: 0, cards: ['f7', 's7'] }, { type: 'playClosed', player: 1, cards: ['w4', 'f5'] }], ctx());
+  assert.equal(s.phase, 'scout');
+  assert.equal(s.players[0].played[0].id, 'w7');
+  assert.equal(s.players[0].openId, 'w7');
+  assert.equal(viewFor(s, 1, 0).opp.played, null, 'закриті приховані до розкриття');
+});
+
+test('швидкість гри: множник таймерів, «без таймера»', () => {
+  const t = (scale) => createGame({ deck: deckWith([...H0, ...H1]), core: 'combo', config: { timerScale: scale } }, ctx()).timer;
+  assert.equal(t(0.6).duration, 9000);
+  assert.equal(t(1.6).duration, 24000);
+  assert.equal(t(0), null);
 });
 
 test('рушій: після раунду добирається до 6 карт, зіграні — у відбій', () => {
