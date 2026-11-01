@@ -128,7 +128,7 @@ export const SKINS = Object.freeze({
     legendary: Object.freeze({ name: 'Легендарна', color: '#ffc23d', material: 'жива голографія' }),
   }),
   ceremony: Object.freeze({ common: 900, rare: 1900, epic: 3400, legendary: 7200, legendaryDupe: 3600 }),
-  particles: Object.freeze({ epic: 8, legendary: 26, win: 40 }),
+  particles: Object.freeze({ epic: 8, legendary: 26, win: 40, matchWin: 18 }), // matchWin — перемога в матчі (полегшено заради 60 fps)
   tiltMaxDeg: 16, // максимальний 3D-нахил карти
 });
 

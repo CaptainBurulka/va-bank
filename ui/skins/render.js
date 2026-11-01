@@ -126,7 +126,10 @@ export function renderItem(o) {
   const rs = el.querySelectorAll('.sk-art [data-r]');
   let k = 0;
   for (const x of parts) if (rasterizable(x.stat)) { if (rs[k]) rs[k]._svg = x.stat; k++; }
-  if (o.observe !== false && io) io.observe(el);
+  if (o.raster === false) { /* статичний предмет у матчі: малюється один раз векторно, без растеризації */ }
+  else if (o.observe !== false && io) io.observe(el);
+  // растеризація — коли браузер вільний (не посеред анімації розкриття); до того — той самий вигляд векторним SVG
+  else if (typeof requestIdleCallback === 'function') requestIdleCallback(() => upgradeItem(el, el._scale), { timeout: 2500 });
   else requestAnimationFrame(() => requestAnimationFrame(() => upgradeItem(el, el._scale)));
   el.dataset.rarity = rarity;
   el.dataset.set = o.set;
@@ -142,9 +145,11 @@ export function setSmil(el, on) {
 export function disposeItem(el) { el?._stop?.(); if (el) io?.unobserve(el); el?.remove(); }
 
 /** Анімація перемоги набору. */
-export function playWinFx(layer, setId, rarity) {
+export function playWinFx(layer, setId, rarity, light = false) {
   if (reducedMotion()) return;
-  SETS[setId].win(layer, rarity, SKINS.particles.win);
+  // light — у матчі: менше частинок і полотно в 1× щільності (див. .fx-light)
+  layer.classList.toggle('fx-light', light);
+  SETS[setId].win(layer, rarity, light ? SKINS.particles.matchWin : SKINS.particles.win);
 }
 
 /**

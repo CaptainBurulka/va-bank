@@ -143,7 +143,7 @@ function liveRain(el, n) {
   const R = rng(91);
   const size = () => {
     const r = el.getBoundingClientRect();
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = el.closest('.fx-light') ? 1 : Math.min(2, window.devicePixelRatio || 1);
     W = c.width = Math.max(1, Math.round(r.width * dpr)); H = c.height = Math.max(1, Math.round(r.height * dpr));
     drops = Array.from({ length: cols }, (_, i) => ({ x: ((i + .5) / cols) * W, y: R() * H, v: (.6 + R() * 1.2) * (H / 140), t: 0 }));
   };

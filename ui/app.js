@@ -61,7 +61,15 @@ function prepareLooks3(looks, you) {
 }
 
 /** Бот: випадковий набір із 3 джокерів (зрідка — легендарний) і випадкова косметика. */
+// Профілювання: ?perfskin=cyber — боти завжди в повному легендарному наборі (на гру не впливає)
+const PERF_SKIN = new URLSearchParams(location.search).get('perfskin');
 function botLoadout() {
+  if (PERF_SKIN) {
+    const look = { ...DEFAULT_EQUIPPED, rar: {} };
+    for (const cat of SKIN_KINDS) { look[cat] = `${cat}_${PERF_SKIN}`; look.rar[cat] = 'legendary'; }
+    look.frame = 'frame_cosmic';
+    return { set: ['storm', 'boom', 'mirrorworld'], look };
+  }
   const pool = JOKERS.filter((j) => j.rarity !== 'legendary' || Math.random() < 0.15).map((j) => j.id);
   const set = [];
   while (set.length < 3 && pool.length) set.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);

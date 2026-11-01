@@ -76,7 +76,9 @@ function mountFelt(look) {
   if (!s) return;
   const wrap = document.createElement('div');
   wrap.className = 'felt-skin';
-  wrap.append(renderItem({ set: s.set, kind: 'felt', rarity: s.rarity, w: '360px', full: true }));
+  // У матчі сукно статичне: без частинок і анімацій; шари один раз растеризуються в bitmap (raster.js),
+  // далі стіл не перемальовується щокадру. Повний живий вигляд — у колекції.
+  wrap.append(renderItem({ set: s.set, kind: 'felt', rarity: s.rarity, w: '360px', live: false, observe: false }));
   table.style.setProperty('--rc', `var(--rar-${s.rarity})`);
   table.prepend(wrap);
 }
@@ -105,11 +107,11 @@ export function winFxOf(look) {
 }
 
 /** Анімація перемоги (процедурні частинки; лише transform/opacity). */
-export function playWin(layer, fxId = 'chips', reduced = false) {
+export function playWin(layer, fxId = 'chips', reduced = false, light = false) {
   if (!layer || reduced) return;
   if (String(fxId).startsWith('skin:')) {
     const [, set, rarity] = fxId.split(':');
-    playWinFx(layer, set, rarity);
+    playWinFx(layer, set, rarity, light);
     return;
   }
   const kinds = {

@@ -28,6 +28,11 @@ export function cardTitle(c) {
 
 /** Розвідка в комбінаціях: чи є висока серед закритих. */
 const SCOUT_COMBO = { high: { name: 'є висока 8+', short: '↑ є 8+' }, low: { name: 'закриті до 7', short: '↓ до 7' } };
+/** Кільце таймера: оновлюємо стиль лише коли видимо змінилось (не щокадру) — менше перерахунків стилю й перемальовок. */
+function setDash(el, v) {
+  const q = (Math.round(v * 2) / 2).toFixed(1);
+  if (el._dash !== q) { el._dash = q; el.style.strokeDashoffset = q; }
+}
 const arr = (x) => (Array.isArray(x) ? x : x ? [x] : []);
 
 export class GameScreen {
@@ -134,6 +139,7 @@ export class GameScreen {
     else if (this.picks.length < (v.cfg.playCount || 3)) this.picks.push(id);
     else this.picks[this.picks.length - 1] = id;
     this.fixOpenPick();
+    this.focusId = this.picks.includes(id) ? id : null;
     this.renderHandSelection();
     this.renderActions();
     this.onPick?.();
@@ -872,6 +878,7 @@ export class GameScreen {
       for (const c of this.el.hand.children) {
         const on = this.picks.includes(c.dataset.id);
         c.classList.toggle('selected', on);
+        c.classList.toggle('focus', on && c.dataset.id === this.focusId); // повна анімація скіна — лише тут
         c.classList.toggle('open-pick', on && c.dataset.id === this.openPick);
         let eye = c.querySelector('.eye-tog');
         if (on && !eye) { eye = document.createElement('button'); eye.className = 'eye-tog'; eye.type = 'button'; c.append(eye); }
@@ -1068,7 +1075,7 @@ export class GameScreen {
       } else if (r.reason === 'fold' && r.winner === v.you && this.weak(v.me.played, FEEL.bluffCard)) {
         setTimeout(() => this.stamp('Блеф пройшов! 😎', 'win'), 350);
       }
-      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion());
+      if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion(), true);
       const el = this.el.verdict;
       el.className = `verdict ${cls}`;
       let lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
@@ -1328,7 +1335,7 @@ export class GameScreen {
     const low = !t.paused && rem < 5000;
     const mine = this.myTurn(v) && !this.offline;
     if (mine) {
-      ring.querySelector('.val').style.strokeDashoffset = String(94.25 * (1 - k));
+      setDash(ring.querySelector('.val'), 94.25 * (1 - k));
       this.el.phaseSec.textContent = t.paused ? '⏸' : sec;
       ring.classList.toggle('low', low);
       if (low && sec !== this.lastTick) { this.lastTick = sec; sfx.tick(); }
@@ -1341,13 +1348,13 @@ export class GameScreen {
         const w = !x.out && !x.folded && (v.phase === 'play' ? !x.hasPlayed : v.phase === 'scout' ? !x.scoutDecided : v.phase === 'bet' ? v.bet.toAct === q : v.phase === 'result' ? !x.ready : false);
         a.classList.toggle('ticking', w);
         a.classList.toggle('low', w && low);
-        if (w) a.querySelector('.tring .val').style.strokeDashoffset = String(160.2 * (1 - k));
+        if (w) setDash(a.querySelector('.tring .val'), 160.2 * (1 - k));
       });
       return;
     }
     const waitingOpp = !mine && v.phase !== 'over' && !(v.phase === 'result' && v.opp.ready);
     ava.classList.toggle('ticking', waitingOpp);
     ava.classList.toggle('low', waitingOpp && low);
-    if (waitingOpp) ava.querySelector('.tring .val').style.strokeDashoffset = String(160.2 * (1 - k));
+    if (waitingOpp) setDash(ava.querySelector('.tring .val'), 160.2 * (1 - k));
   }
 }
