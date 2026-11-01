@@ -99,7 +99,7 @@ function face(card, rar, opts = {}) {
   const bg = svg('0 0 100 140', `${defs(id)}${paper(R, 100, 140, rar, id)}<circle cx="70" cy="44" r="${sunR}" fill="${rar === 'legendary' ? `url(#GD${id})` : VERMILION}" opacity="${rar === 'common' ? .55 : .9}"/>`);
   const m = mountains(R, 100, 112, 1, rar, id);
   const hills = svg('0 0 100 140', `${defs(id)}${m.body}`);
-  const mist = svg('0 0 100 140', `${defs(id)}<g filter=""url(#MI${id})"><ellipse cx="26" cy="104" rx="44" ry="6" fill="${PAPER[rar]}" opacity=".85"/><ellipse cx="84" cy="114" rx="38" ry="5" fill="${PAPER[rar]}" opacity=".75"/><rect x="-5" y="122" width="110" height="20" fill="${PAPER[rar]}" opacity=".6"/></g>`);
+  const mist = svg('0 0 100 140', `${defs(id)}<g filter="url(#MI${id})"><ellipse cx="26" cy="104" rx="44" ry="6" fill="${PAPER[rar]}" opacity=".85"/><ellipse cx="84" cy="114" rx="38" ry="5" fill="${PAPER[rar]}" opacity=".75"/><rect x="-5" y="122" width="110" height="20" fill="${PAPER[rar]}" opacity=".6"/></g>`);
   const front = svg('0 0 100 140', `${branch(R, -4, 132, 1, rar, live)}${atLeast(rar, 'rare') ? hanko(86, 104, .9) : ''}`);
   let center;
   if (card.kind === 'num') {
