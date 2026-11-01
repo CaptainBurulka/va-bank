@@ -184,7 +184,7 @@
       <main class="table" id="table">
         <div class="tbar">
           <span class="trump" id="trump"></span>
-          <span class="round" id="round-tag"></span>
+          <span class="round"><span id="round-tag"></span><button class="tinfo" id="btn-tinfo" type="button" aria-label="Раунд, анте і колода">i</button></span>
         </div>
         <div class="arena">
           <div class="seat s-opp"><div class="slot" id="slot-opp"></div><span class="seat-info" id="info-opp"></span></div>
@@ -192,12 +192,11 @@
             <span class="lbl">Банк</span>
             <b class="num" id="pot-val">0</b>
             <span class="jack hidden" id="jackpot"></span>
-            <span class="deck" id="deck-info"></span>
+            <span class="deck hidden" id="deck-info"></span>
           </div>
           <div class="seat s-me"><div class="slot" id="slot-me"></div><span class="seat-info" id="info-me"></span></div>
           <div class="seat s-opp2 hidden"><div class="slot" id="slot-opp2"></div><span class="seat-info" id="info-opp2"></span></div>
         </div>
-        <div class="verdict hidden" id="verdict" role="status"></div>
       </main>
 
       <div class="hand" id="hand"></div>
@@ -225,6 +224,7 @@
         <p class="don-watch" id="don-watch"></p>
       </div>
 
+      <div class="verdict hidden" id="verdict" role="status"></div>
       <div class="coach hidden" id="coach" role="note"></div>
       <div class="react-panel hidden" id="react-panel"></div>
       <div class="fx-layer" id="fx"></div>

@@ -116,6 +116,19 @@ export class GameScreen {
     this.el.don.addEventListener('click', (ev) => { if (!ev.target.closest('button')) this.skipDon(); });
     this.el.coach.addEventListener('click', (ev) => { if (ev.target.closest('[data-skip]')) this.onCoachSkip?.(); });
 
+    // ⓘ біля раунду: анте і склад колоди — за тапом, щоб не захаращувати стіл
+    $('btn-tinfo')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sfx.tap();
+      document.querySelector('.tinfo-pop')?.remove();
+      const pop = document.createElement('div');
+      pop.className = 'tinfo-pop';
+      pop.textContent = this.deckText || '';
+      pop.addEventListener('click', () => pop.remove());
+      this.el.table.append(pop);
+      setTimeout(() => pop.remove(), 4500);
+    });
+    window.addEventListener('resize', () => { if (this.view) this.layoutHand(); });
     const cheat = document.createElement('button');
     cheat.className = 'cheat-btn hidden'; cheat.id = 'btn-cheat'; cheat.type = 'button'; cheat.textContent = 'Комбінації';
     cheat.addEventListener('click', (e) => { e.stopPropagation(); sfx.tap(); this.showCheatSheet(); });
@@ -419,7 +432,7 @@ export class GameScreen {
     switch (v.phase) {
       case 'play':
         if (this.isCombo(v)) {
-          if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери 3 карти'; sub = `Одна з них — відкрита 👁, її побачать до торгів${v.trump ? ` · козир ${SUIT[v.trump].name} вирішує нічиї` : ''}`; }
+          if (!v.me.played && !v.me.out) { kind = 'act'; title = 'Обери 3 карти'; sub = 'Одна з них — відкрита 👁, її побачать усі'; }
           else { const w = three ? this.waitingNames(v, (x) => !x.hasPlayed) : (v.opp.hasPlayed ? '' : 'Суперник'); title = w ? `Обирають карти: ${w}` : 'Карти на столі'; sub = v.me.out ? '' : 'Твої карти покладено'; }
           break;
         }
@@ -430,8 +443,8 @@ export class GameScreen {
       case 'scout':
         if (this.isCombo(v)) {
           const sc = v.me.scoutSeen ? SCOUT_COMBO[v.me.scoutSeen].name : '';
-          if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Відкриті карти на столі'; sub = three ? `Розвідка: торкнись суперника — чи є в нього висока 8+ серед закритих (${v.cfg.scoutCost})` : `Розвідка за ${v.cfg.scoutCost}: чи є висока 8+ серед закритих`; }
-          else { const w = three ? this.waitingNames(v, (x) => !x.scoutDecided) : ''; title = w ? `Вирішують щодо розвідки: ${w}` : three ? 'Розвідку завершено' : 'Суперник вирішує щодо розвідки'; sub = sc ? `${three ? `У ${this.nameOf(v.me.scoutTarget)}` : 'У суперника'}: ${sc}` : ''; }
+          if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Відкриті карти на столі'; sub = three ? `Розвідка (${v.cfg.scoutCost}): торкнись суперника` : `Розвідка за ${v.cfg.scoutCost}: чи є 8+ серед закритих`; }
+          else { const w = three ? this.waitingNames(v, (x) => !x.scoutDecided) : ''; title = w ? `Розвідка: чекаємо ${w}` : three ? 'Розвідку завершено' : 'Суперник думає'; sub = sc ? `${three ? `У ${this.nameOf(v.me.scoutTarget)}` : 'У суперника'}: ${sc}` : ''; }
           break;
         }
         if (!v.me.scoutDecided && !v.me.out) { kind = 'act'; title = 'Розвідка?'; sub = three ? `Торкнись суперника, до якого підглянути — за ${v.cfg.scoutCost}` : `Висока чи низька в суперника — за ${v.cfg.scoutCost}`; }
@@ -509,14 +522,15 @@ export class GameScreen {
         if (o.swapped && v.phase === 'play') parts.push(`<span class="ic" title="Обміняв карту" aria-label="обмін">${ico('swap')}</span>`);
         let s = '';
         switch (v.phase) {
-          case 'play': s = this.isCombo(v) ? (o.hasPlayed ? 'карти на столі' : 'обирає карти…') : o.hasPlayed ? 'карта на столі' : 'обирає карту…'; break;
-          case 'scout': s = o.scoutDecided ? (o.scouted ? '' : 'без розвідки') : 'думає про розвідку…'; break;
+          // коротко, щоб ніколи не обрізалось: значок + 1 слово
+          case 'play': s = o.hasPlayed ? '✓ готово' : '⏳ обирає'; break;
+          case 'scout': s = o.scoutDecided ? '' : '⏳ думає'; break;
           case 'bet':
-            if (o.folded) s = 'пас';
-            else if (three) s = v.bet.toAct === q ? 'думає над ставкою…' : '';
-            else s = v.bet.toAct !== v.you ? 'думає над ставкою…' : (v.bet.toCall ? `підняття +${v.bet.toCall}` : 'чекає на тебе');
+            if (o.folded) s = '✋ пас';
+            else if (three) s = v.bet.toAct === q ? '⏳ ставка' : '';
+            else s = v.bet.toAct !== v.you ? '⏳ ставка' : (v.bet.toCall ? `↑ +${v.bet.toCall}` : '');
             break;
-          case 'result': s = o.folded && three ? 'пас' : v.result.don?.pending && v.result.winner === q ? 'ризикує виграшем…' : o.ready ? 'готово' + (three ? '' : ' до наступного') : ''; break;
+          case 'result': s = o.folded && three ? '✋ пас' : v.result.don?.pending && v.result.winner === q ? '🎲 ризикує' : o.ready ? '✓ далі' : ''; break;
         }
         if (s) parts.push(`<span>${s}</span>`);
         if (o.jokerInHand) parts.unshift('<span class="jk-badge" title="Джокер ще не зіграно">🃏</span>');
@@ -586,18 +600,20 @@ export class GameScreen {
   renderTable(prev, v) {
     const e = this.el;
     const md = v.cfg.mode && v.cfg.mode !== 'classic' ? MODES[v.cfg.mode] : null;
-    e.roundTag.textContent = `${md ? `${md.icon} ` : ''}${this.isCombo(v) ? '' : 'Раунд '}${v.round}/${v.maxRounds} · анте ${v.ante}`;
+    e.roundTag.textContent = `${md ? `${md.icon} ` : ''}Раунд ${v.round}/${v.maxRounds}`;
     e.cheat?.classList.toggle('hidden', !this.isCombo(v));
     e.roundTag.title = md ? `${md.name}: ${md.desc}` : '';
     if (v.trump) {
-      e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b><span class="tb-plus">${this.isCombo(v) ? 'нічиї' : `+${v.cfg.trumpBonus}`}</span>`;
+      e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b>`;
+      e.trump.title = this.isCombo(v) ? 'Козир вирішує нічиї: козирна карта на 1 старша' : `Козирна карта +${v.cfg.trumpBonus} до сили`;
       e.trump.dataset.suit = v.trump;
       e.trump.classList.remove('hidden');
       if (prev && prev.round !== v.round) { e.trump.classList.remove('pop'); void e.trump.offsetWidth; e.trump.classList.add('pop'); }
     } else e.trump.classList.add('hidden');
     const d = v.deck;
-    e.deckInfo.innerHTML = `${ico('deck')}${d.total} <span class="hi">↑${d.high}</span> <span class="lo">↓${d.low}</span> <span>✦${d.special}</span>`;
-    e.deckInfo.setAttribute('aria-label', `У колоді ${d.total}: високих ${d.high}, низьких ${d.low}, спецкарт ${d.special}`);
+    // склад колоди — не на столі, а за тапом (кнопка «ⓘ» біля раунду)
+    this.deckText = `Раунд ${v.round} з ${v.maxRounds} · анте ${v.ante}. У колоді ${d.total} карт: високих (8+) ${d.high}, низьких ${d.low}, спецкарт ${d.special}.`;
+    e.deckInfo.textContent = '';
     // банк і джекпот
     const jp = v.jackpot && v.pot ? v.jackpot : 0;
     const carry = !jp && v.carry && v.round > 1 && v.phase !== 'result' ? v.carry : 0;
@@ -610,9 +626,9 @@ export class GameScreen {
     const oppHot = facing && v.bet.toAct === v.you;
     const meHot = facing && v.bet.toAct !== v.you;
     const pill = (amt, hot, label) => `<span class="pill ${hot ? 'hot' : ''}">${chipIco()}${hot ? `+${v.bet.toCall}` : `${label}${amt}`}</span>`;
-    const showPot = ['scout', 'bet'].includes(v.phase);
-    e.infoOpp.innerHTML = oppHot ? pill(0, true) : showPot ? pill(v.opp.inPot, false, 'у банку ') : '';
-    e.infoMe.innerHTML = meHot ? pill(0, true) : showPot ? pill(v.me.inPot, false, 'у банку ') : '';
+    // «у банку N» не показуємо — лише те, що треба для рішення: скільки докласти
+    e.infoOpp.innerHTML = oppHot ? pill(0, true) : '';
+    e.infoMe.innerHTML = meHot ? pill(0, true) : '';
     if (v.phase === 'result' && v.result.winner !== null && !v.result.don?.pending) {
       const won = v.result.don ? v.result.won + v.result.don.attempts.reduce((s, a) => s + a.delta, 0) : v.result.won;
       const target = v.result.winner === v.you ? e.infoMe : e.infoOpp;
@@ -626,10 +642,10 @@ export class GameScreen {
     const showPot = ['scout', 'bet'].includes(v.phase);
     const pill = (txt, cls = '') => `<span class="pill ${cls}">${chipIco()}${txt}</span>`;
     const owe = v.phase === 'bet' ? v.bet.owe ?? 0 : 0;
-    e.infoMe.innerHTML = owe > 0 && !v.me.folded ? pill(`+${owe}`, 'hot') : showPot ? pill(`у банку ${v.me.inPot}`) : '';
+    e.infoMe.innerHTML = owe > 0 && !v.me.folded ? pill(`+${owe}`, 'hot') : '';
     this.oppSeats(v).forEach((q, i) => {
       const x = this.seat(v, q);
-      this.panels[i].info.innerHTML = x.out ? '' : x.folded && showPot ? '<span class="pill">пас</span>' : showPot ? pill(`у банку ${x.inPot}`) : '';
+      this.panels[i].info.innerHTML = x.out ? '' : x.folded && showPot ? '<span class="pill">✋ пас</span>' : '';
     });
     if (v.phase === 'result' && v.result.winner !== null && !v.result.don?.pending) {
       const won = v.result.don ? v.result.won + v.result.don.attempts.reduce((s, a) => s + a.delta, 0) : v.result.won;
@@ -862,15 +878,44 @@ export class GameScreen {
       } else if (!prev || prev.trump !== v.trump) fillFace(el, card, opt);
       if (hand.children[i] !== el) hand.insertBefore(el, hand.children[i] || null);
     });
-    hand.classList.toggle('five', v.me.hand.length > 4);
-    hand.classList.toggle('many', v.me.hand.length > 5);
-    // комбінації: уся рука (6–8 карт із джокерами) — в один ряд без прокрутки
-    const n = Math.max(6, v.me.hand.length);
-    if (this.isCombo(v)) hand.style.setProperty('--card-w-hand', `min(calc((100vw - 2 * var(--gutter) - ${n - 1} * 3px) / ${n}), 54px)`);
-    else hand.style.removeProperty('--card-w-hand');
     hand.classList.toggle('passive', !v.legal.some((a) => a.type === 'play' || a.type === 'playSet'));
+    this.layoutHand();
     hand.classList.toggle('concealed', this.conceal);
     this.renderHandSelection();
+  }
+
+  /**
+   * Рука — віяло: великі карти з перекриттям, що ЗАВЖДИ вміщаються в ширину екрана (будь-яка кількість карт).
+   * Позиція — властивостями left/rotate/translate, а transform лишається для підйому вибраної карти й анімацій.
+   */
+  layoutHand() {
+    const hand = this.el.hand;
+    const cards = [...hand.children].filter((c) => c.classList.contains('card'));
+    const n = cards.length;
+    const full = hand.clientWidth || (window.innerWidth - 32);
+    // і за висотою: на невисоких екранах (Safari з панелями) карти менші, щоб стіл і кнопки вмістилися;
+    // поза вибором карт (торги, розкриття) рука ще менша — головне тоді стіл
+    const byH = (window.innerHeight * 0.17) / 1.42;
+    const choosing = !hand.classList.contains('passive');
+    const cw = Math.round(Math.min(92, full * 0.25, byH) * (choosing ? 1 : window.innerHeight < 760 ? 0.52 : 0.78));
+    hand.style.setProperty('--card-w-hand', `${cw}px`);
+    if (!n) return;
+    // поля під нахил крайніх карт і підйом вибраної (scale 1.06) — щоб нічого не виходило за екран
+    const tiltMax = n > 3 ? Math.min(2.4, 14 / n) : 0;
+    const edge = Math.ceil(cw * 0.04 + Math.sin(((n - 1) / 2) * tiltMax * Math.PI / 180) * cw * 1.42 * 0.7) + 2;
+    const W = full - edge * 2;
+    const step = n > 1 ? Math.min(cw + 8, (W - cw) / (n - 1)) : 0;
+    const total = cw + step * (n - 1);
+    const x0 = edge + (W - total) / 2;
+    const mid = (n - 1) / 2;
+    const tilt = step < cw ? tiltMax : 0; // віяло лише коли карти перекриваються
+    cards.forEach((c, i) => {
+      const d = i - mid;
+      c.style.left = `${Math.round(x0 + step * i)}px`;
+      c.style.rotate = `${(d * tilt).toFixed(1)}deg`;
+      c.style.translate = `0 ${Math.round(d * d * (tilt ? 1.2 : 0))}px`;
+      c.style.zIndex = String(i + 1);
+    });
   }
 
   renderHandSelection() {
@@ -951,8 +996,8 @@ export class GameScreen {
         const limit = v.bet.raises >= v.cfg.maxRaises;
         const rivals = this.oppSeats(v).map((q) => this.seat(v, q)).filter((x) => !x.out && !x.folded);
         const minOpp = Math.min(...rivals.map((x) => x.chips));
-        const reason = limit ? 'ліміт піднять' : minOpp === 0 ? 'у суперника 0' : me.chips - toCall <= 0 ? 'немає фішок' : 'недоступно';
-        const verb = call ? 'Ре-рейз ' : '';
+        const reason = limit ? 'ліміт' : minOpp === 0 ? 'у суперника 0' : me.chips - toCall <= 0 ? 'нема фішок' : 'недоступно';
+        const verb = '';
         let row = '';
         for (const size of v.cfg.raiseSizes) {
           const a = raises.find((x) => x.amount === size);
@@ -961,9 +1006,10 @@ export class GameScreen {
         const allin = raises.find((x) => x.amount === 'allin');
         const capped = allin && allin.value < me.chips - toCall;
         const capWhy = allin && v.round < (v.cfg.allinFreeFromRound || 4) && allin.value < Math.min(me.chips - toCall, minOpp) ? 'ліміт = банк' : 'ліміт = найменший стек';
-        row += btn(allin ? `Ва-банк +${allin.value}` : 'Ва-банк', { type: 'raise', amount: 'allin' }, 'allin', !!allin, allin ? (capped ? capWhy : `лишиться ${me.chips - toCall - allin.value}`) : reason);
-        html += `<div class="row">${row}</div>`;
-        html += btn(this.isThree(v) ? 'Пас — вийти з раунду' : `Пас — віддати банк ${v.pot}`, { type: 'fold' }, 'link');
+        row += btn(allin ? `Ва-банк +${allin.value}` : 'Ва-банк', { type: 'raise', amount: 'allin' }, 'allin', !!allin, allin ? (capped ? (capWhy === 'ліміт = банк' ? 'ліміт: банк' : 'ліміт: стек') : `лишиться ${me.chips - toCall - allin.value}`) : reason);
+        // пас — у тому ж ряду: компактно, щоб на невисоких екранах усе вміщалось
+        row += btn('Пас', { type: 'fold' }, 'secondary fold', true, this.isThree(v) ? 'вийти' : 'віддати банк');
+        html += `<div class="row" style="--n:4">${row}</div>`;
         break;
       }
       case 'result': {
@@ -1000,7 +1046,7 @@ export class GameScreen {
     const meter = live?.strength != null
       ? `<span class="meter" title="Яку частку типових комбінацій суперника б'є"><i style="width:${Math.round(live.strength * 100)}%"></i></span><span class="pc">сила ${pct(live.strength)}</span>`
       : `<span class="pc">ще ${left} ${left === 1 ? 'карта' : 'карти'}</span>`;
-    let html = `<div class="combo-live${live ? '' : ' empty'}"><b>${live ? esc(live.combo.label) : `Обери ${need} карти`}</b>${meter}<button class="cs-btn" type="button" data-cheat aria-label="Комбінації">Комбінації</button></div>`;
+    let html = `<div class="combo-live${live ? '' : ' empty'}"><b>${live ? esc(live.combo.label) : `Обери ${need} карти`}</b>${meter}</div>`;
     const sel = cards.length === 1 ? cards[0] : null;
     const canSwap = !!sel && L.some((a) => a.type === 'swap' && a.cardId === sel.id);
     const swapWhy = sel?.kind === 'joker' ? 'джокера не обміняти' : me.swapped ? 'вже використано цього раунду' : me.chips < v.cfg.swapCost ? 'не вистачає фішок' : !sel ? 'вибери рівно 1 карту' : `нова замість ${cardTitle(sel)}`;
@@ -1077,19 +1123,48 @@ export class GameScreen {
       }
       if (r.winner !== null && r.reason === 'showdown' && this.winFx) playWin(this.el.fx, this.winFxBySeat?.[r.winner] || this.winFx[r.winner === v.you ? 0 : 1], reducedMotion(), true);
       const el = this.el.verdict;
-      el.className = `verdict ${cls}`;
-      let lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
       const cd = r.detail?.combos;
-      if (this.isCombo(v) && cd && r.reason === 'showdown') {
-        const who = [v.you, ...this.oppSeats(v)].filter((q) => cd[q]);
-        lines = `<div class="vs-combos">${who.map((q) => `<span class="${q === r.winner ? 'w' : ''}"><small>${esc(q === v.you ? 'Ти' : this.nameOf(q))}</small>${esc(cd[q].label)}</span>`).join('<i>vs</i>')}</div>${lines}`;
-      }
-      el.innerHTML = `<b>${esc(title)}</b>${lines}${why && r.reason === 'showdown' ? `<div class="why">${esc(why)}</div>` : ''}<div class="amt">${esc(amt)}</div><small>торкнись, щоб закрити</small>`;
       clearTimeout(this.st.timers.verdictHide);
+      if (this.isCombo(v) && cd && r.reason === 'showdown') {
+        // Окремий чистий екран розкриття: карти кожного в ряд, над ними — комбінація, переможець підсвічений
+        el.className = `verdict reveal-screen ${cls}`;
+        el.innerHTML = this.revealHTML(v, r, title, amt);
+        for (const row of el.querySelectorAll('.rv-cards')) {
+          const q = Number(row.dataset.q);
+          const fin = r.jokers?.cards?.[q] || this.playedOf(v, q);
+          for (const c of arr(fin)) { const ce = cardEl(c, { trump: v.trump, bonus: v.cfg.trumpBonus }); row.append(ce); }
+        }
+        this.st.timers.verdictHide = setTimeout(() => this.hideVerdict(), 5200 + (jk ? 1500 : 0));
+        return;
+      }
+      el.className = `verdict ${cls}`;
+      const lines = (jk?.notes || []).slice(0, 3).map((n) => `<div class="why">${esc(n.text)}</div>`).join('');
+      el.innerHTML = `<b>${esc(title)}</b>${lines}${why && r.reason === 'showdown' ? `<div class="why">${esc(why)}</div>` : ''}<div class="amt">${esc(amt)}</div><small>торкнись, щоб закрити</small>`;
       this.st.timers.verdictHide = setTimeout(() => this.hideVerdict(), ms('--t-banner') + (jk ? 800 : 0));
     };
     this.st.showVerdict = showV;
+    if (this.isCombo(v) && r.detail?.combos && r.reason === 'showdown') this.st.revealPending = true;
     this.st.timers.verdict = setTimeout(showV, delay);
+  }
+
+  /** Екран розкриття: рядок на кожного учасника (спершу суперники, внизу — ти), пояснення, що змінив джокер. */
+  revealHTML(v, r, title, amt) {
+    const cd = r.detail.combos;
+    const seats = [...this.oppSeats(v), v.you].filter((q) => cd[q]);
+    const rows = seats.map((q) => {
+      const st = r.winner === null ? 'tie' : q === r.winner ? 'win' : 'lose';
+      const name = q === v.you ? 'Ти' : this.nameOf(q);
+      const cut = r.detail.cuts?.[q] ? ' <span class="rv-note">🔪 старша не рахується</span>' : '';
+      return `<div class="rv-row ${st}"><div class="rv-head"><span class="rv-name">${esc(name)}</span><b class="rv-combo">${st === 'win' ? '🏆 ' : ''}${esc(cd[q].label)}</b>${cut}</div><div class="rv-cards" data-q="${q}"></div></div>`;
+    }).join('');
+    const jk = r.jokers;
+    const jkLines = (jk?.notes || []).map((n) => `<li>${JOKER_BY_ID[n.joker]?.icon || '🃏'} ${esc(n.text)}</li>`).join('');
+    const changed = jk?.changed ? '<li class="rv-changed">Джокер змінив переможця раунду</li>' : '';
+    return `<div class="rv-title"><b>${esc(title)}</b><span class="rv-amt">${esc(amt)}</span></div>
+<div class="rv-rows">${rows}</div>
+<div class="rv-why">${esc(r.detail.text || '')}</div>
+${jkLines || changed ? `<ul class="rv-jokers"><li class="rv-jh">Що зробили джокери</li>${jkLines}${changed}</ul>` : ''}
+<small>торкнись, щоб продовжити</small>`;
   }
 
   /** Драматичне розкриття джокерів: анімація за рідкістю, пояснення в один рядок, тап — пропустити. */
@@ -1151,11 +1226,16 @@ export class GameScreen {
 
   hideVerdict() {
     this.el.verdict.classList.add('hidden');
+    this.st.revealPending = false;
+    // «Подвій або нічого» чекав, доки гравець роздивиться розкриття
+    if (this.st.donDeferred && this.view) { this.st.donDeferred = false; this.renderDon(null, this.view); }
   }
 
   // ───────── «Подвій або нічого» ─────────
   renderDon(prev, v) {
     const d = v.phase === 'result' ? v.result?.don : null;
+    // поки відкритий екран розкриття — «Подвій або нічого» не перекриває його
+    if (d && (this.st.revealPending || this.el.verdict.classList.contains('reveal-screen') && !this.el.verdict.classList.contains('hidden'))) { this.st.donDeferred = true; return; }
     const st = this.st;
     const n = d?.attempts.length || 0;
     const el = this.el;

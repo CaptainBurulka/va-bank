@@ -587,3 +587,4 @@
 .table .card .sk-item *, .table .card .sk-item *::before, .table .card .sk-item *::after,
 .hand .card:not(.focus) .sk-item *, .hand .card:not(.focus) .sk-item *::before, .hand .card:not(.focus) .sk-item *::after,
 .player .sk-item *, .player .sk-item *::before, .player .sk-item *::after { animation: none !important; }
+.felt-skin .felt-mark { display: none; } /* водяний знак сукна не накладається на банк */

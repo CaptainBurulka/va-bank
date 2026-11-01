@@ -43,10 +43,11 @@ const N = Number(process.argv[2]) === 3 ? 3 : 2;
     const plain = ids.filter((x) => !x.startsWith('J'));
     const need = /закриті/i.test(hint) ? 2 : /відкриту/i.test(hint) ? 1 : 3;
     if (p === G && jk && result === null) {
+      await p.waitForTimeout(1200); // роздача (анімація) закінчилась
       // мережа гостя «падає» саме зараз; гість ще не знає про це і кладе джокера
       await G.evaluate(() => window.__mockNet(false));
       const pick = need === 1 ? [jk] : [jk, ...plain.slice(0, need - 1)];
-      for (const id of pick) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500 });
+      for (const id of pick) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 5000, position: { x: 14, y: 40 } }); // у віялі видно ліву смугу карти
       await p.click('#actions .btn.primary', { timeout: 1500 });
       await p.waitForTimeout(3000);
       await G.evaluate(() => window.__mockNet(true));
@@ -54,7 +55,7 @@ const N = Number(process.argv[2]) === 3 ? 3 : 2;
       result = !(await p.$(`#hand .card[data-id="${jk}"]`));
       return;
     }
-    for (const id of plain.slice(0, need)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500 }).catch(() => {});
+    for (const id of plain.slice(0, need)) await p.click(`#hand .card[data-id="${id}"]`, { timeout: 1500, position: { x: 14, y: 40 } }).catch(() => {});
     await p.click('#actions .btn.primary', { timeout: 1500 }).catch(() => {});
   };
   for (let k = 0; k < 120 && result === null; k++) { for (const P of pages) await step(P); await A.waitForTimeout(100); }

@@ -890,3 +890,123 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 /* Аватарка: символ завжди рендериться — емодзі емодзі-шрифтом, літери з системним запасом */
 .ava span { font-family: var(--font-display), system-ui, sans-serif; }
 .ava span.emoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; font-size: .95em; line-height: 1; }
+
+/* ═════════ Версія 6.1 — портретне компонування: великі карти, мінімум цифр ═════════ */
+/* Банер: текст ніколи не обрізається — переноситься (тексти короткі) */
+.phase { height: auto; min-height: 50px; padding-top: 6px; padding-bottom: 6px; }
+.phase-txt b, .phase-txt span { white-space: normal; overflow: visible; text-overflow: clip; }
+.phase-txt span { font-size: 12.5px; line-height: 1.25; }
+
+/* Суперники: лише аватар, ім'я, короткий статус-значок і фішки */
+.player.opp .minis { display: none; }
+.status { overflow: visible; flex-wrap: wrap; row-gap: 0; }
+.status > span { white-space: nowrap; }
+
+/* Верх столу: козир — єдине місце; раунд + ⓘ (анте і колода — за тапом) */
+.round { display: inline-flex; align-items: center; gap: 6px; }
+.tinfo { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; background: rgba(0, 0, 0, .35); color: var(--ink); font: italic 800 14px/1 Georgia, serif; box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.tinfo::before { content: ""; position: absolute; inset: -8px; }
+.tinfo { position: relative; }
+.tinfo-pop { position: absolute; top: 42px; right: 10px; left: 10px; z-index: 8; padding: 10px 14px; border-radius: var(--r-m); background: rgba(8, 14, 11, .96); box-shadow: inset 0 0 0 1px var(--line), var(--sh-panel); font: 600 13px/1.4 var(--font-ui); color: var(--ink); animation: verdictIn2 var(--t-ui) var(--ease-out); }
+
+/* Банк: підпис над числом, нічого поверх (водяні знаки сукна сховано) */
+.combo .arena .pot { flex-direction: column !important; align-items: center !important; gap: 2px !important; position: relative; z-index: 2; }
+.combo .arena .pot .lbl { font-size: 11px; letter-spacing: .18em; }
+.combo .arena .pot .num { font-size: 36px !important; line-height: 1; }
+.pot .deck { display: none !important; }
+
+/* Рука — віяло: великі карти з перекриттям, завжди в ширину екрана */
+#scr-game .hand { position: relative; display: block; height: calc(var(--card-w-hand) * 1.42 + 30px); gap: 0; margin: 0 2px; }
+#scr-game .hand .card { position: absolute; bottom: 4px; --cw: var(--card-w-hand); transform-origin: 50% 100%; }
+#scr-game .hand .card.selected { transform: translateY(-20px) scale(1.04); } /* без z-index: сусід праворуч лишається досяжним для тапу */
+#scr-game .hand .card.selected .face { box-shadow: var(--sh-card-lift), var(--glow-gold); }
+#scr-game .hand .eye-tog { top: -12px; right: -6px; width: 32px; height: 32px; }
+#scr-game .hand .eye-tog::before { inset: -6px; }
+#scr-game .hand .card .cor { font-size: calc(var(--cw) * .25); }
+.combo .acts { height: 150px; }
+
+/* Набори на столі: удвох — більші; утрьох — суперники вгорі поруч, банк, мій набір унизу */
+#scr-game.combo:not(.three) { --card-w-set: min(13.5vw, 54px); --card-w-open: min(17vw, 68px); }
+#scr-game.combo.three { --card-w-set: min(11.5vw, 46px); --card-w-open: min(11.5vw, 46px); }
+.combo.three .arena { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; row-gap: 6px; align-content: space-evenly; }
+.combo.three .arena .s-opp { grid-area: 1 / 1; }
+.combo.three .arena .s-opp2 { grid-area: 1 / 2; }
+.combo.three .arena .pot { grid-area: 2 / 1 / 3 / 3; }
+.combo.three .arena .s-me { grid-area: 3 / 1 / 4 / 3; --card-w-set: min(14vw, 56px); }
+.combo.three .slot.set .set-row { gap: 3px; min-width: calc(var(--card-w-set) * 3 + 6px); }
+.combo.three .combo-tag { font-size: 11.5px; max-width: 44vw; }
+.combo.three .slot.set .card .sp-sub, .combo.three .slot.set .card .jk-tag { display: revert; }
+@media (max-height: 740px) {
+  #scr-game.combo.three { --card-w-set: min(10vw, 40px); --card-w-open: min(10vw, 40px); }
+  .combo.three .arena .s-me { --card-w-set: min(12vw, 48px); }
+}
+
+/* Огляд карти при утриманні (без скіна і джокери) */
+.card-peek { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; background: rgba(3, 6, 4, .82); animation: verdictIn2 var(--t-ui) var(--ease-out); }
+.card-peek .card { transform: none !important; rotate: none !important; translate: none !important; position: relative !important; left: auto !important; }
+.card-peek p { max-width: 320px; text-align: center; font: 700 15px/1.4 var(--font-ui); color: var(--ink); margin: 0; }
+
+/* Екран розкриття: окремий, чистий; карти без перекриття */
+.verdict.reveal-screen {
+  position: absolute; inset: 0; top: 0; transform: none; z-index: 20; border-radius: 0;
+  display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 20px 16px;
+  background: rgba(6, 10, 8, .97); box-shadow: none; animation: verdictIn2 var(--t-ui) var(--ease-out);
+}
+.reveal-screen .rv-title { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.reveal-screen .rv-title b { font: 900 32px/1.1 var(--font-display); color: var(--gold-hi); }
+.reveal-screen.lose .rv-title b { color: var(--lose); }
+.reveal-screen.tie .rv-title b { color: var(--ink); }
+.reveal-screen .rv-amt { font: 800 18px/1.2 var(--font-ui); color: var(--win); }
+.reveal-screen.lose .rv-amt { color: var(--lose); }
+.reveal-screen.tie .rv-amt { color: var(--ink-2); }
+.rv-rows { display: flex; flex-direction: column; gap: 10px; }
+.rv-row { padding: 10px 12px; border-radius: var(--r-m); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-soft); display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.rv-row.win { box-shadow: inset 0 0 0 2px var(--gold-hi), 0 0 24px rgba(243, 207, 120, .25); background: linear-gradient(180deg, rgba(243, 207, 120, .12), var(--panel)); }
+.rv-row.lose { opacity: .5; filter: grayscale(.6); }
+.rv-head { display: flex; align-items: baseline; justify-content: center; gap: 10px; flex-wrap: wrap; text-align: center; }
+.rv-name { font: 700 13px/1.2 var(--font-ui); color: var(--ink-2); }
+.verdict.reveal-screen .rv-combo { display: inline; font: 900 21px/1.15 var(--font-ui); color: var(--ink); }
+.verdict.reveal-screen .rv-row.win .rv-combo { color: var(--gold-hi); }
+.rv-note { font: 600 12px/1.2 var(--font-ui); color: var(--ink-2); }
+.rv-cards { display: flex; gap: 8px; justify-content: center; }
+.rv-cards .card { --cw: min(18vw, 70px); animation: none !important; }
+.three .rv-cards .card { --cw: min(15vw, 58px); }
+.rv-why { text-align: center; font: 800 17px/1.3 var(--font-ui); color: var(--ink); }
+.rv-jokers { list-style: none; margin: 0; padding: 10px 12px; border-radius: var(--r-m); background: rgba(196, 123, 255, .1); box-shadow: inset 0 0 0 1px rgba(196, 123, 255, .35); display: flex; flex-direction: column; gap: 4px; font: 600 13.5px/1.35 var(--font-ui); color: var(--ink); }
+.rv-jokers .rv-jh { font: 800 11px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: #d8b6ff; margin-bottom: 2px; }
+.rv-jokers .rv-changed { color: var(--gold-hi); font-weight: 800; }
+.reveal-screen small { text-align: center; color: var(--ink-3); font-size: 12px; }
+/* утрьох: ім'я суперника не обрізається — дрібніше й переноситься */
+.three .opps .player.opp { padding: 0 6px; gap: 5px; height: auto; min-height: 56px; }
+.three .opps .player.opp .ava { --avatar: 34px; width: 34px; height: 34px; font-size: 15px; }
+.three .opps .who b { font-size: 13px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; overflow: visible; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.three .opps .stack { font-size: 17px; gap: 3px; }
+.three .opps .stack svg.chip { width: 15px; height: 15px; }
+/* стіл: вміст ніколи не виходить за його межі й не перекриває кнопки */
+.table { overflow: clip; }
+@media (max-height: 760px) {
+  #scr-game.combo:not(.three) { --card-w-set: min(11vw, 44px); --card-w-open: min(13vw, 52px); }
+  #scr-game.combo.three { --card-w-set: min(9vw, 36px); --card-w-open: min(9vw, 36px); }
+  .combo.three .arena .s-me { --card-w-set: min(11vw, 44px); }
+  .combo .arena .pot .num { font-size: 28px !important; }
+  .combo .acts { height: 140px; }
+  .phase { min-height: 44px; }
+}
+/* панель дій — за вмістом (без фіксованої висоти) і завжди над картами руки */
+#scr-game .acts, .combo .acts { height: auto; min-height: 0; position: relative; z-index: 5; }
+.acts .row .btn.fold { color: var(--ink-2); }
+.acts .row .btn small { white-space: nowrap; }
+@media (max-height: 760px) { .acts .row .btn { min-height: 44px; } .acts .btn.primary { min-height: 52px; } }
+.acts .row .btn small { white-space: normal; font-size: 11px; line-height: 1.1; }
+@media (max-height: 760px) {
+  .combo .arena .pot { flex-direction: row !important; align-items: baseline !important; gap: 8px !important; }
+  .combo .arena .pot .num { font-size: 26px !important; }
+  #scr-game.combo:not(.three) { --card-w-set: min(10vw, 40px); --card-w-open: min(12vw, 48px); }
+  #scr-game.combo.three { --card-w-set: min(8.6vw, 34px); --card-w-open: min(8.6vw, 34px); }
+  .combo.three .arena .s-me { --card-w-set: min(10vw, 40px); }
+  .combo-tag { font-size: 11px; padding: 3px 8px; }
+  .combo .arena { row-gap: 2px !important; }
+  .combo .tbar { min-height: 28px; }
+}
+/* 👁/🔒 на вибраній карті — над лівою (завжди видимою у віялі) частиною карти */
+#scr-game .hand .eye-tog { top: -24px; right: auto; left: 30%; transform: translateX(-50%); }

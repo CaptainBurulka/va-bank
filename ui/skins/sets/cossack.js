@@ -101,8 +101,10 @@ function felt(rar, opts = {}) {
   const P = pal(id, rar);
   const b = band(160, rar);
   const base = svg('0 0 320 180', `${defs(id, rar)}<rect width="320" height="180" fill="url(#LN${id})"/>${stitchMatrix(b, 0, 8, 2, P, { cls: live ? 'kst' : '', chunk: 8, period: 6 })}${stitchMatrix(b, 0, 148, 2, P, { cls: live ? 'kst' : '', chunk: 8, period: 6 })}`);
-  const mid = svg('0 0 320 180', `${defs(id, rar)}${atLeast(rar, 'rare') ? sabres(160, 72, 1.7, id) : ''}${stitchText('ВА-БАНК', 160 - textCells('ВА-БАНК') * 1.6, 106, 3.2, rar === 'legendary' ? `url(#GT${id})` : RED, .44)}`);
-  return { layers: [{ d: 0, svg: base }, { d: 2, svg: mid }], ink: '', live: live ? sparksFelt : null, cls: 'ck' };
+  const mid = svg('0 0 320 180', `${defs(id, rar)}${atLeast(rar, 'rare') ? sabres(160, 72, 1.7, id) : ''}`);
+  // напис — окремим шаром .felt-mark: у матчі під ним банк, тож на столі він ховається (styles: .felt-skin .felt-mark)
+  const mark = svg('0 0 320 180', `${defs(id, rar)}${stitchText('ВА-БАНК', 160 - textCells('ВА-БАНК') * 1.6, 106, 3.2, rar === 'legendary' ? `url(#GT${id})` : RED, .44)}`);
+  return { layers: [{ d: 0, svg: base }, { d: 2, svg: mid }, { d: 2, svg: mark, cls: 'felt-mark' }], ink: '', live: live ? sparksFelt : null, cls: 'ck' };
 }
 const sparksFelt = particles('ksp', 14, (R) => `left:50%;top:50%;--tx:${f((R() - .5) * 220)}px;--ty:${f(-30 - R() * 90)}px;--d:${f(1.4 + R() * 1.4)}s;--delay:-${f(R() * 3)}s`);
 
