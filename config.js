@@ -72,19 +72,19 @@ export const JOKER_TUNING = Object.freeze({
   modest: { alt: 8 },                    // Підробка
   tax: { v: 6, fee: 5 },
   dice: { d: 2 },                        // Стрибок
-  counter: { v: 1, ranks: 1 },           // Сходинка
+  counter: { v: 1, ranks: 1, loseTie: true },           // Сходинка
   brazen: { suit: false, loseTie: true, p: 0.8 },               // Близнюк
   magnet: { v: 6 },
   temptation: { v: 3, gap: 60 },         // Аутсайдер
-  storm: { v: 3 },
+  storm: { v: 5 },
   swap: {},
   shadow: { v: 4 },
-  trap: { v: 3, ranks: 1 },
+  trap: { v: 2, ranks: 1 },
   highroller: { v: 7 },
   pocket: { v: 6 },
-  sharper: { v: 5, alt: 9 },
+  sharper: { v: 4, alt: 8 },
   luck: { v: 5, up: 1 },
-  brave: { v: 6, perRaise: 2 },
+  brave: { v: 6, perRaise: 1 },
   antitrump: { ranks: 3 },               // Ламач
   echo: { v: 7 },
   quake: { v: 6 },

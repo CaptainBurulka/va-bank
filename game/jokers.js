@@ -127,8 +127,8 @@ const build = (T) => [
       if (best) { api.setSlot(best.v, best.s); api.note(`Стрибок: ${best.v}`); } else { api.setSlot(5); api.note('Стрибок: нема від чого — 5'); }
     } },
   { id: 'counter', name: 'Сходинка', rarity: 'common', icon: '🪜', type: 'value', stage: 'power', slot: T.counter.v == null ? null : { v: T.counter.v }, noSuit: true,
-    desc: `${T.counter.v == null ? 'Місце порожнє' : `Значення ${T.counter.v} без масті`}, а твоя комбінація на ${T.counter.ranks} сходинку сильніша (Пара → як Масть…).`,
-    apply: (api) => { api.setSlot(T.counter.v ?? null); const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.counter.ranks); }); api.note('Сходинка: комбінація сильніша'); } },
+    desc: `${T.counter.v == null ? 'Місце порожнє' : `Значення ${T.counter.v} без масті`}, а твоя комбінація на ${T.counter.ranks} сходинку сильніша${T.counter.loseTie ? '; нічию програє' : ''}.`,
+    apply: (api) => { api.setSlot(T.counter.v ?? null); if (T.counter.loseTie) api.X.loseTie[api.me] = true; const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.counter.ranks); }); api.note('Сходинка: комбінація сильніша'); } },
   { id: 'brazen', name: 'Близнюк', rarity: 'common', icon: '♊', type: 'value', stage: 'power', slot: { mirror: true }, noSuit: !T.brazen.suit,
     desc: `${Math.round(T.brazen.p * 100)}%: копія значення твоєї наймолодшої іншої зіграної карти${T.brazen.suit ? ' (і масті)' : ', без масті'}${T.brazen.loseTie ? '; нічию програє' : ''}, інакше — 1.`,
     apply: (api) => {

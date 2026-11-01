@@ -185,8 +185,9 @@ test('Кишеньковий: після розкриття забирає ка�
   assert.equal(s.players[0].hand.length, 5, '7 − 3 + 1');
   assert.equal(s.players[1].hand.length, 2);
 });
-test('Шулер: 5 або 9 — що краще', () => {
-  const { combo } = duel({ j0: 'sharper', h0: ['w9', 'f9', 's2', 'w4', 'f4', 's5'], p0: ['J0-sharper', 'w9', 'f9'] });
+test('Шулер: одне з двох значень — що краще', () => {
+  const a = T.sharper.alt;
+  const { combo } = duel({ j0: 'sharper', h0: [`w${a}`, `f${a}`, 's2', 'w4', 'f4', 's5'], h1: ['w10', 'f10', 's3', 'w1', 'f2', 's6'], p0: ['J0-sharper', `w${a}`, `f${a}`] });
   assert.equal(combo(0).label, `Трійка ${T.sharper.alt}`);
 });
 test('Удача: комбінація на сходинку сильніша або слабша', () => {
@@ -198,10 +199,10 @@ test('Удача: комбінація на сходинку сильніша а
   assert.ok(ups && downs, `${ups}/${downs}`);
 });
 test('Сміливець: значення росте з підняттями', () => {
-  const calm = duel({ j0: 'brave', h0: ['w7', 'f8', 's2', 'w4', 'f9', 's5'], p0: ['J0-brave', 'w7', 'f8'] });
-  assert.equal(calm.combo(0).id, 'straight', '6-7-8');
-  const hot = duel({ j0: 'brave', h0: ['w7', 'f8', 's2', 'w4', 'f9', 's5'], p0: ['J0-brave', 'w7', 'f8'], bets: [act('raise', 0, { amount: 5 }), act('raise', 1, { amount: 5 }), act('call', 0)] });
-  assert.equal(hot.combo(0).label, 'Стріт 7–9', 'з підняттям доступна 9');
+  const calm = duel({ j0: 'brave', h0: ['w8', 'f9', 's2', 'w4', 'f4', 's5'], p0: ['J0-brave', 'w8', 'f9'] });
+  assert.equal(calm.combo(0).label, `Старша 9`, `без піднять — лише ${T.brave.v}`);
+  const hot = duel({ j0: 'brave', h0: ['w8', 'f9', 's2', 'w4', 'f4', 's5'], p0: ['J0-brave', 'w8', 'f9'], bets: [act('raise', 0, { amount: 5 }), act('raise', 1, { amount: 5 }), act('call', 0)] });
+  assert.equal(hot.combo(0).label, 'Стріт 7–9', 'з двома підняттями доступна 7');
 });
 test('Ламач: комбінація суперника на 3 сходинки слабша, своє місце порожнє', () => {
   const { s, combo } = duel({ j0: 'antitrump', h1: ['w8', 'f8', 's8', 'w1', 'f2', 's6'], p1: ['w8', 'f8', 's8'] });
