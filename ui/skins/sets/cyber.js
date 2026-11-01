@@ -117,8 +117,7 @@ function face(card, rar, opts = {}) {
     const col = SUIT_COLOR[card.suit];
     const glow = atLeast(rar, 'epic') ? `GL${id}` : '';
     center = number7(card.value, 50, 60, 40, rar, id, live ? 'cyglitch' : '')
-      + `<text x="10.5" y="18" text-anchor="middle" font-family="Unbounded, Arial Black, sans-serif" font-weight="800" font-size="10" fill="${NEON.white}" ${rar === 'common' ? '' : `style="paint-order:stroke" stroke="${NEON.pink}" stroke-width=".5"`}>${card.value}</text>`
-      + suitG(card.suit, 6, 22, 12, col, glow) + suitG(card.suit, 82, 112, 13, col, glow);
+      + suitG(card.suit, 82, 112, 13, col, glow);
   } else {
     const col = { knife: NEON.white, mirror: NEON.cyan, double: NEON.yellow }[card.kind];
     center = suitG(card.kind, 32, 22, 36, col, atLeast(rar, 'epic') ? `GL${id}` : '')
@@ -150,7 +149,7 @@ function liveRain(el, n) {
   };
   const frame = (ts) => {
     raf = requestAnimationFrame(frame);
-    if (el.closest('.sk-paused')) return;
+    if (el.closest('.sk-paused') || !el.closest('.sk-full, .skwin')) return; // дощ лише в активного / в огляді
     if (ts - last < 50) return; // ~20 к/с досить для «дощу» і береже батарею
     last = ts;
     if (!W) size();

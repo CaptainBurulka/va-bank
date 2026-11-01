@@ -41,9 +41,10 @@ const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
 /** Зробити елемент активним (повний ефект). Попередній повертається в полегшений режим. */
 export function setActive(el) {
   if (active === el) return;
-  if (active) { active.classList.remove('sk-active'); resetVars(active); }
+  if (active) { active.classList.remove('sk-active'); if (!active.dataset.full) active.classList.remove('sk-full'); resetVars(active); }
   active = el;
-  if (el) { el.classList.add('sk-active'); cur = { x: 0.5, y: 0.5 }; target = { x: 0.5, y: 0.5 }; kick(); }
+  // активний предмет отримує повний ефект (живі анімації, світло); решта — полегшений режим
+  if (el) { el.classList.add('sk-active', 'sk-full'); cur = { x: 0.5, y: 0.5 }; target = { x: 0.5, y: 0.5 }; kick(); }
 }
 
 function resetVars(el) { for (const k of ['--px', '--py', '--rx', '--ry', '--hyp', '--nx', '--ny']) el.style.removeProperty(k); }

@@ -65,8 +65,7 @@ function face(card, rar, opts = {}) {
   if (card.kind === 'num') {
     const col = rar === 'legendary' ? { water: '#6fa8ff', fire: '#ff5a48', stone: '#f3e2b0' }[card.suit] : SUIT_COLOR[card.suit];
     center = bigValue(card.value, rar, id)
-      + stitchText(String(card.value), 7, 8, 1.5, TXT(rar), .5)
-      + suitS(card.suit, 6, 21, 11, col) + suitS(card.suit, 83, 121, 11, col);
+      + suitS(card.suit, 83, 121, 11, col);
   } else {
     const col = { knife: rar === 'legendary' ? '#c9d2dc' : '#4b5560', mirror: rar === 'legendary' ? '#6fa8ff' : '#23467a', double: RED }[card.kind];
     center = suitS(card.kind, 33, 22, 34, col)

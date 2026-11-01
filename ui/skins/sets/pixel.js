@@ -73,7 +73,6 @@ function face(card, rar, opts = {}) {
   let center;
   if (card.kind === 'num') {
     center = bigValue(card.value, rar, live ? 'pxrain' : '')
-      + pixText(String(card.value), 7, 8, 1.4, P.w) + suitP(card.suit, 6, 20, 11, SUIT_COLOR[card.suit])
       + suitP(card.suit, 84, 123, 11, SUIT_COLOR[card.suit]);
   } else {
     const label = SPECIAL[card.kind];

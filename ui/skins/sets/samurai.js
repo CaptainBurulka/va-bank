@@ -44,9 +44,13 @@ function paper(R, w, h, rar, id) {
   return o;
 }
 
-/** Гори тушшю: кілька планів, ближчі — темніші; гострі вершини, підніжжя тоне в тумані; live — гребінь промальовується. */
-function mountains(R, w, base, s, rar, id, live) {
+/**
+ * Гори тушшю: кілька планів, ближчі — темніші; гострі вершини, підніжжя тоне в тумані.
+ * Повертає { body, ridge }: гребінь пензлем — окремим шаром (на легендарній він «промальовується» через transform).
+ */
+function mountains(R, w, base, s, rar, id) {
   let o = '';
+  let line = '';
   for (let k = 0; k < 3; k++) {
     const y = base - (2 - k) * 9 * s, op = [.3, .5, .85][k];
     let ridge = `M-6 ${f(y)}`, x = -6;
@@ -57,10 +61,12 @@ function mountains(R, w, base, s, rar, id, live) {
     }
     const d = `${ridge} L${f(x)} ${f(y + 34 * s)} L-6 ${f(y + 34 * s)}Z`;
     o += `<path d="${d}" fill="url(#MT${id})" opacity="${op}" ${k < 2 ? `filter="url(#MI${id})"` : ''}/>`;
-    if (k === 2) o += `<path class="${live ? 'smflow' : ''}" d="${ridge}" fill="none" stroke="${INK}" stroke-width="${f(.8 * s)}" stroke-linecap="round" opacity=".8" pathLength="100" filter="url(#BR${id})"/>`;
+    if (k === 2) line = `<path d="${ridge}" fill="none" stroke="${INK}" stroke-width="${f(.8 * s)}" stroke-linecap="round" opacity=".8" filter="url(#BR${id})"/>`;
   }
-  return o;
+  return { body: o, ridge: line };
 }
+/** Шар гребеня: статичний пензель; на живій легендарній — «промальовування» зліва направо. */
+const ridgeLayer = (vb, id, m, d, live) => ({ d, svg: svg(vb, `${defs(id)}${m.ridge}`), wipe: live, cls: live ? 'smwipe' : '' });
 
 /** Гілка сосни/сакури тушшю з переднього плану. */
 function branch(R, x, y, s, rar, live) {
@@ -91,22 +97,22 @@ function face(card, rar, opts = {}) {
   const live = rar === 'legendary' && opts.live !== false;
   const sunR = { common: 10, rare: 11, epic: 12, legendary: 13 }[rar];
   const bg = svg('0 0 100 140', `${defs(id)}${paper(R, 100, 140, rar, id)}<circle cx="70" cy="44" r="${sunR}" fill="${rar === 'legendary' ? `url(#GD${id})` : VERMILION}" opacity="${rar === 'common' ? .55 : .9}"/>`);
-  const hills = svg('0 0 100 140', `${defs(id)}${mountains(R, 100, 112, 1, rar, id, live)}`);
-  const mist = svg('0 0 100 140', `${defs(id)}<g class="${live ? 'smmist' : ''}" filter="url(#MI${id})"><ellipse cx="26" cy="104" rx="44" ry="6" fill="${PAPER[rar]}" opacity=".85"/><ellipse cx="84" cy="114" rx="38" ry="5" fill="${PAPER[rar]}" opacity=".75"/><rect x="-5" y="122" width="110" height="20" fill="${PAPER[rar]}" opacity=".6"/></g>`);
+  const m = mountains(R, 100, 112, 1, rar, id);
+  const hills = svg('0 0 100 140', `${defs(id)}${m.body}`);
+  const mist = svg('0 0 100 140', `${defs(id)}<g filter=""url(#MI${id})"><ellipse cx="26" cy="104" rx="44" ry="6" fill="${PAPER[rar]}" opacity=".85"/><ellipse cx="84" cy="114" rx="38" ry="5" fill="${PAPER[rar]}" opacity=".75"/><rect x="-5" y="122" width="110" height="20" fill="${PAPER[rar]}" opacity=".6"/></g>`);
   const front = svg('0 0 100 140', `${branch(R, -4, 132, 1, rar, live)}${atLeast(rar, 'rare') ? hanko(86, 104, .9) : ''}`);
   let center;
   if (card.kind === 'num') {
     const col = SUIT_COLOR[card.suit];
     center = bigValue(card.value, rar, id)
-      + `<text x="9" y="17" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-weight="900" font-size="13" fill="${INK}">${card.value}</text>`
-      + suitG(card.suit, 3, 19, 12, col) + suitG(card.suit, 85, 124, 12, col);
+      + suitG(card.suit, 85, 124, 12, col);
   } else {
     const col = { knife: INK, mirror: '#8a5a1c', double: VERMILION }[card.kind];
     center = suitG(card.kind, 30, 16, 40, col, `filter="url(#BR${id})"`)
       + `<text x="50" y="72" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-weight="900" font-size="9.5" letter-spacing="1" fill="${INK}">${SPECIAL[card.kind]}</text>`;
   }
   const ink = svg('0 0 100 140', `${defs(id)}${center}`, 'xMidYMid meet');
-  return { layers: [{ d: 0, svg: bg }, { d: 1, svg: hills }, { d: 2, svg: mist }, { d: 3, svg: front }], ink, live: live ? petals : null, cls: 'sm' };
+  return { layers: [{ d: 0, svg: bg }, { d: 1, svg: hills }, ridgeLayer('0 0 100 140', id, m, 1, live), { d: 2, svg: mist, cls: live ? 'smmist' : '' }, { d: 3, svg: front }], ink, live: live ? petals : null, cls: 'sm' };
 }
 
 /** Легендарна: пелюстки сакури летять навскіс (CSS, кількість обмежена). */
@@ -119,10 +125,10 @@ function back(rar, opts = {}) {
   let waves = '';
   for (let y = 0; y < 150; y += 6) for (let x = (y / 6) % 2 ? 0 : 6; x < 110; x += 12) waves += `<g transform="translate(${x} ${y})"><path d="M-6 0a6 6 0 0 1 12 0" fill="${PAPER[rar]}" stroke="#26487a" stroke-width=".5"/><path d="M-4 0a4 4 0 0 1 8 0M-2 0a2 2 0 0 1 4 0" fill="none" stroke="#26487a" stroke-width=".4"/></g>`;
   const field = svg('0 0 100 140', `${defs(id)}<rect width="100" height="140" fill="${PAPER[rar]}"/><g opacity="${rar === 'common' ? .45 : .7}">${waves}</g>`);
-  const mark = svg('0 0 100 140', `${defs(id)}<circle cx="50" cy="68" r="30" fill="${PAPER[rar]}"/>
-<path class="${live ? 'smenso' : ''}" pathLength="100" d="M70 52 A24 24 0 1 0 74 74" fill="none" stroke="${rar === 'legendary' ? `url(#GD${id})` : INK}" stroke-width="5" stroke-linecap="round" filter="url(#BR${id})"/>
-${hanko(50, 70, 1.4, 'ВБ', 0)}<rect x="22" y="110" width="56" height="11" rx="5.5" fill="${PAPER[rar]}"/><text x="50" y="118" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-weight="900" font-size="7" letter-spacing="3" fill="${INK}">ВА·БАНК</text>`);
-  return { layers: [{ d: 0, svg: field }, { d: 2, svg: mark }], ink: '', live: live ? petals : null, cls: 'sm' };
+  const disc = svg('0 0 100 140', `<circle cx="50" cy="68" r="30" fill="${PAPER[rar]}"/>`);
+  const enso = svg('0 0 100 140', `${defs(id)}<path d="M70 52 A24 24 0 1 0 74 74" fill="none" stroke="${rar === 'legendary' ? `url(#GD${id})` : INK}" stroke-width="5" stroke-linecap="round" filter="url(#BR${id})"/>`);
+  const mark = svg('0 0 100 140', `${hanko(50, 70, 1.4, 'ВБ', 0)}<rect x="22" y="110" width="56" height="11" rx="5.5" fill="${PAPER[rar]}"/><text x="50" y="118" text-anchor="middle" font-family="'Playfair Display', Georgia, serif" font-weight="900" font-size="7" letter-spacing="3" fill="${INK}">ВА·БАНК</text>`);
+  return { layers: [{ d: 0, svg: field }, { d: 2, svg: disc }, { d: 2, svg: enso, wipe: live, cls: live ? 'smwipe' : '' }, { d: 2, svg: mark }], ink: '', live: live ? petals : null, cls: 'sm' };
 }
 
 function felt(rar, opts = {}) {
@@ -130,8 +136,10 @@ function felt(rar, opts = {}) {
   const R = rng('samurai-felt');
   const live = rar === 'legendary' && opts.live !== false;
   const bg = svg('0 0 320 180', `${defs(id)}${paper(R, 320, 180, rar, id)}<circle cx="236" cy="62" r="26" fill="${rar === 'legendary' ? `url(#GD${id})` : VERMILION}" opacity=".85"/>`);
-  const hills = svg('0 0 320 180', `${defs(id)}${mountains(R, 320, 150, 2, rar, id, live)}${branch(R, -6, 186, 2.2, rar, live)}${atLeast(rar, 'rare') ? hanko(296, 160, 1.4) : ''}`);
-  return { layers: [{ d: 0, svg: bg }, { d: 2, svg: hills }], ink: '', live: live ? petals : null, cls: 'sm' };
+  const m = mountains(R, 320, 150, 2, rar, id);
+  const hills = svg('0 0 320 180', `${defs(id)}${m.body}`);
+  const front = svg('0 0 320 180', `${branch(R, -6, 186, 2.2, rar, live)}${atLeast(rar, 'rare') ? hanko(296, 160, 1.4) : ''}`);
+  return { layers: [{ d: 0, svg: bg }, { d: 2, svg: hills }, ridgeLayer('0 0 320 180', id, m, 2, live), { d: 2, svg: front }], ink: '', live: live ? petals : null, cls: 'sm' };
 }
 
 // ── фішка: чорний лак, червоний кант, герб-мон із квіткою сакури ──

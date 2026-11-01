@@ -273,7 +273,7 @@ svg.ico { width: 22px; height: 22px; flex-shrink: 0; }
 .card .sp-ico { position: absolute; left: 50%; top: 44%; width: calc(var(--cw) * .5); height: calc(var(--cw) * .5); transform: translate(-50%, -50%); color: var(--c); }
 .card .sp-name { position: absolute; bottom: 7%; left: 0; right: 0; text-align: center; font: 800 max(13px, calc(var(--cw) * .15))/1 var(--font-ui); color: var(--c); text-transform: uppercase; letter-spacing: .02em; }
 .card .sp-sub { position: absolute; top: 6%; left: 0; right: 0; text-align: center; font: 700 max(11px, calc(var(--cw) * .12))/1.1 var(--font-ui); color: #6b5a78; }
-.card.trumped .face { box-shadow: var(--sh-card), inset 0 0 0 1px var(--card-edge), 0 0 0 2.5px var(--gold); }
+/* козир — див. «Козир: єдиний маркер» унизу файлу */
 .card .tb { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); z-index: 2; padding: 4px 8px; border-radius: var(--r-pill); background: var(--gold); color: var(--accent-ink); font: 800 var(--fs-xs)/1 var(--font-ui); white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, .4); backface-visibility: hidden; }
 .card.win { animation: winGlow 1.2s ease-in-out infinite; }
 .card.lose { opacity: .55; filter: grayscale(.5); }
@@ -772,3 +772,21 @@ input[type=range] { width: 100%; height: 36px; accent-color: var(--gold); }
 .slot-machine.near .lights i { animation-duration: .9s; }
 @keyframes slotNear { to { box-shadow: inset 0 0 0 3px var(--brass), inset 0 0 0 7px rgba(226, 183, 90, .35), 0 16px 40px rgba(0, 0, 0, .55), 0 0 36px rgba(255, 220, 140, .35); } }
 @media (prefers-reduced-motion: reduce) { .slot-machine.near { animation: none; } }
+
+/* ═════════ Козир: єдиний маркер (версія 5.0.1) ═════════
+   Не залежить від скіна: контур і світіння кольору козирної масті + бейдж «+N». Однаковий у руці, на столі й при розкритті. */
+.card.water { --tc: var(--water-ui); } .card.fire { --tc: var(--fire-ui); } .card.stone { --tc: var(--stone-ui); }
+.card.trumped::before { content: ""; position: absolute; inset: -3px; z-index: 3; border-radius: calc(var(--r-card) + 3px); pointer-events: none; box-shadow: 0 0 0 2.5px var(--tc), 0 0 12px 2px color-mix(in srgb, var(--tc) 70%, transparent); }
+.trump-badge {
+  position: absolute; z-index: 4; top: -9px; right: -7px; min-width: 26px; height: 22px; padding: 0 6px; border-radius: 11px;
+  display: grid; place-items: center; font: 900 14px/1 var(--font-ui); color: #10131a; background: var(--tc);
+  box-shadow: 0 0 0 2px #10131a, 0 2px 6px rgba(0, 0, 0, .5); pointer-events: none;
+}
+.card.back-up .trump-badge, .card.back-up.trumped::before { display: none; }
+.card.mini .trump-badge { top: -6px; right: -5px; min-width: 20px; height: 17px; font-size: 11px; }
+/* значок козиря раунду на столі — крупніше й контрастніше */
+.trump { padding: 7px 12px 7px 9px; gap: 7px; background: rgba(6, 8, 12, .82); font-size: 15px; box-shadow: inset 0 0 0 2px var(--tc, var(--gold)); }
+.trump svg { width: 26px; height: 26px; }
+.trump b { font-weight: 800; }
+.trump[data-suit="water"] { --tc: var(--water-ui); } .trump[data-suit="fire"] { --tc: var(--fire-ui); } .trump[data-suit="stone"] { --tc: var(--stone-ui); }
+.trump .tb-plus { min-width: 26px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-grid; place-items: center; font: 900 14px/1 var(--font-ui); color: #10131a; background: var(--tc, var(--gold)); }

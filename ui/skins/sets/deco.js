@@ -51,7 +51,7 @@ function fan(cx, cy, r, rays, stroke, sw, cls = '') {
 /** Ступінчаста рамка (зикурат у кутах). live — по ній біжить світло. */
 function stepped(x, y, w, h, s, stroke, sw, live) {
   const d = `M${x + 3 * s} ${y}H${x + w - 3 * s}V${y + s}H${x + w - s}V${y + 3 * s}H${x + w}V${y + h - 3 * s}H${x + w - s}V${y + h - s}H${x + w - 3 * s}V${y + h}H${x + 3 * s}V${y + h - s}H${x + s}V${y + h - 3 * s}H${x}V${y + 3 * s}H${x + s}V${y + s}H${x + 3 * s}Z`;
-  return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${sw}"/>${live ? `<path class="dkrun" pathLength="100" d="${d}" fill="none" stroke="#fff6d6" stroke-width="${f(sw * 1.6)}" stroke-linecap="round"/>` : ''}`;
+  return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${sw}"/>${live ? `<path class="dkrun" pathLength="100" d="${d}" fill="none" stroke="#ffd66b" stroke-width="${f(sw * 4)}" stroke-linecap="round" opacity=".35"/><path class="dkrun" pathLength="100" d="${d}" fill="none" stroke="#fff6d6" stroke-width="${f(sw * 1.6)}" stroke-linecap="round"/>` : ''}`;
 }
 
 function bigValue(v, rar, id) {
@@ -75,8 +75,7 @@ function face(card, rar, opts = {}) {
   if (card.kind === 'num') {
     const col = SUIT_COLOR[card.suit];
     center = bigValue(card.value, rar, id)
-      + `<text x="11" y="19" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="12" fill="#f3ead2">${card.value}</text>`
-      + suitG(card.suit, 5, 21, 12, col) + suitG(card.suit, 83, 117, 12, col);
+      + suitG(card.suit, 83, 117, 12, col);
   } else {
     const col = { knife: '#e8e4da', mirror: '#7fd1c1', double: '#f2b84b' }[card.kind];
     center = suitG(card.kind, 32, 26, 36, col, rar === 'legendary' ? `filter="url(#GW${id})"` : '')

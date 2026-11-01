@@ -76,7 +76,7 @@ function mountFelt(look) {
   if (!s) return;
   const wrap = document.createElement('div');
   wrap.className = 'felt-skin';
-  wrap.append(renderItem({ set: s.set, kind: 'felt', rarity: s.rarity, w: '360px' }));
+  wrap.append(renderItem({ set: s.set, kind: 'felt', rarity: s.rarity, w: '360px', full: true }));
   table.style.setProperty('--rc', `var(--rar-${s.rarity})`);
   table.prepend(wrap);
 }

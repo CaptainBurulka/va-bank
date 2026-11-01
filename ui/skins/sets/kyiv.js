@@ -146,7 +146,9 @@ function face(card, rar, opts = {}) {
   const lit = { common: .32, rare: .45, epic: .55, legendary: .68 }[rar];
   const sky = uniq(svg('0 0 100 140', `${defs(rar)}<rect width="100" height="140" fill="url(#SKY)"/><rect width="100" height="140" fill="url(#HAL)"/>${stars(R, atLeast(rar, 'epic') ? 34 : 22, 100, 78, live ? 'ktw' : '')}${moon(80, 18, 6, SKY[rar][0])}`), id);
   const far = uniq(svg('0 0 100 140', `${defs(rar)}${hills(100, 98, 1.05, '#121a3e', atLeast(rar, 'epic') ? 'url(#DOME)' : '#121a3e')}`), id);
-  const near = uniq(svg('0 0 100 140', `${defs(rar)}${neonFilter}${blocks(R, 100, 112, 1, '#0c1330', lit, live)}${neonSign(60, 93, 1, rar)}${bridge(100, 116, 1, rar, live, id)}${river(R, 100, 118, 26, 1)}`), id);
+  // вивіска (неоновий текст із фільтром) — окремим шаром: квартали без тексту малюються в bitmap
+  const near = uniq(svg('0 0 100 140', `${defs(rar)}${blocks(R, 100, 112, 1, '#0c1330', lit, live)}${bridge(100, 116, 1, rar, live, id)}${river(R, 100, 118, 26, 1)}`), id);
+  const sign = uniq(svg('0 0 100 140', `${neonFilter}${neonSign(60, 93, 1, rar)}`), id);
   // передній план: гілка каштана в нижньому лівому куті над Дніпром
   const front = svg('0 0 100 140', `${chestnutLeaf(-2, 142, 1.7, 35, 'rgba(6,9,24,.95)')}${chestnutLeaf(10, 146, 1.2, 70, 'rgba(6,9,24,.9)')}${atLeast(rar, 'rare') ? '<g transform="translate(13 128)"><circle r="3" fill="#2c1d0c"/><path d="M-2.6 -1.4 -4 -2.6M2.6 -1.4 4 -2.6M0 -3 0 -4.6M-3 1 -4.6 1.4M3 1 4.6 1.4" stroke="#2c1d0c" stroke-width=".7"/><circle cx="-.7" cy="-.6" r="1.1" fill="#9a6230"/></g>' : ''}`);
 
@@ -155,14 +157,13 @@ function face(card, rar, opts = {}) {
   if (card.kind === 'num') {
     const col = SUIT_COLOR[card.suit];
     center = `${bigValue(card.value, rar, 50, 66, 46, id)}`
-      + `<text x="9" y="17" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="13" fill="#f6ead2" stroke="rgba(0,0,0,.5)" stroke-width=".6" paint-order="stroke">${card.value}</text>`
-      + suitG(card.suit, 3, 19, 12, col) + suitG(card.suit, 85, 124, 12, col);
+      + suitG(card.suit, 85, 124, 12, col);
   } else {
     const col = { knife: '#d6dbe8', mirror: '#c8a8ff', double: '#ffcf55' }[card.kind];
     center = suitG(card.kind, 32, 18, 36, col) + `<text x="50" y="66" text-anchor="middle" font-family="Oswald, Impact, sans-serif" font-weight="700" font-size="9" letter-spacing="1" fill="#f6ead2" stroke="rgba(0,0,0,.5)" stroke-width=".6" paint-order="stroke">${SPECIAL[card.kind]}</text>`;
   }
   const ink = svg('0 0 100 140', `${inkDefs(id)}${center}`, 'xMidYMid meet');
-  return { layers: [{ d: 0, svg: sky }, { d: 1, svg: far }, { d: 2, svg: near }, { d: 3, svg: front }], ink, live: live ? liveDust : null };
+  return { layers: [{ d: 0, svg: sky }, { d: 1, svg: far }, { d: 2, svg: near }, { d: 2, svg: sign }, { d: 3, svg: front }], ink, live: live ? liveDust : null };
 }
 
 /** Легендарна: золотий пил піднімається над містом (кількість обмежена). */
@@ -194,8 +195,9 @@ function felt(rar, opts = {}) {
   const R = rng('kyiv-felt');
   const live = rar === 'legendary' && opts.live !== false;
   const base = svg('0 0 320 180', `<defs><radialGradient id="F${id}" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="#22376e"/><stop offset=".6" stop-color="#121d44"/><stop offset="1" stop-color="#070b20"/></radialGradient></defs><rect width="320" height="180" fill="url(#F${id})"/>${stars(R, 40, 320, 110, live ? 'ktw' : '')}`);
-  const city = uniq(svg('0 0 320 180', `${defs(rar)}${neonFilter}${hills(320, 128, 3.6, '#0d1534', atLeast(rar, 'epic') ? 'url(#DOME)' : '#0d1534')}${blocks(R, 320, 150, 2.6, '#0a1029', { common: .3, rare: .42, epic: .52, legendary: .62 }[rar], live)}${neonSign(196, 104, 2.2, rar)}${bridge(320, 156, 2.2, rar, live, id)}${river(R, 320, 158, 24, 2)}`), id);
-  return { layers: [{ d: 0, svg: base }, { d: 2, svg: city }], ink: '', live: live ? liveDust : null };
+  const city = uniq(svg('0 0 320 180', `${defs(rar)}${hills(320, 128, 3.6, '#0d1534', atLeast(rar, 'epic') ? 'url(#DOME)' : '#0d1534')}${blocks(R, 320, 150, 2.6, '#0a1029', { common: .3, rare: .42, epic: .52, legendary: .62 }[rar], live)}${bridge(320, 156, 2.2, rar, live, id)}${river(R, 320, 158, 24, 2)}`), id);
+  const sign = uniq(svg('0 0 320 180', `${neonFilter}${neonSign(196, 104, 2.2, rar)}`), id);
+  return { layers: [{ d: 0, svg: base }, { d: 2, svg: city }, { d: 2, svg: sign }], ink: '', live: live ? liveDust : null };
 }
 
 // ── фішка: бурштин, кант із насічками, у центрі силует куполів ──

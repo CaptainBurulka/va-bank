@@ -59,22 +59,23 @@ function face(card, rar, opts = {}) {
   const id = uid('cs');
   const R = rng(`space-${card.kind}-${card.suit || ''}-${card.value || ''}`);
   const live = rar === 'legendary' && opts.live !== false;
-  const bg = svg('0 0 100 140', `${defs(id, rar)}<rect width="100" height="140" fill="#05030f"/>${nebula(R, 100, 140, id, live ? 'csneb' : '')}`);
+  // туманність — окремий шар: малюється в bitmap один раз, а на живій легендарній рухається лише transform шару
+  const bg = svg('0 0 100 140', '<rect width="100" height="140" fill="#05030f"/>');
+  const neb = svg('0 0 100 140', `${defs(id, rar)}${nebula(R, 100, 140, id)}`);
   const st = svg('0 0 100 140', `${defs(id, rar)}${stars(R, 100, 140, { common: 40, rare: 55, epic: 70, legendary: 85 }[rar], rar, live ? 'cstw' : '')}`);
   const near = svg('0 0 100 140', `${defs(id, rar)}${atLeast(rar, 'rare') ? orbitPlanet(50, 104, 34, 9, rar, id, live) : ''}<circle cx="${atLeast(rar, 'rare') ? 18 : 80}" cy="${atLeast(rar, 'rare') ? 120 : 112}" r="${rar === 'common' ? 9 : 12}" fill="url(#PL${id})"/>`);
   let center;
   if (card.kind === 'num') {
     const col = SUIT_COLOR[card.suit];
     center = bigValue(card.value, rar, id)
-      + `<text x="10" y="17" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="600" font-size="9.5" fill="#eef1ff">${card.value}</text>`
-      + suitG(card.suit, 4, 20, 12, col) + suitG(card.suit, 84, 122, 12, col);
+      + suitG(card.suit, 84, 122, 12, col);
   } else {
     const col = { knife: '#bfe6ff', mirror: '#d6cfc4', double: '#ffcf5a' }[card.kind];
     center = suitG(card.kind, 32, 22, 36, col, atLeast(rar, 'epic') ? `filter="url(#SG${id})"` : '')
       + `<text x="50" y="76" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="600" font-size="7" letter-spacing="1" fill="#eef1ff">${SPECIAL[card.kind]}</text>`;
   }
   const ink = svg('0 0 100 140', `${defs(id, rar)}${center}`, 'xMidYMid meet');
-  return { layers: [{ d: 0, svg: bg }, { d: 1, svg: st }, { d: 2, svg: near }], ink, live: live ? falling : null, cls: 'cs' };
+  return { layers: [{ d: 0, svg: bg }, { d: 0, svg: neb, cls: live ? 'csneb' : '' }, { d: 1, svg: st }, { d: 2, svg: near }], ink, live: live ? falling : null, cls: 'cs' };
 }
 
 /** Легендарна: падають зорі — світлі штрихи навскіс (CSS, кількість обмежена). */
@@ -91,18 +92,21 @@ function back(rar, opts = {}) {
     arms += `<circle cx="${f(50 + Math.cos(ang) * r + (R() - .5) * 5)}" cy="${f(70 + Math.sin(ang) * r * .7 + (R() - .5) * 4)}" r="${f(.3 + R() * .8 * (1 - t))}" fill="${R() < .3 ? NEB[rar][0] : '#e8ecff'}" opacity="${f(.4 + R() * .6)}"/>`;
   }
   const field = svg('0 0 100 140', `${defs(id, rar)}<rect width="100" height="140" fill="#05030f"/>${nebula(R, 100, 140, id)}${stars(R, 100, 140, 50, rar)}`);
-  const gal = svg('0 0 100 140', `${defs(id, rar)}<g class="${live ? 'csgal' : ''}" style="transform-origin:50px 70px">${arms}</g><circle cx="50" cy="70" r="9" fill="#05030f" opacity=".6"/>
+  const arm = svg('0 0 100 140', `<g>${arms}</g>`);
+  const gal = svg('0 0 100 140', `${defs(id, rar)}<circle cx="50" cy="70" r="9" fill="#05030f" opacity=".6"/>
 <text x="50" y="75" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="800" font-size="13" fill="url(#DG${id})" filter="url(#SG${id})">ВБ</text>`);
-  return { layers: [{ d: 0, svg: field }, { d: 2, svg: gal }], ink: '', live: live ? falling : null, cls: 'cs' };
+  return { layers: [{ d: 0, svg: field }, { d: 2, svg: arm, cls: live ? 'csgal' : '' }, { d: 2, svg: gal }], ink: '', live: live ? falling : null, cls: 'cs' };
 }
 
 function felt(rar, opts = {}) {
   const id = uid('cF');
   const R = rng('space-felt');
   const live = rar === 'legendary' && opts.live !== false;
-  const bg = svg('0 0 320 180', `${defs(id, rar)}<rect width="320" height="180" fill="#05030f"/>${nebula(R, 320, 180, id, live ? 'csneb' : '')}${stars(R, 320, 180, 140, rar, live ? 'cstw' : '')}`);
+  const bg = svg('0 0 320 180', '<rect width="320" height="180" fill="#05030f"/>');
+  const neb = svg('0 0 320 180', `${defs(id, rar)}${nebula(R, 320, 180, id)}`);
+  const st = svg('0 0 320 180', `${stars(R, 320, 180, 140, rar, live ? 'cstw' : '')}`);
   const pl = svg('0 0 320 180', `${defs(id, rar)}<circle cx="300" cy="230" r="110" fill="url(#PB${id})"/><circle cx="300" cy="230" r="110" fill="none" stroke="#9fd2ff" stroke-width="2" opacity=".5"/>${atLeast(rar, 'rare') ? orbitPlanet(110, 70, 60, 16, rar, id, live) : ''}${atLeast(rar, 'epic') ? '<circle cx="40" cy="150" r="10" fill="#d6cfc4"/><circle cx="37" cy="147" r="2.4" fill="#000" opacity=".2"/>' : ''}`);
-  return { layers: [{ d: 0, svg: bg }, { d: 2, svg: pl }], ink: '', live: live ? falling : null, cls: 'cs' };
+  return { layers: [{ d: 0, svg: bg }, { d: 0, svg: neb, cls: live ? 'csneb' : '' }, { d: 0, svg: st }, { d: 2, svg: pl }], ink: '', live: live ? falling : null, cls: 'cs' };
 }
 
 // ── фішка: планета з кільцем ──

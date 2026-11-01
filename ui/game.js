@@ -515,7 +515,8 @@ export class GameScreen {
     e.roundTag.textContent = `${md ? `${md.icon} ` : ''}Раунд ${v.round}/${v.maxRounds} · анте ${v.ante}`;
     e.roundTag.title = md ? `${md.name}: ${md.desc}` : '';
     if (v.trump) {
-      e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b>&nbsp;+${v.cfg.trumpBonus}`;
+      e.trump.innerHTML = `Козир ${suitIcon(v.trump)}<b>${SUIT[v.trump].name}</b><span class="tb-plus">+${v.cfg.trumpBonus}</span>`;
+      e.trump.dataset.suit = v.trump;
       e.trump.classList.remove('hidden');
       if (prev && prev.round !== v.round) { e.trump.classList.remove('pop'); void e.trump.offsetWidth; e.trump.classList.add('pop'); }
     } else e.trump.classList.add('hidden');

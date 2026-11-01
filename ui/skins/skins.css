@@ -58,6 +58,12 @@
 .sk-art > *, .sk-ink > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .sk-art .plx { position: absolute; inset: -4%; width: auto; height: auto; }
 .sk-art .plx > svg { width: 100%; height: 100%; display: block; }
+/* шари: обгортка .lay (анімація шару), «промальовування» .wipe-clip/.wipe-in, bitmap статичної частини */
+.sk-art .lay, .sk-art .wipe-clip, .sk-art .wipe-in { position: absolute; inset: 0; }
+.sk-art .wipe-clip { overflow: hidden; }
+.sk-art :is(.lay, .wipe-in) > :is(svg, img) { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sk-ink > .ink-live { position: absolute; inset: 0; }
+.sk-ink > .ink-live > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* паралакс: глибші шари рухаються сильніше (лише в активного предмета) */
 .sk-active .sk-art .d1 { transform: translate(calc((var(--px) - 50%) * -.03), calc((var(--py) - 50%) * -.03)); }
 .sk-active .sk-art .d2 { transform: translate(calc((var(--px) - 50%) * -.06), calc((var(--py) - 50%) * -.06)); }
@@ -83,7 +89,7 @@
 .sk-item.r-rare .sk-glare { background: radial-gradient(circle at var(--px) var(--py), rgba(255, 255, 255, .28), transparent 55%); mix-blend-mode: overlay; }
 .sk-item.r-rare .sk-tilt::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(165deg, rgba(255, 255, 255, .14), transparent 40%); }
 /* без нахилу блік сам пробігає рамкою раз на кілька секунд */
-.sk-item.r-rare:not(.sk-active) .sk-frame { animation: skSheen var(--sk-sheen) ease-in-out infinite; }
+.sk-item.r-rare.sk-full:not(.sk-active) .sk-frame { animation: skSheen var(--sk-sheen) ease-in-out infinite; }
 @keyframes skSheen { 0% { --px: -30%; } 55%, 100% { --px: 130%; } }
 
 /* ───── Епічна: голографічна фольга-веселка, світіння рамки, «дихання» світла ───── */
@@ -107,7 +113,7 @@
   mix-blend-mode: color-dodge; opacity: calc(.32 + var(--hyp) * .35);
 }
 .sk-item.r-epic .sk-glare, .sk-item.r-legendary .sk-glare { background: radial-gradient(circle at var(--px) var(--py), rgba(255, 255, 255, .45), rgba(255, 255, 255, .08) 30%, transparent 60%); mix-blend-mode: overlay; }
-.sk-item.r-epic:not(.sk-active) .sk-foil { animation: skFoilIdle 7s ease-in-out infinite; }
+.sk-item.r-epic.sk-full:not(.sk-active) .sk-foil { animation: skFoilIdle 7s ease-in-out infinite; }
 @keyframes skFoilIdle { 0%, 100% { --px: 30%; --py: 40%; --hyp: .2; } 50% { --px: 70%; --py: 60%; --hyp: .45; } }
 
 /* ───── Легендарна: гравіроване золото, повна голографія, жива анімація, світло дрейфує в спокої ───── */
@@ -121,7 +127,8 @@
 .sk-item.r-legendary .sk-tilt { box-shadow: 0 calc(var(--w) * .03) calc(var(--w) * .09) rgba(0, 0, 0, .55), 0 0 calc(var(--w) * .12) var(--rar-glow-legendary); }
 .sk-item.r-legendary .sk-foil { opacity: calc(.42 + var(--hyp) * .4); -webkit-mask-image: radial-gradient(circle at var(--px) var(--py), #000 0%, rgba(0, 0, 0, .6) 28%, rgba(0, 0, 0, .12) 65%); mask-image: radial-gradient(circle at var(--px) var(--py), #000 0%, rgba(0, 0, 0, .6) 28%, rgba(0, 0, 0, .12) 65%); }
 /* легендарна: смуга світла проходить картою раз на кілька секунд */
-.sk-item.r-legendary .sk-glare::after { content: ""; position: absolute; inset: -20% -60%; background: linear-gradient(105deg, transparent 42%, rgba(255, 246, 210, .55) 50%, transparent 58%); mix-blend-mode: overlay; transform: translateX(-60%); animation: skPass 5.5s ease-in-out infinite; }
+.sk-item.r-legendary .sk-glare::after { content: ""; position: absolute; inset: -20% -60%; background: linear-gradient(105deg, transparent 42%, rgba(255, 246, 210, .55) 50%, transparent 58%); mix-blend-mode: overlay; transform: translateX(-60%); }
+.sk-item.r-legendary.sk-full .sk-glare::after { animation: skPass 5.5s ease-in-out infinite; }
 @keyframes skPass { 0%, 55% { transform: translateX(-60%); } 85%, 100% { transform: translateX(60%); } }
 /* легендарна: гравіровані золоті кути і внутрішня лінія; епічна — тонка фіолетова лінія */
 .sk-orn { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
@@ -134,7 +141,7 @@
   background: radial-gradient(1px 1px at 12% 22%, #fff, transparent), radial-gradient(1px 1px at 72% 18%, #fff, transparent), radial-gradient(1.5px 1.5px at 38% 64%, #fff, transparent), radial-gradient(1px 1px at 84% 74%, #fff, transparent), radial-gradient(1.5px 1.5px at 24% 86%, #fff, transparent), radial-gradient(1px 1px at 58% 40%, #fff, transparent);
   background-size: 50% 50%; background-position: calc(var(--px) * .3) calc(var(--py) * .3);
 }
-.sk-item.r-legendary:not(.sk-active) .sk-tilt { animation: skDrift var(--sk-drift) ease-in-out infinite; }
+.sk-item.r-legendary.sk-full:not(.sk-active) .sk-tilt { animation: skDrift var(--sk-drift) ease-in-out infinite; }
 @keyframes skDrift { 0%, 100% { --px: 25%; --py: 35%; --hyp: .25; } 33% { --px: 75%; --py: 30%; --hyp: .5; } 66% { --px: 55%; --py: 75%; --hyp: .4; } }
 /* у руці легендарна ледь помітно світиться */
 .sk-item.r-legendary.in-hand .sk-tilt { box-shadow: 0 0 calc(var(--w) * .08) rgba(255, 194, 61, .45); }
@@ -164,15 +171,15 @@
 /* ═════════ Набір «Нічний Київ» ═════════ */
 .sk-kyiv .sk-tilt { background: #0b1233; }
 /* легендарна: місто «вмикає» вогні хвилею (кожні 12 с), зорі мерехтять, Дніпро переливається, вивіска блимає */
-.sk-kyiv .kw { opacity: 0; animation: kwOn 12s ease-out infinite; }
+.sk-kyiv.sk-full .kw { opacity: 0; animation: kwOn 12s ease-out infinite; }
 @keyframes kwOn { 0% { opacity: 0; } 3% { opacity: 1; } 90% { opacity: 1; } 96%, 100% { opacity: 0; } }
-.sk-kyiv .ktw { animation: ktw 3.2s ease-in-out infinite; }
+.sk-kyiv.sk-full .ktw { animation: ktw 3.2s ease-in-out infinite; }
 @keyframes ktw { 50% { opacity: .15; } }
-.sk-item.r-legendary.sk-kyiv .kref { animation: kref 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
+.sk-item.r-legendary.sk-kyiv.sk-full .kref { animation: kref 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: top; }
 @keyframes kref { 50% { opacity: .08; transform: scaleY(.6); } }
-.sk-kyiv .kneon { animation: kneon 5s steps(1) infinite; }
+.sk-kyiv.sk-full .kneon { animation: kneon 5s steps(1) infinite; }
 @keyframes kneon { 0%, 18%, 22%, 60%, 63%, 100% { opacity: 1; } 20%, 61% { opacity: .25; } }
-.sk-kyiv .kbig { animation: kbig 6s ease-in-out infinite; }
+.sk-kyiv.sk-full .kbig { animation: kbig 6s ease-in-out infinite; }
 @keyframes kbig { 0%, 100% { opacity: 1; } 47% { opacity: 1; } 48% { opacity: .55; } 49% { opacity: 1; } }
 
 /* ═════════ Набір «Кіберпанк» ═════════ */
@@ -180,7 +187,7 @@
 /* сканлайни — стиль набору в усіх рідкостях */
 .sk-tilt.cy .sk-art::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px); }
 /* легендарна: карта «збоїть» (зсуви шарів і RGB-розшарування) і перебудовується — смуга сканера проходить згори вниз */
-.sk-item.r-legendary.sk-cyber .sk-art, .sk-item.r-legendary.sk-cyber .sk-ink { animation: cyGlitch 4.6s steps(1) infinite; }
+.sk-item.r-legendary.sk-cyber.sk-full .sk-art, .sk-item.r-legendary.sk-cyber.sk-full .sk-ink { animation: cyGlitch 4.6s steps(1) infinite; }
 @keyframes cyGlitch {
   0%, 61%, 66%, 100% { translate: 0 0; filter: none; clip-path: none; }
   62% { translate: 3% 0; filter: hue-rotate(80deg); clip-path: inset(18% 0 52% 0); }
@@ -188,12 +195,12 @@
   64% { translate: 2% 0; filter: hue-rotate(-60deg) saturate(1.6); clip-path: inset(30% 0 40% 0); }
   65% { translate: -1% 0; clip-path: inset(0 0 80% 0); }
 }
-.sk-item.r-legendary.sk-cyber .sk-live::before { content: ""; position: absolute; left: 0; right: 0; top: -12%; height: 10%; z-index: 3; background: linear-gradient(transparent, rgba(0, 240, 255, .5), rgba(255, 43, 214, .35), transparent); mix-blend-mode: screen; animation: cyScan 5.5s cubic-bezier(.6, 0, .4, 1) infinite; }
+.sk-item.r-legendary.sk-cyber.sk-full .sk-live::before { content: ""; position: absolute; left: 0; right: 0; top: -12%; height: 10%; z-index: 3; background: linear-gradient(transparent, rgba(0, 240, 255, .5), rgba(255, 43, 214, .35), transparent); mix-blend-mode: screen; animation: cyScan 5.5s cubic-bezier(.6, 0, .4, 1) infinite; }
 @keyframes cyScan { 0% { transform: translateY(0); opacity: 0; } 8% { opacity: 1; } 70% { opacity: 1; } 78%, 100% { transform: translateY(1250%); opacity: 0; } }
 .sk-cyber .cyrain { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: screen; opacity: .55; }
-.sk-cyber .cygrid { animation: cyGrid 2.4s ease-in-out infinite; }
+.sk-cyber.sk-full .cygrid { animation: cyGrid 2.4s ease-in-out infinite; }
 @keyframes cyGrid { 50% { opacity: .45; } }
-.sk-cyber .cyglitch { animation: cyGlitchInk 3.1s steps(1) infinite; }
+.sk-cyber.sk-full .cyglitch { animation: cyGlitchInk 3.1s steps(1) infinite; }
 @keyframes cyGlitchInk { 0%, 89%, 93%, 100% { opacity: 1; } 90% { opacity: .4; } 91% { opacity: 1; } 92% { opacity: .7; } }
 
 /* ═════════ Анімації перемоги наборів ═════════ */
@@ -402,12 +409,16 @@
 /* ═════════ Набір «Самурай» ═════════ */
 .sk-samurai .sk-tilt { background: #efe6d0; }
 /* легендарна: мазки туші промальовуються наново, туман дрейфує, пелюстки сакури летять */
-.sk-samurai .smflow, .sk-samurai .smenso { stroke-dasharray: 100; animation: smFlow 8s cubic-bezier(.5, 0, .3, 1) infinite; }
-.sk-samurai .smenso { animation-duration: 6s; }
+.sk-samurai.sk-full .smflow { stroke-dasharray: 100; animation: smFlow 8s cubic-bezier(.5, 0, .3, 1) infinite; }
+/* гребінь і енсо «промальовуються» двома зустрічними зсувами (лише transform; пензель — готовий bitmap) */
+.sk-samurai.sk-full .smwipe { animation: smWipe 8s cubic-bezier(.5, 0, .3, 1) infinite; }
+.sk-samurai.sk-full .smwipe > .wipe-in { animation: smWipeIn 8s cubic-bezier(.5, 0, .3, 1) infinite; }
+@keyframes smWipe { 0% { transform: translateX(-100%); opacity: 1; } 35% { transform: translateX(0); } 82% { opacity: 1; } 96%, 100% { transform: translateX(0); opacity: 0; } }
+@keyframes smWipeIn { 0% { transform: translateX(100%); } 35%, 100% { transform: translateX(0); } }
 @keyframes smFlow { 0% { stroke-dashoffset: 100; } 35%, 82% { stroke-dashoffset: 0; opacity: 1; } 96% { stroke-dashoffset: 0; opacity: 0; } 100% { stroke-dashoffset: 100; opacity: 0; } }
-.sk-samurai .smmist { animation: smMist 14s ease-in-out infinite alternate; }
-@keyframes smMist { to { transform: translateX(12px); } }
-.sk-samurai .sp { position: absolute; width: calc(var(--w) * .035); height: calc(var(--w) * .024); border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffd9e4, #f39ab4); opacity: 0; animation: smPetal var(--d) linear var(--delay) infinite; }
+.sk-samurai.sk-full .smmist { animation: smMist 14s ease-in-out infinite alternate; }
+@keyframes smMist { to { transform: translateX(10%); } }
+.sk-samurai.sk-full .sp { position: absolute; width: calc(var(--w) * .035); height: calc(var(--w) * .024); border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffd9e4, #f39ab4); opacity: 0; animation: smPetal var(--d) linear var(--delay) infinite; }
 @keyframes smPetal { 0% { transform: translate(0, 0) rotate(0) scale(var(--s)); opacity: 0; } 10% { opacity: .95; } 85% { opacity: .9; } 100% { transform: translate(var(--dx), calc(var(--w) * 1.5)) rotate(520deg) scale(var(--s)); opacity: 0; } }
 .skwin .smp { position: absolute; top: -20px; width: 14px; height: 10px; border-radius: 100% 0 100% 0; background: linear-gradient(135deg, #ffe0ea, #f08aa8); animation: smWinPetal 2.6s ease-in both; transform: scale(var(--s)); }
 @keyframes smWinPetal { to { transform: translate(var(--dx), 105vh) rotate(720deg) scale(var(--s)); } }
@@ -420,9 +431,9 @@
 .sk-cossack .sk-tilt { background: #efe4cd; }
 .sk-cossack.r-legendary .sk-tilt { background: #1b1512; }
 /* легендарна: орнамент вишивається стовпчик за стовпчиком, тримається і зникає, щоб вишитись знову */
-.sk-cossack .kst { opacity: 0; animation: kStitch 7s steps(1) infinite; }
+.sk-cossack.sk-full .kst { opacity: 0; animation: kStitch 7s steps(1) infinite; }
 @keyframes kStitch { 0% { opacity: 0; } 2%, 88% { opacity: 1; } 94%, 100% { opacity: 0; } }
-.sk-cossack .ksp { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 6px 2px #ff9a2a; opacity: 0; animation: kSpark var(--d) cubic-bezier(.2, .6, .4, 1) var(--delay) infinite; }
+.sk-cossack.sk-full .ksp { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 6px 2px #ff9a2a; opacity: 0; animation: kSpark var(--d) cubic-bezier(.2, .6, .4, 1) var(--delay) infinite; }
 @keyframes kSpark { 0% { transform: translate(0, 0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(var(--tx), calc(var(--ty) * -.2 + 40px)) scale(.3); opacity: 0; } }
 .skwin .krush { position: absolute; left: 0; right: 0; top: 44%; height: 13%; transform-origin: left; transform: scaleX(0); animation: kRush 2.8s cubic-bezier(.3, .9, .3, 1) both;
   background: repeating-linear-gradient(90deg, #b3201c 0 6px, transparent 6px 12px) top / 100% 4px no-repeat, repeating-linear-gradient(90deg, #b3201c 0 6px, transparent 6px 12px) bottom / 100% 4px no-repeat,
@@ -435,13 +446,13 @@
 /* ═════════ Набір «Ар-деко казино» ═════════ */
 .sk-deco .sk-tilt { background: #0b0b0d; }
 /* легендарна: світло біжить по ступінчастій рамці, віяло «дихає», на лініях спалахують іскорки */
-.sk-deco .dkrun { stroke-dasharray: 7 93; animation: dkRun 4.5s linear infinite; filter: drop-shadow(0 0 1.5px #ffd66b); }
+.sk-deco.sk-full .dkrun { stroke-dasharray: 7 93; animation: dkRun 4.5s linear infinite; }
 @keyframes dkRun { to { stroke-dashoffset: -100; } }
-.sk-deco .dkfan { animation: dkFan 4s ease-in-out infinite; }
+.sk-deco.sk-full .dkfan { animation: dkFan 4s ease-in-out infinite; }
 @keyframes dkFan { 50% { opacity: .45; } }
-.sk-deco .dkglow { animation: dkGlow 3s ease-in-out infinite; }
+.sk-deco.sk-full .dkglow { animation: dkGlow 3s ease-in-out infinite; }
 @keyframes dkGlow { 50% { opacity: .5; } }
-.sk-deco .dkg { position: absolute; width: calc(var(--w) * .07); aspect-ratio: 1; margin: calc(var(--w) * -.035); opacity: 0; animation: dkGlint var(--d) ease-in-out var(--delay) infinite;
+.sk-deco.sk-full .dkg { position: absolute; width: calc(var(--w) * .07); aspect-ratio: 1; margin: calc(var(--w) * -.035); opacity: 0; animation: dkGlint var(--d) ease-in-out var(--delay) infinite;
   background: radial-gradient(circle, #fff 0 15%, #ffe39a 40%, rgba(229, 176, 74, 0) 70%); clip-path: polygon(50% 0, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0 50%, 43% 43%); }
 @keyframes dkGlint { 0%, 70%, 100% { opacity: 0; transform: scale(.3); } 82% { opacity: 1; transform: scale(1); } }
 .skwin .dkbeam { position: absolute; left: 50%; bottom: -10%; width: 22%; height: 130%; margin-left: -11%; transform-origin: 50% 100%; transform: rotate(var(--r)) scaleY(0); background: linear-gradient(to top, rgba(255, 228, 160, .55), rgba(255, 228, 160, 0)); clip-path: polygon(40% 100%, 60% 100%, 100% 0, 0 0); mix-blend-mode: screen; animation: dkBeam 3s ease-out both; }
@@ -452,15 +463,15 @@
 /* ═════════ Набір «Безодня» ═════════ */
 .sk-abyss .sk-tilt { background: #03263c; }
 /* легендарна: медузи пульсують і дрейфують, планктон мерехтить, світло цифр дихає, бульбашки піднімаються */
-.sk-abyss .abj { transform-box: fill-box; transform-origin: 50% 0; animation: abJelly 3.4s ease-in-out infinite; }
+.sk-abyss.sk-full .abj { transform-box: fill-box; transform-origin: 50% 0; animation: abJelly 3.4s ease-in-out infinite; }
 @keyframes abJelly { 0%, 100% { transform: translateY(0) scale(1, 1); } 30% { transform: translateY(-3px) scale(1.08, .86); } 60% { transform: translateY(-6px) scale(.96, 1.06); } }
-.sk-abyss .abpl { animation: abPl 2.8s ease-in-out infinite; }
+.sk-abyss.sk-full .abpl { animation: abPl 2.8s ease-in-out infinite; }
 @keyframes abPl { 50% { opacity: .1; } }
-.sk-abyss .abglow { animation: abGlow 3.4s ease-in-out infinite; }
+.sk-abyss.sk-full .abglow { animation: abGlow 3.4s ease-in-out infinite; }
 @keyframes abGlow { 50% { opacity: .62; } }
-.sk-abyss .abping { transform-box: fill-box; transform-origin: center; animation: abPing 3s ease-out infinite; }
+.sk-abyss.sk-full .abping { transform-box: fill-box; transform-origin: center; animation: abPing 3s ease-out infinite; }
 @keyframes abPing { from { transform: scale(.4); opacity: .9; } to { transform: scale(5.5); opacity: 0; } }
-.sk-abyss .abb { position: absolute; width: calc(var(--w) * .03); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(200, 245, 255, .75); background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, .8) 0 18%, transparent 30%); opacity: 0; animation: abRise var(--d) linear var(--delay) infinite; }
+.sk-abyss.sk-full .abb { position: absolute; width: calc(var(--w) * .03); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(200, 245, 255, .75); background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, .8) 0 18%, transparent 30%); opacity: 0; animation: abRise var(--d) linear var(--delay) infinite; }
 @keyframes abRise { 0% { transform: translate(0, 0) scale(var(--s)); opacity: 0; } 10% { opacity: .9; } 50% { transform: translate(6px, calc(var(--w) * -.7)) scale(var(--s)); } 100% { transform: translate(-4px, calc(var(--w) * -1.5)) scale(var(--s)); opacity: 0; } }
 .skwin .abring { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px; border-radius: 50%; border: 2px solid #7fe6ff; box-shadow: 0 0 18px #3ff7ff, inset 0 0 12px #3ff7ff; animation: abRing 1.8s ease-out both; }
 .skwin.r-legendary .abring:nth-child(even) { border-color: #ff5fd2; box-shadow: 0 0 18px #ff5fd2, inset 0 0 12px #ff5fd2; }
@@ -472,15 +483,15 @@
 .sk-pixel .sk-tilt { background: #1d2b53; }
 .sk-pixel svg { image-rendering: pixelated; }
 /* легендарна: монетка крутиться покадрово, зірки блимають, цифра переливається, аркадні зорі летять */
-.sk-pixel .pxspin { animation: pxSpin 1.2s steps(4) infinite; }
+.sk-pixel.sk-full .pxspin { animation: pxSpin 1.2s steps(4) infinite; }
 @keyframes pxSpin { 0% { transform: scaleX(1); } 25% { transform: scaleX(.5); } 50% { transform: scaleX(.12); } 75% { transform: scaleX(.5); } 100% { transform: scaleX(1); } }
-.sk-pixel .pxtw { animation: pxTw 1.6s steps(2) infinite; }
+.sk-pixel.sk-full .pxtw { animation: pxTw 1.6s steps(2) infinite; }
 @keyframes pxTw { 50% { opacity: 0; } }
-.sk-pixel .pxstar { animation: pxTw .8s steps(2) infinite; }
-.sk-pixel .pxblink { animation: pxTw 1s steps(1) infinite; }
-.sk-pixel .pxrain { animation: pxRain 2.4s steps(1) infinite; }
+.sk-pixel.sk-full .pxstar { animation: pxTw .8s steps(2) infinite; }
+.sk-pixel.sk-full .pxblink { animation: pxTw 1s steps(1) infinite; }
+.sk-pixel.sk-full .pxrain { animation: pxRain 2.4s steps(1) infinite; }
 @keyframes pxRain { 0% { fill: #ffec27; } 20% { fill: #ffa300; } 40% { fill: #ff77a8; } 60% { fill: #29adff; } 80% { fill: #00e436; } 100% { fill: #ffec27; } }
-.sk-pixel .pxf { position: absolute; top: -4%; width: calc(var(--w) * .022); height: calc(var(--w) * .022); background: var(--c); box-shadow: 0 calc(var(--w) * -.03) 0 0 color-mix(in srgb, var(--c) 50%, transparent); animation: pxFall var(--d) steps(14) var(--delay) infinite; }
+.sk-pixel.sk-full .pxf { position: absolute; top: -4%; width: calc(var(--w) * .022); height: calc(var(--w) * .022); background: var(--c); box-shadow: 0 calc(var(--w) * -.03) 0 0 color-mix(in srgb, var(--c) 50%, transparent); animation: pxFall var(--d) steps(14) var(--delay) infinite; }
 @keyframes pxFall { to { transform: translateY(calc(var(--w) * 1.5)); } }
 .skwin .pxwin { position: absolute; left: 50%; top: 40%; width: min(86%, 520px); transform: translate(-50%, -50%); animation: pxWin 2.8s steps(8) both; }
 .skwin .pxwin svg { width: 100%; height: auto; display: block; image-rendering: pixelated; }
@@ -491,13 +502,13 @@
 /* ═════════ Набір «Космос» ═════════ */
 .sk-space .sk-tilt { background: #05030f; }
 /* легендарна: туманність дрейфує й переливається, планета йде орбітою, зорі мерехтять і падають */
-.sk-space .csneb { transform-box: view-box; transform-origin: center; animation: csNeb 18s ease-in-out infinite alternate; }
-@keyframes csNeb { from { transform: rotate(-6deg) scale(1); filter: hue-rotate(0deg); } to { transform: rotate(8deg) scale(1.15); filter: hue-rotate(50deg); } }
+.sk-space.sk-full .csneb { animation: csNeb 18s ease-in-out infinite alternate; }
+@keyframes csNeb { from { transform: rotate(-6deg) scale(1.08); opacity: 1; } to { transform: rotate(8deg) scale(1.2); opacity: .75; } }
 @keyframes csOrb { to { transform: rotate(360deg); } }
-.sk-space .csgal { animation: csOrb 60s linear infinite; }
-.sk-space .cstw { animation: csTw 2.6s ease-in-out infinite; }
+.sk-space.sk-full .csgal { animation: csOrb 60s linear infinite; }
+.sk-space.sk-full .cstw { animation: csTw 2.6s ease-in-out infinite; }
 @keyframes csTw { 50% { opacity: .2; } }
-.sk-space .csf { position: absolute; width: calc(var(--w) * .28); height: 1.5px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff); border-radius: 2px; opacity: 0; transform: rotate(-35deg); animation: csFall var(--d) ease-in var(--delay) infinite; }
+.sk-space.sk-full .csf { position: absolute; width: calc(var(--w) * .28); height: 1.5px; background: linear-gradient(90deg, rgba(255, 255, 255, 0), #fff); border-radius: 2px; opacity: 0; transform: rotate(-35deg); animation: csFall var(--d) ease-in var(--delay) infinite; }
 @keyframes csFall { 0%, 70% { opacity: 0; translate: 0 0; } 74% { opacity: 1; } 90% { opacity: 0; translate: calc(var(--w) * -.6) calc(var(--w) * .42); } 100% { opacity: 0; translate: calc(var(--w) * -.6) calc(var(--w) * .42); } }
 .skwin .cswarp { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; background: var(--c); border-radius: 2px; transform-origin: 0 50%; transform: rotate(var(--a)) translateX(10px); opacity: 0; animation: csWarp 1.4s cubic-bezier(.6, 0, .9, .4) both; }
 @keyframes csWarp { 0% { opacity: 0; width: 3px; transform: rotate(var(--a)) translateX(10px); } 20% { opacity: 1; } 100% { opacity: 0; width: 160px; transform: rotate(var(--a)) translateX(60vmax); } }
@@ -529,3 +540,27 @@
 .stack .stack-chip :is(.sk-gem, .sk-bevel, .sk-glare) { display: none; }
 .stack .stack-chip .sk-tilt { box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .hand .card[data-skr]::after { animation: none; } }
+
+/* ═════════ Продуктивність (версія 5.0.1) ═════════
+   Повний ефект і живі анімації — лише в «повного» предмета (.sk-full: активний, в огляді, у церемонії, сукно в грі).
+   Решта — полегшений статичний режим: без анімацій кастомних властивостей і без живого шару.
+   will-change — лише на активному: його шари стають окремими текстурами, і рух світла не перемальовує арт. */
+.sk-item:not(.sk-full) .sk-live { display: none; }
+.sk-active { --_a: 1; }
+.sk-active :is(.sk-art .plx, .sk-ink, .sk-foil, .sk-glare, .sk-frame) { will-change: transform; }
+.table > .felt-skin .sk-tilt { animation: none !important; }
+
+/* ═════════ Кутовий індекс (версія 5.0.1): читабельність важливіша за красу ═════════
+   Непрозора плашка над усіма шарами (фольга, блік, частинки, орнамент — під нею), мінімальний розмір у пікселях,
+   рамка кольору рідкості. Контраст значення й масті до плашки ≥ 4.5:1. */
+.sk-idx {
+  position: absolute; z-index: 9; left: calc(var(--w) * .06); top: calc(var(--w) * .06);
+  display: flex; flex-direction: column; align-items: center; gap: clamp(1px, calc(var(--w) * .012), 4px);
+  min-width: clamp(17px, calc(var(--w) * .21), 40px); padding: clamp(2px, calc(var(--w) * .028), 6px) clamp(2px, calc(var(--w) * .02), 5px);
+  border-radius: clamp(4px, calc(var(--w) * .05), 9px); background: var(--ip);
+  box-shadow: 0 0 0 clamp(1px, calc(var(--w) * .008), 2px) var(--rc), 0 1px 3px rgba(0, 0, 0, .45); pointer-events: none;
+}
+.sk-idx .v { display: block; font-size: clamp(13px, calc(var(--w) * .2), 34px) !important; line-height: 1; letter-spacing: -.02em; }
+.sk-idx .v.px { height: clamp(12px, calc(var(--w) * .17), 30px); width: auto; shape-rendering: crispEdges; }
+.sk-idx .s { display: block; width: clamp(12px, calc(var(--w) * .17), 30px); height: clamp(12px, calc(var(--w) * .17), 30px); }
+.sk-idx.sp .s { width: clamp(14px, calc(var(--w) * .2), 34px); height: clamp(14px, calc(var(--w) * .2), 34px); }
