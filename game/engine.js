@@ -82,7 +82,7 @@ export function createGame(opts = {}, ctx) {
   const mode = MODES[opts.mode] ? opts.mode : 'classic';
   cfg = { ...cfg, ...MODES[mode].preset(n, cfg), mode };
   // Основа раунду: комбінації з 3 карт (рука 6) або класика однією картою (рука 4, без джокерів)
-  const core = (opts.core ?? opts.config?.core ?? CONFIG.core) === 'single' ? 'single' : 'combo';
+  const core = (opts.core ?? opts.config?.core ?? cfg.core ?? CONFIG.core) === 'single' ? 'single' : 'combo';
   cfg.core = core;
   if (core === 'combo') {
     if (opts.config?.handSize === undefined) cfg.handSize = CONFIG.combo.handSize;
@@ -293,7 +293,9 @@ function startRound(s, ctx, first = false) {
   }
   for (const p of live) {
     const hand = s.players[p].hand;
-    while (hand.length < s.cfg.handSize) {
+    // комбінації: джокер у руці — понад звичайні карти (не забирає місце в руці)
+    const extra = isCombo(s) ? hand.filter((c) => c.kind === 'joker').length : 0;
+    while (hand.length < s.cfg.handSize + extra) {
       const c = drawCard(s, ctx);
       if (!c) break;
       hand.push(c);
@@ -692,7 +694,7 @@ export function reduce(state, action, ctx) {
       me.hand = me.hand.filter((c) => !ids.includes(c.id));
       me.played = cards;
       me.openId = action.open;
-      log(s, { t: 'play', p });
+      log(s, { t: 'play', p, set: true });
       if (s.players.every((pl) => pl.out || pl.played)) revealOpen(s, ctx);
       break;
     }
@@ -1128,7 +1130,7 @@ function applyTimeout(s, ctx) {
             const i = Math.floor(ctx.rng() * me.hand.length);
             me.played = me.hand.splice(i, 1)[0];
           }
-          log(s, { t: 'play', p, auto: true });
+          log(s, { t: 'play', p, auto: true, set: isCombo(s) || undefined });
         }
       }
       if (isCombo(s)) revealOpen(s, ctx); else enterScout(s, ctx);

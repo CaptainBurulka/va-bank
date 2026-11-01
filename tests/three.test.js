@@ -6,7 +6,7 @@ import { JOKERS, jokerDesc, JOKERS_3 } from '../game/jokers.js';
 import { CONFIG } from '../config.js';
 import { botDecide, BOT_STYLES } from '../game/bot.js';
 import { stackedDeck, ctx, run, play, act, seededRng } from './helpers.js';
-import { parseGuestMessage, cleanName } from '../net/protocol.js';
+import { parseGuestMessage, cleanName, PROTOCOL_VERSION } from '../net/protocol.js';
 
 /** Утрьох: руки по 4 карти — P0 = ids[0..3], P1 = ids[4..7], P2 = ids[8..11]. Козир вимкнено. */
 function game3(ids, opts = {}) {
@@ -227,9 +227,9 @@ test('удвох: закон збереження фішок — 400 парті�
 });
 
 test('протокол: ціль розвідки і нікнейм проходять перевірку', () => {
-  const m = parseGuestMessage({ v: 4, type: 'action', action: { type: 'scout', target: 2 } });
+  const m = parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'scout', target: 2 } });
   assert.equal(m.m.action.target, 2);
-  assert.equal(parseGuestMessage({ v: 4, type: 'action', action: { type: 'scout', target: 9 } }).m.action.target, undefined);
+  assert.equal(parseGuestMessage({ v: PROTOCOL_VERSION, type: 'action', action: { type: 'scout', target: 9 } }).m.action.target, undefined);
   assert.equal(cleanName('  Андрій  <script> '), 'Андрій script');
   assert.equal(cleanName('x'.repeat(40)).length, 16);
   assert.equal(cleanName(''), null);

@@ -214,3 +214,11 @@ test('статистика рушія: «Трійка 10» і «Старша п�
   // Ніж ріже 8 — у суперника лишається пара 4; Старша 9 її не б'є
   assert.equal(t.result.winner, 1);
 });
+
+test('рушій: джокер у руці не займає місця — добір до 6 звичайних карт', () => {
+  let s = createGame({ deck: deckWith([...H0, ...H1]), firstToAct: 0, core: 'combo', timers: false, jokerSets: [['magnet', 'tax'], []], jokersPerPlayer: 2, jokerRound: 1, config: { features: { trump: false, swap: true }, jokersPerPlayer: 2 } }, ctx());
+  assert.equal(s.players[0].hand.length, 8);
+  s = run(s, [playSet(0, ['w7', 'f7', 's7']), playSet(1, ['w4', 'f5', 's6']), act('skipScout', 0), act('skipScout', 1), act('check', 0), act('check', 1), act('ready', 0), act('ready', 1)], ctx());
+  assert.equal(s.players[0].hand.filter((c) => c.kind !== 'joker').length, 6);
+  assert.equal(s.players[0].hand.length, 8);
+});

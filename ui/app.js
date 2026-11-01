@@ -6,7 +6,8 @@ import { unlockAudio, sfx, isMuted, setMuted, getVolume, setVolume } from './sou
 import { RULES_HTML, TUTORIAL } from './text.js';
 import { tutorial } from './settings.js';
 import { CONFIG, APP_VERSION, MODES, MODE_IDS, META } from '../config.js';
-import { BOT_STYLES } from '../game/bot.js';
+import { ALL_BOT_STYLES } from '../game/bot.js';
+const BOT_STYLES = ['smart', 'greedy', ...ALL_BOT_STYLES.filter((k) => !['smart', 'greedy'].includes(k))];
 import { buildDeck } from '../game/cards.js';
 import { upgradeState } from '../game/engine.js';
 import { createOnlineHost, joinOnline, ROOM_ALPHABET, loadGuestSave, clearGuestSave, loadHostSave, clearHostSave } from '../net/online.js';
@@ -126,6 +127,8 @@ const game = new GameScreen({
 
 // ───────── вибір параметрів партії ─────────
 const STYLE_INFO = {
+  smart: { name: 'Розумний', sub: 'читає стіл, блефує' },
+  greedy: { name: 'Жадібний', sub: 'завжди найсильніше' },
   cautious: { name: 'Обережний', sub: 'рідко блефує' },
   aggressive: { name: 'Агресивний', sub: 'тисне ставками' },
   bluffer: { name: 'Блефер', sub: 'легкий, хитрий' },
@@ -176,12 +179,13 @@ const roundOptions = () => CONFIG.roundOptions.map((r) => ({ value: r, label: `$
 let prefRounds = CONFIG.maxRounds;
 let prefStyle = 'aggressive';
 try { prefRounds = Number(localStorage.getItem('vabank-rounds')) || prefRounds; prefStyle = localStorage.getItem('vabank-style') || prefStyle; } catch {}
+if (!STYLE_INFO[prefStyle]) prefStyle = 'smart';
 const rememberPrefs = () => { try { localStorage.setItem('vabank-rounds', prefRounds); localStorage.setItem('vabank-style', prefStyle); localStorage.setItem('vabank-players', prefPlayers); localStorage.setItem('vabank-mode', prefMode); } catch {} };
 
 function gameSetupModal({ withStyle, title, onStart, players = null }) {
   const opts = players ? PLAYER_OPTS[players] : null;
   let pl = opts?.some((o) => o.value === prefPlayers) ? prefPlayers : 2;
-  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg" id="m-style"></div></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>`, [
+  modal(`<h3>${title}</h3>${opts ? '<div class="field"><div class="field-label">Гравців</div><div class="seg" id="m-players"></div></div>' : ''}<div class="field" style="margin-top:12px"><div class="field-label">Режим</div><div class="seg modes" id="m-mode"></div><p class="hint-text" id="m-mode-desc">${MODES[prefMode].desc}</p></div>${withStyle ? '<div class="field" style="margin-top:12px"><div class="field-label">Бот</div><div class="seg modes" id="m-style"></div></div>' : ''}<div class="field" style="margin-top:12px" id="m-rounds-field"><div class="field-label">Довжина партії, раундів</div><div class="seg" id="m-rounds"></div></div>`, [
     { label: 'Почати', cls: 'primary', onClick: () => { prefPlayers = pl; rememberPrefs(); onStart({ maxRounds: prefRounds, style: prefStyle, players: pl, mode: prefMode }); } },
     { label: 'Скасувати', cls: 'tertiary' },
   ]);
@@ -469,7 +473,7 @@ $('btn-end-menu').addEventListener('click', () => { sfx.tap(); leave(true); });
 
 // ───────── проти бота ─────────
 const BOT3_NAMES = ['Мирко 🤖', 'Ліза 🤖'];
-const BOT3_STYLES = { aggressive: 'cautious', cautious: 'bluffer', bluffer: 'aggressive' };
+const BOT3_STYLES = { aggressive: 'cautious', cautious: 'bluffer', bluffer: 'aggressive', smart: 'aggressive', greedy: 'smart' };
 
 function startBot(resume = false, opts = {}) {
   const saved = resume && GameHost.load(BOT_KEY);
@@ -519,18 +523,19 @@ function startTutorial() {
   session?.leave?.(false);
   closeModal();
   const all = buildDeck();
-  const ids = ['f7', 'w3', 's2', 'w9', 's8', 'f3', 'w5', 'knife', 'w4', 's10'];
+  // Учень: три сімки (Трійка) + дрібниця; Учитель кладе Стріт 4–6 з відкритою 6.
+  const ids = ['f7', 'w7', 's7', 'w2', 's3', 'f9', 'w4', 'f5', 's6', 'w9', 'f2', 'knife'];
   const deck = [...ids.map((id) => all.find((c) => c.id === id)), ...all.filter((c) => !ids.includes(c.id))];
   const host = new GameHost({ timers: false, gameOpts: { deck, trumps: ['fire'], firstToAct: 1 } });
   const names = ['Ти', 'Учитель'];
   let t1 = null;
-  // Сценарний суперник: кладе 8 Каменю, піднімає на 5, на все інше погоджується.
+  // Сценарний суперник: кладе Стріт 4–6 (відкрита 6), піднімає на 5, на все інше погоджується.
   const coachBot = {
     deliver: ({ view }) => {
       clearTimeout(t1);
       if (view.round > 1 || !view.legal.length) return;
       let a = null;
-      if (view.phase === 'play') a = { type: 'play', cardId: 's8' };
+      if (view.phase === 'play') a = { type: 'playSet', cards: ['w4', 'f5', 's6'], open: 's6' };
       else if (view.phase === 'scout') a = { type: 'skipScout' };
       else if (view.phase === 'bet') a = view.bet.toCall ? { type: 'call' } : view.bet.raises === 0 ? { type: 'raise', amount: 5 } : { type: 'check' };
       else if (view.phase === 'result') a = view.legal.find((x) => x.type === 'ready');
@@ -542,28 +547,34 @@ function startTutorial() {
     host.stop();
     session = null;
     game.reset();
-    modal('<h3>Готово!</h3><p>Ти знаєш основи: козир, торги, розкриття і «Подвій або нічого». Правила — в меню, якщо щось забудеш.</p>', [
+    modal('<h3>Готово!</h3><p>Ти знаєш основи: комбінації з 3 карт, відкрита карта, торги, розкриття і «Подвій або нічого». Шпаргалка — кнопка «Комбінації» на столі, правила — в меню.</p>', [
       { label: 'Грати з ботом', cls: 'primary', onClick: () => askBot() },
       { label: 'Грати з другом', onClick: () => openFriend() },
       { label: 'У меню', cls: 'tertiary', onClick: () => show('menu') },
     ]);
   };
+  const trio = ['f7', 'w7', 's7'];
   const coachFor = (v) => {
     const L = v.legal;
-    if (v.phase === 'play' && L.length) return { ...TUTORIAL.play, spot: v.me.hand.some((c) => c.id === 'f7') ? 'card:f7' : null };
+    if (v.phase === 'play' && L.some((a) => a.type === 'playSet')) {
+      const all3 = trio.every((id) => game.picks.includes(id));
+      return all3 ? { ...TUTORIAL.open, spot: `cards:${trio.join(',')}` } : { ...TUTORIAL.pick, spot: `cards:${trio.join(',')}` };
+    }
     if (v.phase === 'scout' && L.length) return { ...TUTORIAL.scout, spot: 'btn:skipScout' };
     if (v.phase === 'bet' && L.length) return { ...TUTORIAL.bet, spot: L.some((a) => a.type === 'call') ? 'btn:call' : 'btn:check' };
     if (v.phase === 'result' && v.result.don?.pending && v.result.winner === v.you) return { ...TUTORIAL.don };
     if (v.phase === 'result' && L.some((a) => a.type === 'donStart')) return { ...TUTORIAL.result, spot: 'btn:donStart' };
     return null;
   };
+  // підказка міняється, щойно вибрано три сімки (без нового стану з рушія)
+  game.onPick = () => { const v = game.view; if (v && session?.mode === 'tutorial') { game.coach = coachFor(v); game.renderCoach(); } };
   session = {
     mode: 'tutorial',
     host,
     send: (a) => host.dispatch(0, a),
     react: () => {},
     rematch: () => {},
-    leave: () => { clearTimeout(t1); host.stop(); },
+    leave: () => { clearTimeout(t1); host.stop(); game.onPick = null; },
   };
   game.reset();
   game.setNames(names[0], names[1]);

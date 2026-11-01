@@ -132,6 +132,8 @@ export const MODES = Object.freeze({
   blitz: Object.freeze({ name: 'Бліц', icon: '⚡', desc: '8 раундів, анте росте вдвічі швидше', preset: (n, c) => ({ maxRounds: 8, anteEvery: Math.max(1, Math.round(c.anteEvery / 2)) }) }),
   blind: Object.freeze({ name: 'Сліпа гра', icon: '🙈', desc: 'Без розвідки', preset: (n, c) => ({ features: { ...c.features, scout: false } }) }),
   highstakes: Object.freeze({ name: 'Великі ставки', icon: '💎', desc: 'Старт 50 фішок, програний «подвій» кидає в джекпот удвічі більше', preset: () => ({ startChips: 50, jackpotMult: 2 }) }),
+  // Стара гра однією картою (рука 4, без джокерів) — для порівняння й тестів; не буває «режимом дня»
+  single: Object.freeze({ name: 'Класика (1 карта)', icon: '1️⃣', desc: 'Стара гра: одна карта за раунд, рука 4, без джокерів', noDay: true, preset: () => ({ core: 'single' }) }),
 });
 export const MODE_IDS = Object.freeze(Object.keys(MODES));
 

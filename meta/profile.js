@@ -2,7 +2,7 @@
 // Чиста логіка без DOM — тестується в node. Збереження в localStorage — у ui/ (тут лише дані).
 // Жодних реальних грошей: бали й уламки — віртуальні, заробляються лише грою.
 
-import { META, MODE_IDS } from '../config.js';
+import { META, MODE_IDS, MODES } from '../config.js';
 import { JOKERS, JOKER_BY_ID, RARITIES, sanitizeSet } from '../game/jokers.js';
 import { COSMETICS, COSMETIC_BY_ID, COSMETIC_CATS, DEFAULT_EQUIPPED, ACHIEVEMENTS, ACH_BY_ID, SETS, SKIN_ITEMS, SKIN_BY_ID, SKIN_KINDS, LEGACY_SKINS } from './catalog.js';
 import { newPid, isPid, cleanNick, normalizeLife, normalizeRivals, cleanTitle, emptyLife } from './rivals.js';
@@ -371,7 +371,7 @@ const dayKey = (d) => d.toISOString().slice(0, 10);
  */
 /** Режим дня: щодня інший (крім класики), однаковий для всіх гравців у той самий день. */
 export function modeOfDay(now = new Date()) {
-  const special = MODE_IDS.filter((m) => m !== 'classic');
+  const special = MODE_IDS.filter((m) => m !== 'classic' && !MODES[m].noDay);
   const days = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
   return special[days % special.length];
 }
