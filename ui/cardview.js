@@ -16,6 +16,19 @@ function zoneSkin(el, attr, explicit) {
   return { set, rarity: rarity || 'common', serial: Number(serial) || null };
 }
 
+/**
+ * Козир: єдиний маркер, незалежний від скіна — бейдж «+N» кольору козирної масті і контур-світіння карти.
+ * Однаковий у руці, на столі і при розкритті (стилі — styles.css, «Козир»).
+ */
+function markTrump(el, bonus) {
+  el.classList.add('trumped');
+  const b = document.createElement('span');
+  b.className = 'trump-badge';
+  b.textContent = `+${bonus}`;
+  b.setAttribute('aria-hidden', 'true');
+  el.append(b);
+}
+
 /** Сорочка набору: малюється, коли карта вже в DOM (тоді відома зона власника). */
 function skinBack(el, o) {
   const back = el.querySelector('.back');
@@ -67,6 +80,7 @@ export function fillFace(el, card, o = {}) {
     return;
   }
   el.querySelector('.tb')?.remove();
+  el.querySelector('.trump-badge')?.remove();
   // колода набору: увесь малюнок лиця — скін (цифри, масті, спецкарти), класичні класи лишаються для логіки стилів
   // карта ще не в DOM — зона власника невідома: домалюємо мікрозадачею (до відмальовки кадру)
   if (!el.isConnected && o.skinDeck === undefined && !o.late) { el.dataset.skinPending = '1'; return; }
@@ -84,13 +98,7 @@ export function fillFace(el, card, o = {}) {
     const s = card.kind === 'num' ? SUIT[card.suit] : null;
     el.setAttribute('aria-label', s ? `${card.value} ${s.gen}` : `${SPECIAL[card.kind].name}: ${SPECIAL[card.kind].sub}`);
     if (s && o.trump && card.suit === o.trump) {
-      el.classList.add('trumped');
-      if (o.showBoost) {
-        const tb = document.createElement('span');
-        tb.className = 'tb';
-        tb.textContent = `${card.value} → ${card.value + (o.bonus || 1)}`;
-        el.append(tb);
-      }
+      markTrump(el, o.bonus || 1);
       el.setAttribute('aria-label', `${card.value} ${s.gen}, козир: сила ${card.value + (o.bonus || 1)}`);
     }
     return;
@@ -101,13 +109,7 @@ export function fillFace(el, card, o = {}) {
     face.innerHTML = `<div class="cor">${card.value}${sico(card.suit)}</div><div class="big">${card.value}</div>${sico(card.suit, 'pip')}`;
     el.setAttribute('aria-label', `${card.value} ${s.gen}`);
     if (o.trump && card.suit === o.trump) {
-      el.classList.add('trumped');
-      if (o.showBoost) {
-        const tb = document.createElement('span');
-        tb.className = 'tb';
-        tb.textContent = `${card.value} → ${card.value + (o.bonus || 1)}`;
-        el.append(tb);
-      }
+      markTrump(el, o.bonus || 1);
       el.setAttribute('aria-label', `${card.value} ${s.gen}, козир: сила ${card.value + (o.bonus || 1)}`);
     }
   } else {

@@ -39,7 +39,7 @@ function water(R, w, h, rar, id) {
 function jelly(x, y, s, grad, id, cls = '', delay = 0) {
   let t = '';
   for (let k = -2; k <= 2; k++) t += `<path d="M${f(k * 2.2)} 0q${f(-2)} 6 0 12t0 12" stroke="${grad === 'p' ? PINK : '#9ff3ff'}" stroke-width=".5" fill="none" opacity=".7"/>`;
-  return `<g transform="translate(${f(x)} ${f(y)}) scale(${f(s)})"><g class="${cls}" style="animation-delay:${f(delay)}s">${t}<path d="M-7 0C-7 -9 7 -9 7 0Q5 1.4 3.5 0Q1.8 1.6 0 0Q-1.8 1.6 -3.5 0Q-5 1.4 -7 0Z" fill="url(#${grad === 'p' ? 'BELP' : 'BELL'}${id})" filter="url(#BL${id})"/></g></g>`;
+  return `<g transform="translate(${f(x)} ${f(y)}) scale(${f(s)})"><g class="${cls}" style="animation-delay:${f(delay)}s">${t}<path d="M-7 0C-7 -9 7 -9 7 0Q5 1.4 3.5 0Q1.8 1.6 0 0Q-1.8 1.6 -3.5 0Q-5 1.4 -7 0Z" fill="url(#${grad === 'p' ? 'BELP' : 'BELL'}${id})" ${cls ? '' : `filter="url(#BL${id})"`}/>${cls ? `<ellipse cy="-3" rx="11" ry="9" fill="url(#${grad === 'p' ? 'BELP' : 'BELL'}${id})" opacity=".35"/>` : ''}</g></g>`;
 }
 
 /** Корали й водорості по дну. */
@@ -62,7 +62,7 @@ function plankton(R, w, y0, y1, n, rar, cls = '') {
 
 function bigValue(v, rar, id) {
   const fill = { common: '#a9cfda', rare: `url(#PRL${id})`, epic: `url(#LUM${id})`, legendary: `url(#LUM${id})` }[rar];
-  return `<text class="${rar === 'legendary' ? 'abglow' : ''}" x="50" y="70" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="800" font-size="${String(v).length > 1 ? 34 : 42}" fill="${fill}" ${atLeast(rar, 'epic') ? `filter="url(#BL${id})"` : ''}>${v}</text>`;
+  return `<text class="${rar === 'legendary' ? 'abglow' : ''}" x="${String(v).length > 1 ? 58 : 50}" y="70" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="800" font-size="${String(v).length > 1 ? 29 : 42}" fill="${fill}" ${atLeast(rar, 'epic') ? `filter="url(#BL${id})"` : ''}>${v}</text>`;
 }
 
 function face(card, rar, opts = {}) {
@@ -80,8 +80,7 @@ function face(card, rar, opts = {}) {
   if (card.kind === 'num') {
     const col = rar === 'common' ? '#a9cfda' : SUIT_COLOR[card.suit];
     center = bigValue(card.value, rar, id)
-      + `<text x="10" y="17" text-anchor="middle" font-family="Unbounded, 'Arial Black', sans-serif" font-weight="800" font-size="9.5" fill="#e6fbff">${card.value}</text>`
-      + suitG(card.suit, 4, 20, 12, col, atLeast(rar, 'epic') ? `filter="url(#BL${id})"` : '') + suitG(card.suit, 84, 122, 12, col);
+      + suitG(card.suit, 84, 122, 12, col);
   } else {
     const col = { knife: '#d7f4ff', mirror: '#f6ecff', double: '#7fe6ff' }[card.kind];
     center = suitG(card.kind, 32, 22, 36, col, atLeast(rar, 'epic') ? `filter="url(#BL${id})"` : '')

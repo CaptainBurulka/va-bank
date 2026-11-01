@@ -18,7 +18,7 @@ export function openViewer({ item, name, serial, onClose, extraButtons = [] }) {
     <div class="skv-info"><span class="skv-rar">${RAR[item.rarity].name}</span><b>${esc(name)}</b><span>${esc(set.name)}${serial ? ` · ${esc(serial)}` : ''}</span><small>${item.rarity === 'legendary' ? esc(set.legendaryNote) : `Матеріал: ${RAR[item.rarity].material}`}</small></div>
     <div class="skv-btns"><button class="skv-b" data-a="share">Поділитися</button><button class="skv-b" data-a="tilt">${tiltEnabled() ? 'Нахил увімкнено' : 'Ефекти нахилу'}</button>${extraButtons.map((b, i) => `<button class="skv-b" data-x="${i}">${esc(b.label)}</button>`).join('')}<button class="skv-b primary" data-a="close">Закрити</button></div>
     <div class="skv-hint">Веди пальцем по карті — світло рухається</div>`;
-  const big = renderItem({ ...item, w: item.kind === 'felt' ? 'min(92vw, 520px)' : item.kind === 'chip' ? 'min(64vw, 280px)' : 'min(70vw, 330px)' });
+  const big = renderItem({ ...item, full: true, w: item.kind === 'felt' ? 'min(92vw, 520px)' : item.kind === 'chip' ? 'min(64vw, 280px)' : 'min(70vw, 330px)' });
   big.dataset.tiltStrength = '1.25';
   ov.querySelector('.skv-stage').append(big);
   document.body.append(ov);
@@ -62,7 +62,7 @@ export function playCeremony(o) {
     <div class="skc-skip">торкнись, щоб пропустити</div>`;
   // запечатана сорочка і сам предмет
   const sealed = renderItem({ set: item.set, kind: 'back', rarity: 'common', w: 'min(56vw, 250px)', live: false });
-  const prize = renderItem({ ...item, w: item.kind === 'felt' ? 'min(86vw, 420px)' : 'min(56vw, 250px)' });
+  const prize = renderItem({ ...item, full: true, w: item.kind === 'felt' ? 'min(86vw, 420px)' : 'min(56vw, 250px)' });
   ov.querySelector('.skc-back').append(sealed);
   ov.querySelector('.skc-front').append(prize);
   document.body.append(ov);
