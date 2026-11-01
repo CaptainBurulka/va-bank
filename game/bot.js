@@ -313,7 +313,8 @@ function comboDecide(view, rng, style, over) {
       }
       let pick;
       if (P.greedy || P.greedyPick) {
-        pick = bestSet(hand, trump, { k, joker: jokerSlot }).idx.map((i) => hand[i]);
+        const jk = P.forceJoker && hand.findIndex((c) => c.kind === 'joker');
+        pick = bestSet(hand, trump, { k, joker: jokerSlot, filter: jk >= 0 && jk !== false ? (idx) => idx.includes(jk) : null }).idx.map((i) => hand[i]);
       } else {
         // Розумний: сила зараз + потенціал того, що лишиться в руці; джокер — за бажанням стилю
         const keepJoker = hand.some((c) => c.kind === 'joker') && rng() > (P.jokerPlay ?? 0.6) && view.round < view.maxRounds;
@@ -322,6 +323,7 @@ function comboDecide(view, rng, style, over) {
         for (const idx of subsets(hand.length, k)) {
           const cards = idx.map((i) => hand[i]);
           if (keepJoker && cards.some((c) => c.kind === 'joker')) continue;
+          if (P.forceJoker && hand.some((c) => c.kind === 'joker') && !cards.some((c) => c.kind === 'joker')) continue;
           const rest = hand.filter((c) => !cards.includes(c));
           const st = strengthOf(comboOf(cards, trump));
           const late = view.round >= view.maxRounds; // в останньому раунді майбутнього немає

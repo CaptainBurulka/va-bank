@@ -355,7 +355,7 @@ test('з 0 фішок при перенесеному банку гра трив
 });
 
 test('таймери: тайм-аут грає випадкову карту, пауза зупиняє час', () => {
-  let s = createGame({ deck: stackedDeck(HANDS), firstToAct: 0 }, ctx(1000));
+  let s = createGame({ deck: stackedDeck(HANDS), firstToAct: 0, core: 'single' }, ctx(1000));
   assert.equal(s.timer.deadline, 1000 + CONFIG.timers.play * 1000);
   assert.equal(reduce(s, { type: 'timeout' }, ctx(2000)).error, 'not-expired');
   s = run(s, [{ type: 'pause' }], ctx(6000));
@@ -369,7 +369,7 @@ test('таймери: тайм-аут грає випадкову карту, п
 });
 
 test('тайм-аут на виборі «подвоєння» — ставка лишається, раунд іде далі', () => {
-  let s = createGame({ deck: stackedDeck([...HANDS, 'w5', 'w9']), firstToAct: 0, config: { features: { trump: false } } }, ctx(0));
+  let s = createGame({ deck: stackedDeck([...HANDS, 'w5', 'w9']), firstToAct: 0, core: 'single', config: { features: { trump: false } } }, ctx(0));
   s = run(s, [play(0, 'f7'), play(1, 'f3'), ...skipBoth, ...showdownCheck, act('donStart', 0)], ctx(0));
   s = run(s, [{ type: 'timeout' }], ctx(10 ** 7));
   assert.equal(s.round, 2);

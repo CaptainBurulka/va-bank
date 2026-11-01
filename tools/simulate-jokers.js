@@ -20,14 +20,14 @@ function playGame(seed, sets, rounds = 12, jokersOn = true) {
   for (let steps = 0; s.phase !== 'over' && steps < 6000; steps++) {
     for (const p of [0, 1]) {
       // A розігрує джокера одразу, B — у половині випадків (реалістичніше, ніж завжди одночасно)
-      const a = botDecide(viewFor(s, p, 0), rng, styles[p], { jokerPlay: p === 0 ? 1 : 0.5 });
+      const a = botDecide(viewFor(s, p, 0), rng, styles[p], p === 0 ? { jokerPlay: 1, forceJoker: true } : { jokerPlay: 0.5 });
       if (!a) continue;
       s = reduce(s, { ...a, player: p }, ctx).state;
       break;
     }
     if (s.phase === 'result' && !recorded) {
       recorded = true;
-      played = [0, 1].map((p) => (s.players[p].played?.kind === 'joker' ? s.players[p].played.joker : null));
+      played = [0, 1].map((p) => [].concat(s.players[p].played || []).find((c) => c?.kind === 'joker')?.joker ?? null);
       revealed = s.result.reason !== 'fold';
       changed = !!s.result.jokers?.changed;
     }

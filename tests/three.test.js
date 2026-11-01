@@ -11,7 +11,7 @@ import { parseGuestMessage, cleanName } from '../net/protocol.js';
 /** Утрьох: руки по 4 карти — P0 = ids[0..3], P1 = ids[4..7], P2 = ids[8..11]. Козир вимкнено. */
 function game3(ids, opts = {}) {
   const { config = {}, ...rest } = opts;
-  return createGame({ players: 3, deck: stackedDeck(ids), firstToAct: 0, ...rest, config: { ...config, features: { trump: false, swap: true, ...(config.features || {}) } } }, ctx());
+  return createGame({ players: 3, deck: stackedDeck(ids), firstToAct: 0, core: 'single', ...rest, config: { ...config, features: { trump: false, swap: true, ...(config.features || {}) } } }, ctx());
 }
 const H = ['w9', 'w1', 'w2', 'w3', 'f5', 'f1', 'f2', 'f3', 's7', 's1', 's2', 's3'];
 const skip3 = [act('skipScout', 0), act('skipScout', 1), act('skipScout', 2)];
@@ -166,7 +166,7 @@ test('утрьох: перший хід — гравець після перем
 });
 
 test('утрьох: таймаут у торгах — чек або пас за того, хто не встиг', () => {
-  let s = createGame({ players: 3, deck: stackedDeck(H), firstToAct: 0, config: { features: { trump: false } } }, ctx(0));
+  let s = createGame({ players: 3, deck: stackedDeck(H), firstToAct: 0, core: 'single', config: { features: { trump: false } } }, ctx(0));
   s = run(s, [play(0, 'w9'), play(1, 'f5'), play(2, 's7'), ...skip3, act('raise', 0, { amount: 5 })], ctx(0));
   const t = reduce(s, { type: 'timeout' }, ctx(1e9)).state;
   assert.ok(t.players[1].folded);
