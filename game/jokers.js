@@ -39,45 +39,75 @@ function rankUp(c, n) {
   return { ...c, rank: r, key: [r, ...c.key.slice(1)], label: `${c.label} ↑${n > 1 ? n : ''}`, boosted: n };
 }
 /** Зламати комбінацію до Старшої карти (Ламач). */
+function rankDown(c, n) {
+  const r = Math.max(0, c.rank - n);
+  return { ...c, rank: r, key: [r, ...c.key.slice(1)], label: `${c.label} ↓${n > 1 ? n : ''}`, broken: true };
+}
 function asHigh(c) {
   const boosted = c.key.slice(-3);
   return { ...c, id: 'high', rank: 0, key: [0, ...boosted], label: `Старша ${c.values.at(-1) ?? 0} (зламано)`, broken: true };
 }
 
+/** Найкраще для моєї комбінації значення з кандидатів (масть будь-яка). */
+function bestValue(api, values) {
+  const mine = api.cards(api.me), ji = mine.findIndex((c) => c.id === api.card.id);
+  if (ji < 0) return values[0];
+  let best = null;
+  for (const v of values) {
+    const combo = evaluate(slotsOf(mine.map((x, i) => (i === ji ? { v, s: '*', card: x } : plainSlot(x)))), api.s.trump);
+    if (!best || compareCombos(combo, best.combo) > 0) best = { v, combo };
+  }
+  return best.v;
+}
+
+/** Явне значення й масть джокера (null — без масті, на відміну від setSlot, де null = «будь-яка»). */
+const X_set = (api, v, s) => { api.setSlot(v, s ?? undefined); if (s == null) api.forceNoSuit(); };
+
 /** Каталог. slot — значення в комбінації за замовчуванням (для бота й підказки): {v,s} | null (порожнє) | {wild} | fn. */
 const build = (T) => [
   // ───── Звичайні ─────
-  { id: 'turncoat', name: 'Перевертень', rarity: 'common', icon: '🙃', type: 'rule', stage: 'power', slot: T.turncoat.v == null ? null : { v: T.turncoat.v },
-    desc: 'Цього розкриття перемагає СЛАБША комбінація.',
+  { id: 'turncoat', name: 'Перевертень', rarity: 'common', icon: '🙃', type: 'rule', stage: 'power', slot: T.turncoat.v == null ? null : { v: T.turncoat.v }, noSuit: true,
+    desc: `Цього розкриття перемагає СЛАБША комбінація${T.turncoat.v == null ? '' : ` (сам — значення ${T.turncoat.v} без масті)`}.`,
     apply: (api) => { api.setSlot(T.turncoat.v ?? null); api.X.lowWins = !api.X.lowWins; api.note('Перевертень: перемагає слабша комбінація'); } },
   { id: 'roulette', name: 'Рулетка', rarity: 'common', icon: '🎡', type: 'value', stage: 'power', slot: { v: 5 },
-    desc: 'Випадкове значення від 1 до 10 і випадкова масть.',
-    apply: (api) => { const v = 1 + Math.floor(api.rng() * 10), su = SUITS[Math.floor(api.rng() * 3)]; api.setSlot(v, su); api.note(`Рулетка: ${v}`); } },
+    desc: `${T.roulette.k} випадкові значення — береться найкраще для твоєї комбінації; масть будь-яка.`,
+    apply: (api) => { const xs = Array.from({ length: T.roulette.k }, () => 1 + Math.floor(api.rng() * 10)); api.setChoice(xs); api.note(`Рулетка: ${xs.join(' / ')}`); } },
   { id: 'thief', name: 'Дикун', rarity: 'common', icon: '🃏', type: 'value', stage: 'power', slot: { wild: true, wildMax: T.thief.max },
     desc: `Будь-яке значення${T.thief.max < 10 ? ` до ${T.thief.max}` : ''} і масть — підбирається найкраще для твоєї комбінації${T.thief.loseTie ? '; нічию програє' : ''}.`,
     apply: (api) => { api.setWild(T.thief.max); if (T.thief.loseTie) api.X.loseTie[api.me] = true; api.note('Дикун підлаштувався під комбінацію'); } },
-  { id: 'fist', name: 'Важкий кулак', rarity: 'common', icon: '👊', type: 'value', stage: 'power', slot: { v: T.fist.v },
+  { id: 'fist', name: 'Важкий кулак', rarity: 'common', icon: '👊', type: 'value', stage: 'power', slot: { v: T.fist.v }, noSuit: true,
     desc: `Значення ${T.fist.v} без масті, нічию програє; удар коштує ${T.fist.fee} фішок у джекпот.`,
     apply: (api) => { api.setSlot(T.fist.v); api.X.loseTie[api.me] = true; api.note(`Важкий кулак: ${T.fist.v}`); api.after(() => api.burn(api.me, T.fist.fee)); } },
-  { id: 'insurance', name: 'Чет-нечет', rarity: 'common', icon: '⚖️', type: 'value', stage: 'power', slot: { v: 6 },
-    desc: `Відкрита карта суперника парна — значення ${T.insurance.high}, непарна — ${T.insurance.low}.`,
-    d3: `Відкрита карта лідера парна — значення ${T.insurance.high}, непарна — ${T.insurance.low}.`,
-    apply: (api) => { const even = nominal(api.openOf(api.opp)) % 2 === 0; const v = even ? T.insurance.high : T.insurance.low; api.setSlot(v); api.note(even ? `Чет! Значення ${v}` : `Нечет: значення ${v}`); } },
+  { id: 'insurance', name: 'Чет-нечет', rarity: 'common', icon: '⚖️', type: 'value', stage: 'power', slot: { v: T.insurance.v },
+    desc: `Значення ${T.insurance.v}. Відкрита карта суперника парна — твоя комбінація на сходинку сильніша.`,
+    d3: `Значення ${T.insurance.v}. Відкрита карта лідера парна — твоя комбінація на сходинку сильніша.`,
+    apply: (api) => {
+      api.setSlot(T.insurance.v);
+      const even = nominal(api.openOf(api.opp)) % 2 === 0;
+      if (even) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], 1); }); }
+      api.note(even ? 'Чет! Комбінація на сходинку сильніша' : 'Нечет');
+    } },
   { id: 'twin', name: 'Двійник', rarity: 'common', icon: '👥', type: 'value', stage: 'power', slot: { v: 5 },
-    desc: 'Копіює значення й масть випадкової карти з твоєї руки.',
-    apply: (api) => { const c = api.randomInHand(api.me); const sl = c ? plainSlot(c) : { v: 5, s: null }; api.setSlot(sl.v, sl.s); api.note(`Двійник: копія ${sl.v ?? '—'}`); } },
+    slotFor: (ctx) => { const vs = [...new Set((ctx.hand || []).filter((c) => c.kind === 'num').map((c) => c.value))]; return vs.length ? { wild: true, wildVals: vs, wildSuit: null } : null; },
+    desc: 'Копіює значення однієї з карт у твоїй руці — найкраще для комбінації; без масті.',
+    apply: (api) => { const vs = [...new Set(api.handOf(api.me).map((c) => plainSlot(c).v).filter((x) => x != null))]; if (vs.length) api.setChoice(vs, null); else api.setSlot(5); api.note('Двійник: скопіював найкраще значення з руки'); } },
   { id: 'chameleon', name: 'Хамелеон', rarity: 'common', icon: '🦎', type: 'value', stage: 'power', slot: { v: T.chameleon.v },
-    desc: `Значення ${T.chameleon.v} у масті козиря.`,
-    apply: (api) => { api.setSlot(T.chameleon.v, api.s.trump); api.note('Хамелеон став козирем'); } },
-  { id: 'modest', name: 'Підробка', rarity: 'common', icon: '🎭', type: 'value', stage: 'power', slot: { v: 5 },
-    desc: 'Копія відкритої карти суперника (значення й масть).',
-    d3: 'Копія відкритої карти лідера (значення й масть).',
-    apply: (api) => { const sl = plainSlot(api.openOf(api.opp)); api.setSlot(sl.v ?? 5, sl.s); api.note(`Підробка: копія ${sl.v ?? 5}`); } },
+    desc: `Значення ${T.chameleon.v}, масть будь-яка; нічию виграє.`,
+    apply: (api) => { api.setSlot(T.chameleon.v); api.X.winTie[api.me] = true; api.note(`Хамелеон: ${T.chameleon.v}, нічия — його`); } },
+  { id: 'modest', name: 'Підробка', rarity: 'common', icon: '🎭', type: 'value', stage: 'power', slot: { v: T.modest.alt },
+    desc: `Значення відкритої карти суперника або ${T.modest.alt} — що краще для комбінації (масть будь-яка); у нього відкрита карта втрачає масть.`,
+    d3: `Значення відкритої карти лідера або ${T.modest.alt} — що краще для комбінації (масть будь-яка); у нього відкрита карта втрачає масть.`,
+    apply: (api) => {
+      const t = api.opp, open = api.openOf(t), sl = plainSlot(open);
+      api.setChoice([sl.v ?? T.modest.alt, T.modest.alt]);
+      if (open) api.pre((slots) => { const i = api.cards(t).findIndex((c) => c.id === open.id); if (i >= 0 && slots[t]) slots[t][i] = { ...slots[t][i], s: null }; });
+      api.note(`Підробка: копія ${sl.v ?? 5}`);
+    } },
   { id: 'tax', name: 'Податок', rarity: 'common', icon: '🧾', type: 'value', stage: 'power', slot: { v: T.tax.v },
     desc: `Значення ${T.tax.v}. Усі учасники платять по ${T.tax.fee} фішок у джекпот.`,
     apply: (api) => { api.setSlot(T.tax.v); api.after(() => { for (const q of api.parts0) api.burn(q, T.tax.fee); api.note(`Податок: по ${T.tax.fee} у джекпот`); }); } },
   { id: 'dice', name: 'Стрибок', rarity: 'common', icon: '🦘', type: 'value', stage: 'power', slot: { v: 5 },
-    desc: `На ${T.dice.d} більше або менше за одну з твоїх карт, тієї ж масті — обирається найкраще для комбінації.`,
+    desc: 'На 1–3 більше або менше за одну з твоїх карт, тієї ж масті — обирається найкраще для комбінації.',
     apply: (api) => {
       const mine = api.cards(api.me);
       const ji = mine.findIndex((c) => c.id === api.card.id);
@@ -87,7 +117,7 @@ const build = (T) => [
         if (c.id === api.card.id) continue;
         const sl = plainSlot(c);
         if (sl.v == null) continue;
-        for (const d of [T.dice.d, -T.dice.d]) {
+        for (const d of [1, 2, 3, -1, -2, -3]) {
           const v = sl.v + d;
           if (v < 1 || v > 10) continue;
           const slots = slotsOf(mine.map((x, i) => (i === ji ? { v, s: sl.s, card: x } : plainSlot(x))));
@@ -97,46 +127,34 @@ const build = (T) => [
       }
       if (best) { api.setSlot(best.v, best.s); api.note(`Стрибок: ${best.v}`); } else { api.setSlot(5); api.note('Стрибок: нема від чого — 5'); }
     } },
-  { id: 'counter', name: 'Сходинка', rarity: 'common', icon: '🪜', type: 'rule', stage: 'power', slot: null,
-    desc: `Місце порожнє, але твоя комбінація на ${T.counter.ranks} сходинку сильніша (Пара → як Масть…).`,
-    apply: (api) => { api.setSlot(null); const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.counter.ranks); }); api.note('Сходинка: комбінація сильніша'); } },
-  { id: 'brazen', name: 'Близнюк', rarity: 'common', icon: '♊', type: 'value', stage: 'power', slot: { mirror: true },
-    desc: 'Копія твоєї найстаршої іншої зіграної карти (значення й масть).',
+  { id: 'counter', name: 'Сходинка', rarity: 'common', icon: '🪜', type: 'value', stage: 'power', slot: T.counter.v == null ? null : { v: T.counter.v }, noSuit: true,
+    desc: `${T.counter.v == null ? 'Місце порожнє' : `Значення ${T.counter.v} без масті`}, а твоя комбінація на ${T.counter.ranks} сходинку сильніша (Пара → як Масть…).`,
+    apply: (api) => { api.setSlot(T.counter.v ?? null); const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.counter.ranks); }); api.note('Сходинка: комбінація сильніша'); } },
+  { id: 'brazen', name: 'Близнюк', rarity: 'common', icon: '♊', type: 'value', stage: 'power', slot: { mirror: true }, noSuit: !T.brazen.suit,
+    desc: `Копія значення твоєї наймолодшої іншої зіграної карти${T.brazen.suit ? ' (і масті)' : ', без масті'}.`,
     apply: (api) => {
       const others = api.cards(api.me).filter((c) => c.id !== api.card.id).map(plainSlot).filter((x) => x.v != null);
-      const top = others.sort((a, b) => b.v - a.v)[0];
-      if (top) { api.setSlot(top.v, top.s); api.note(`Близнюк: копія ${top.v}`); } else { api.setSlot(null); api.note('Близнюк: нема кого копіювати'); }
+      const top = others.sort((a, b) => a.v - b.v)[0];
+      if (top) { X_set(api, top.v, T.brazen.suit ? top.s : null); api.note(`Близнюк: копія ${top.v}`); } else { api.setSlot(null); api.note('Близнюк: нема кого копіювати'); }
     } },
   { id: 'magnet', name: 'Магніт', rarity: 'common', icon: '🧲', type: 'value', stage: 'power', slot: { v: T.magnet.v },
-    desc: `Значення ${T.magnet.v}. Найстарша карта суперника стає на ${T.magnet.d} молодшою.`,
-    d3: `Значення ${T.magnet.v}. Найстарша карта лідера стає на ${T.magnet.d} молодшою.`,
-    apply: (api) => {
-      api.setSlot(T.magnet.v);
-      const t = api.opp;
-      api.pre((slots) => {
-        const sl = slots[t];
-        if (!sl) return;
-        let i = -1;
-        sl.forEach((x, k) => { if (x.v != null && (i < 0 || x.v > sl[i].v)) i = k; });
-        if (i >= 0) sl[i] = { ...sl[i], v: Math.max(1, sl[i].v - T.magnet.d) };
-      });
-      api.note('Магніт притягнув старшу карту суперника');
-    } },
+    desc: `Значення ${T.magnet.v}, масть будь-яка; притягує удачу — нічию виграє.`,
+    apply: (api) => { api.setSlot(T.magnet.v); api.X.winTie[api.me] = true; api.note(`Магніт: ${T.magnet.v}, нічия — його`); } },
   { id: 'temptation', name: 'Аутсайдер', rarity: 'common', icon: '🐢', type: 'value', stage: 'power', slot: { v: T.temptation.v },
-    desc: `Значення ${T.temptation.v}, +1 за кожні ${T.temptation.step} фішок, на які ти відстаєш від суперника (до 10).`,
-    d3: `Значення ${T.temptation.v}, +1 за кожні ${T.temptation.step} фішок, на які ти відстаєш від лідера (до 10).`,
+    desc: `Значення ${T.temptation.v}. Відстаєш від суперника на ${T.temptation.gap}+ фішок — твоя комбінація на сходинку сильніша.`,
+    d3: `Значення ${T.temptation.v}. Відстаєш від лідера на ${T.temptation.gap}+ фішок — твоя комбінація на сходинку сильніша.`,
     apply: (api) => {
-      const gap = Math.max(0, api.chips(api.opp) - api.chips(api.me));
-      const v = Math.min(10, T.temptation.v + Math.floor(gap / T.temptation.step));
-      api.setSlot(v);
-      api.note(gap > 0 ? `Аутсайдер: відставання ${gap} → ${v}` : `Аутсайдер: ${v}`);
+      api.setSlot(T.temptation.v);
+      const gap = api.chips(api.opp) - api.chips(api.me);
+      if (gap >= T.temptation.gap) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], 1); }); }
+      api.note(gap >= T.temptation.gap ? `Аутсайдер: відставання ${gap} — комбінація сильніша` : `Аутсайдер: ${T.temptation.v}`);
     } },
 
   // ───── Рідкісні ─────
-  { id: 'storm', name: 'Буря', rarity: 'rare', icon: '🌪️', type: 'cards', stage: 'replace', slot: null,
-    desc: 'Місце порожнє. Усі закриті карти на столі замінюються випадковими з колоди.',
+  { id: 'storm', name: 'Буря', rarity: 'rare', icon: '🌪️', type: 'cards', stage: 'replace', slot: { v: T.storm.v },
+    desc: `Значення ${T.storm.v}. Усі закриті карти на столі замінюються випадковими з колоди.`,
     apply: (api) => {
-      api.setSlot(null);
+      api.setSlot(T.storm.v);
       for (const q of api.parts) {
         const cs = api.cards(q);
         cs.forEach((c, i) => { if (c.id !== api.openIdOf(q) && c.kind !== 'joker') { const n = api.drawNum(); if (n) cs[i] = n; } });
@@ -144,12 +162,12 @@ const build = (T) => [
       api.note('Буря замінила всі закриті карти');
     } },
   { id: 'swap', name: 'Обмін', rarity: 'rare', icon: '🔀', type: 'cards', stage: 'replace', slot: { v: 5 },
-    desc: 'Забираєш найстаршу закриту карту суперника; йому — випадкова з колоди.',
-    d3: 'Забираєш найстаршу закриту карту лідера; йому — випадкова з колоди.',
+    desc: 'Забираєш випадкову закриту карту суперника; йому — випадкова з колоди.',
+    d3: 'Забираєш випадкову закриту карту лідера; йому — випадкова з колоди.',
     apply: (api) => {
       const t = api.opp, cs = api.cards(t);
-      let i = -1;
-      cs.forEach((c, k) => { if (c.id !== api.openIdOf(t) && c.kind !== 'joker' && (i < 0 || (plainSlot(c).v ?? -1) > (plainSlot(cs[i]).v ?? -1))) i = k; });
+      const closed = cs.map((c, k) => k).filter((k) => cs[k].id !== api.openIdOf(t) && cs[k].kind !== 'joker');
+      const i = closed.length ? closed[Math.floor(api.rng() * closed.length)] : -1;
       if (i < 0) { api.setSlot(5); api.note('Обмін: нічого взяти'); return; }
       const took = cs[i];
       const n = api.drawNum();
@@ -158,56 +176,62 @@ const build = (T) => [
       api.note('Обмін: закриту карту суперника вкрадено');
     } },
   { id: 'shadow', name: 'Тінь', rarity: 'rare', icon: '🌑', type: 'value', stage: 'power', slot: { v: T.shadow.v },
-    desc: `Значення ${T.shadow.v}; якщо суперник підглядав до тебе — ${T.shadow.scouted}.`,
-    d3: `Значення ${T.shadow.v}; якщо хтось підглядав саме до тебе — ${T.shadow.scouted}.`,
+    desc: `Значення ${T.shadow.v}; якщо суперник підглядав до тебе — твоя комбінація на сходинку сильніша.`,
+    d3: `Значення ${T.shadow.v}; якщо хтось підглядав саме до тебе — твоя комбінація на сходинку сильніша.`,
     apply: (api) => {
       const seen = api.others.some((q) => api.s.players[q].scouted && (api.s.players[q].scoutTarget ?? api.me) === api.me);
-      const v = seen ? T.shadow.scouted : T.shadow.v;
-      api.setSlot(v);
-      api.note(seen ? `Тінь: суперник підглядав — ${v}` : `Тінь: ${v}`);
+      api.setSlot(T.shadow.v);
+      if (seen) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], 1); }); }
+      api.note(seen ? 'Тінь: суперник підглядав — комбінація сильніша' : `Тінь: ${T.shadow.v}`);
     } },
-  { id: 'trap', name: 'Пастка', rarity: 'rare', icon: '🪤', type: 'rule', stage: 'power', slot: { v: T.trap.v },
-    desc: `Значення ${T.trap.v}. Якщо суперник цього раунду піднімав ставку — ти перемагаєш.`,
-    d3: `Значення ${T.trap.v}. Якщо лідер цього раунду піднімав ставку — твоя комбінація на ${T.trap.ranks3} сходинки сильніша.`,
+  { id: 'trap', name: 'Пастка', rarity: 'rare', icon: '🪤', type: 'rule', stage: 'power', slot: { v: T.trap.v }, noSuit: true,
+    desc: `Значення ${T.trap.v} без масті. Якщо суперник цього раунду піднімав ставку — твоя комбінація на ${T.trap.ranks} сходинки сильніша.`,
+    d3: `Значення ${T.trap.v}. Якщо лідер цього раунду піднімав ставку — твоя комбінація на ${T.trap.ranks} сходинки сильніша.`,
     apply: (api) => {
       api.setSlot(T.trap.v);
       const caught = api.s.roundRaises?.[api.opp] > 0;
-      if (caught && api.others.length === 1) { api.X.forced = api.me; api.note('Пастка спрацювала: суперник піднімав!'); }
-      else if (caught) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.trap.ranks3); }); api.note('Пастка спіймала лідера!'); }
+      if (caught) { const me = api.me; api.post((cs) => { cs[me] = rankUp(cs[me], T.trap.ranks); }); api.note('Пастка спрацювала: суперник піднімав!'); }
       else api.note('Пастка: суперник не піднімав');
     } },
   { id: 'highroller', name: 'Ва-банкір', rarity: 'rare', icon: '🤑', type: 'value', stage: 'replace', slot: { v: T.highroller.v },
     desc: `Значення ${T.highroller.v}. Кожен ще раз докладає в банк свою ставку — банк подвоюється.`,
     apply: (api) => { api.setSlot(T.highroller.v); let n = 0; for (const q of api.parts0) n += api.pay(q, api.contrib(q)); api.note(`Ва-банкір: банк +${n}`); } },
-  { id: 'pocket', name: 'Кишеньковий', rarity: 'rare', icon: '👖', type: 'cards', stage: 'replace', slot: { v: 5 },
-    desc: 'Стає випадковою картою з руки суперника (вона зникає з його руки).',
-    d3: `Стає ${T.pocket.tries > 1 ? `старшою з ${T.pocket.tries} випадкових карт` : 'випадковою картою'} з руки лідера.`,
+  { id: 'pocket', name: 'Кишеньковий', rarity: 'rare', icon: '👖', type: 'value', stage: 'power', slot: { v: T.pocket.v },
+    desc: `Значення ${T.pocket.v}, масть будь-яка. Після розкриття забираєш собі в руку випадкову карту з руки суперника.`,
+    d3: `Значення ${T.pocket.v}, масть будь-яка. Після розкриття забираєш собі в руку випадкову карту з руки лідера.`,
     apply: (api) => {
-      let b = null;
-      for (let k = 0; k < T.pocket.tries; k++) { const c = api.randomInHand(api.opp); if (c && (!b || (plainSlot(c).v ?? -1) > (plainSlot(b).v ?? -1))) b = c; }
-      if (!b) { api.setSlot(5); api.note('Кишеньковий: кишені порожні'); return; }
-      api.takeFromHand(api.opp, b);
-      api.replaceMe(b);
-      api.note('Кишеньковий витяг карту з руки суперника');
+      api.setSlot(T.pocket.v);
+      const t = api.opp, me = api.me;
+      api.after(() => { const c = api.randomInHand(t); if (c) { api.moveCard(t, me, c); api.note('Кишеньковий витяг карту з руки суперника'); } });
     } },
-  { id: 'sharper', name: 'Шулер', rarity: 'rare', icon: '🎩', type: 'value', stage: 'power', slot: { v: (T.sharper.v + T.sharper.alt) / 2 },
-    desc: `Значення ${T.sharper.v} або ${T.sharper.alt} (50/50) без масті, нічию виграє.`,
-    apply: (api) => { const v = api.rng() < 0.5 ? T.sharper.v : T.sharper.alt; api.setSlot(v); api.X.winTie[api.me] = true; api.note(`Шулер: ${v}, нічия — його`); } },
-  { id: 'luck', name: 'Удача', rarity: 'rare', icon: '🍀', type: 'value', stage: 'power', slot: { v: 5 },
-    desc: `50 на 50: значення ${T.luck.high} або ${T.luck.low}, масть випадкова.`,
-    apply: (api) => { const v = api.rng() < 0.5 ? T.luck.high : T.luck.low; api.setSlot(v, SUITS[Math.floor(api.rng() * 3)]); api.note(v === T.luck.high ? `Удача всміхнулась: ${v}` : `Удача відвернулась: ${v}`); } },
+  { id: 'sharper', name: 'Шулер', rarity: 'rare', icon: '🎩', type: 'value', stage: 'power', slot: { wild: true, wildVals: [T.sharper.v, T.sharper.alt] },
+    desc: `Значення ${T.sharper.v} або ${T.sharper.alt} — що краще для комбінації; масть будь-яка.`,
+    apply: (api) => { api.setChoice([T.sharper.v, T.sharper.alt]); api.note('Шулер: обрав краще значення'); } },
+  { id: 'luck', name: 'Удача', rarity: 'rare', icon: '🍀', type: 'value', stage: 'power', slot: { v: T.luck.v },
+    desc: `Значення ${T.luck.v}. 50 на 50: твоя комбінація на ${T.luck.up} сходинки сильніша або на 1 слабша.`,
+    apply: (api) => {
+      api.setSlot(T.luck.v);
+      const up = api.rng() < 0.5, me = api.me;
+      api.post((cs) => { cs[me] = up ? rankUp(cs[me], T.luck.up) : rankDown(cs[me], 1); });
+      api.note(up ? 'Удача всміхнулась: комбінація сильніша' : 'Удача відвернулась');
+    } },
   { id: 'brave', name: 'Сміливець', rarity: 'rare', icon: '🦁', type: 'value', stage: 'power', slot: { v: T.brave.v },
-    desc: `Значення ${T.brave.v} + ${T.brave.perRaise} за кожне підняття в цьому раунді (до 10).`,
-    apply: (api) => { const r = (api.s.roundRaises || []).reduce((a, b) => a + b, 0); const v = Math.min(10, T.brave.v + T.brave.perRaise * r); api.setSlot(v); api.note(`Сміливець: ${r} підн. → ${v}`); } },
+    desc: `Значення від ${T.brave.v} до ${T.brave.v}+${T.brave.perRaise}×підняття цього раунду — найкраще для комбінації.`,
+    apply: (api) => {
+      const r = (api.s.roundRaises || []).reduce((a, b) => a + b, 0);
+      const top = Math.min(10, T.brave.v + T.brave.perRaise * r);
+      const v = bestValue(api, Array.from({ length: top - T.brave.v + 1 }, (_, i) => T.brave.v + i));
+      api.setSlot(v); api.note(`Сміливець: ${r} підн. → ${v}`);
+    } },
   { id: 'antitrump', name: 'Ламач', rarity: 'rare', icon: '🔨', type: 'rule', stage: 'power', slot: null,
-    desc: 'Місце порожнє. Комбінація суперника рахується як Старша карта.',
-    d3: 'Місце порожнє. Найсильніша комбінація серед суперників рахується як Старша карта.',
+    desc: `Місце порожнє. Комбінація суперника на ${T.antitrump.ranks} сходинки слабша.`,
+    d3: `Місце порожнє. Найсильніша комбінація серед суперників на ${T.antitrump.ranks} сходинки слабша.`,
     apply: (api) => {
       api.setSlot(null);
       const others = api.others;
       api.post((cs) => {
         const t = others.reduce((a, b) => (compareCombos(cs[b], cs[a]) > 0 ? b : a));
-        cs[t] = asHigh(cs[t]);
+        cs[t] = rankDown(cs[t], T.antitrump.ranks);
       });
       api.note('Ламач зламав комбінацію суперника');
     } },
@@ -264,14 +288,14 @@ const build = (T) => [
     desc: 'Раунд переграється з нуля, ставки повертаються.',
     apply: (api) => { api.X.cancel = 'replay'; api.note('НАЗАД У ЧАСІ: раунд переграється'); } },
   { id: 'chaosking', name: 'Король хаосу', rarity: 'legendary', icon: '👑', type: 'rule', stage: 'power', slot: { v: 5 },
-    desc: 'Рулетка обирає ефект будь-якого іншого джокера.',
+    desc: 'Рулетка обирає ефект будь-якого іншого джокера; з шансом 50% твоя комбінація ще й на сходинку сильніша.',
     apply: () => {} }, // розгортається в resolveJokers
   { id: 'duel', name: 'Дуель', rarity: 'legendary', icon: '⚔️', type: 'cards', stage: 'replace', slot: null,
-    desc: 'Кожен бере 3 карти з колоди і грає найкращою трійкою зі своїх зіграних і нових.',
+    desc: `Кожен бере 3 карти з колоди (ти — ${3 + T.duel.extra}) і грає найкращою трійкою зі своїх зіграних і нових.`,
     apply: (api) => {
       const duel = {};
       for (const q of [api.me, ...api.others]) {
-        const fresh = [api.drawNum(), api.drawNum(), api.drawNum()].filter(Boolean);
+        const fresh = Array.from({ length: 3 + (q === api.me ? T.duel.extra : 0) }, () => api.drawNum()).filter(Boolean);
         const pool = [...api.cards(q).filter((c) => c.kind !== 'joker'), ...fresh];
         const best = bestSet(pool, api.s.trump, { joker: jokerSlot });
         const cs = api.cards(q);
@@ -319,11 +343,14 @@ export function jokerCard(jid, p, n = 2) {
  * Значення джокера в комбінації за замовчуванням (до розкриття — для бота, підказки й статистики):
  * { v, s } | { wild, wildMax } | { mirror } | null — порожнє місце.
  */
-export function jokerSlot(card) {
+export function jokerSlot(card, ctx = null) {
   const d = catalog(card.n || 2)[card.joker];
   if (!d) return null;
-  const sl = typeof d.slot === 'function' ? d.slot(card) : d.slot;
-  return sl ? { ...sl } : { v: null };
+  const hint = ctx && d.slotFor ? d.slotFor(ctx) : null;
+  const sl = hint || (typeof d.slot === 'function' ? d.slot(card) : d.slot);
+  if (!sl) return { v: null };
+  // джокер-значення без своєї масті — будь-яка масть (крім тих, що «без масті»)
+  return { ...sl, s: sl.s ?? (sl.v != null && !d.noSuit ? '*' : null) };
 }
 
 /** Перевірка набору: лише відомі id, без повторів, не більше max. */
@@ -372,6 +399,7 @@ export function resolveJokers(s, ctx, env) {
         const pool = Object.values(BY).filter((j) => !['chaosking', 'echo'].includes(j.id));
         def = pool[Math.floor(ctx.rng() * pool.length)];
         prefix = `Король хаосу обрав: ${def.name}. `;
+        if (ctx.rng() < 0.5) { X.post.push((cs) => { if (cs[p]) cs[p] = rankUp(cs[p], 1); }); prefix += 'Комбінація на сходинку сильніша. '; }
       }
       entries.push({ p, card, def, src: BY[card.joker], prefix });
     }
@@ -396,7 +424,9 @@ export function resolveJokers(s, ctx, env) {
       cards: (q) => X.cards[q],
       openIdOf: (q) => X.openIds[q],
       openOf: (q) => X.cards[q]?.find((c) => c.id === X.openIds[q]) || null,
-      setSlot: (v, su = null) => { if (where()) X.jv[e.card.id] = v == null ? { v: null } : { v, s: su }; },
+      setSlot: (v, su = null) => { if (where()) X.jv[e.card.id] = v == null ? { v: null } : { v, s: su ?? (e.def.noSuit ? null : '*') }; },
+      setChoice: (vals, suit = '*') => { if (where()) X.jv[e.card.id] = { wild: true, wildVals: [...new Set(vals)], wildSuit: suit }; },
+      forceNoSuit: () => { const j = X.jv[e.card.id]; if (j && j.v != null) j.s = null; },
       setWild: (max = 10) => { if (where()) X.jv[e.card.id] = { wild: true, wildMax: max }; },
       replaceMe: (card) => { const w = where(); if (w) { if (X.openIds[w.q] === e.card.id) X.openIds[w.q] = card.id; X.cards[w.q][w.i] = card; } },
       swapSets: (a, b) => { [X.cards[a], X.cards[b]] = [X.cards[b], X.cards[a]]; [X.openIds[a], X.openIds[b]] = [X.openIds[b], X.openIds[a]]; },

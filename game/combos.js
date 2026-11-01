@@ -41,7 +41,7 @@ export function slotOf(card, joker = null) {
   if (card.kind === 'mirror') return { v: null, s: null, card, mirror: true }; // значення — після інших
   if (card.kind === 'joker') {
     const j = joker ? joker(card) : null;
-    return j ? { v: j.v ?? null, s: j.s ?? null, card, mirror: !!j.mirror, wild: !!j.wild, wildMax: j.wildMax } : { v: card.power ?? 5, s: null, card };
+    return j ? { v: j.v ?? null, s: j.s ?? null, card, mirror: !!j.mirror, wild: !!j.wild, wildMax: j.wildMax, wildVals: j.wildVals, wildSuit: j.wildSuit } : { v: card.power ?? 5, s: null, card };
   }
   return { v: null, s: null, card };
 }
@@ -66,7 +66,10 @@ export function evaluate(slots, trump = null) {
   const wi = slots.findIndex((x) => x && x.wild);
   if (wi >= 0) {
     let best = null;
-    for (let v = 1; v <= (slots[wi].wildMax || 10); v++) for (const s of ['water', 'fire', 'stone']) {
+    // wildVals — лише дозволені значення (масть будь-яка), інакше — будь-яке значення до wildMax і будь-яка масть
+    const vals = slots[wi].wildVals || Array.from({ length: slots[wi].wildMax || 10 }, (_, k) => k + 1);
+    const suits = slots[wi].wildVals ? [slots[wi].wildSuit === undefined ? '*' : slots[wi].wildSuit] : ['water', 'fire', 'stone'];
+    for (const v of vals) for (const s of suits) {
       const c = evaluate(slots.map((x, i) => (i === wi ? { ...x, v, s, wild: false } : x)), trump);
       if (!best || compareCombos(c, best) > 0) best = c;
     }
@@ -78,7 +81,9 @@ export function evaluate(slots, trump = null) {
   const vals = vs.map((x) => x.v).sort((a, b) => a - b);
   let id = 'high', main = [];
   if (vs.length === 3) {
-    const suited = vs[0].s && vs.every((x) => x.s === vs[0].s);
+    // '*' — «будь-яка масть» (джокери-значення): підходить до будь-якої масті
+    const real = vs.map((x) => x.s).filter((su) => su && su !== '*');
+    const suited = vs.every((x) => x.s) && real.every((su) => su === real[0]);
     const straight = vals[1] === vals[0] + 1 && vals[2] === vals[1] + 1;
     if (straight && suited) { id = 'sflush'; main = [vals[2]]; }
     else if (vals[0] === vals[2]) { id = 'trio'; main = [vals[0]]; }
@@ -94,7 +99,7 @@ export function evaluate(slots, trump = null) {
   const label = id === 'sflush' ? `Стріт у масть ${vals[0]}–${vals[2]}`
     : id === 'trio' ? `Трійка ${main[0]}`
       : id === 'straight' ? `Стріт ${vals[0]}–${vals[2]}`
-        : id === 'flush' ? `Масть ${SUIT_NAME[vs[0].s] ? `(${SUIT_NAME[vs[0].s].toLowerCase()})` : ''}`.trim()
+        : id === 'flush' ? `Масть ${SUIT_NAME[vs.find((x) => x.s !== '*')?.s] ? `(${SUIT_NAME[vs.find((x) => x.s !== '*').s].toLowerCase()})` : ''}`.trim()
           : id === 'pair' ? `Пара ${main[0]}`
             : vs.length ? `Старша ${top}` : 'Порожньо';
   return { id, rank, key: [rank, ...main, ...boosted], label, main, values: vals };

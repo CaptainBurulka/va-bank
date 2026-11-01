@@ -193,6 +193,8 @@ const FULL_DECK = (() => {
 })();
 
 const slot = (c) => slotOf(c, jokerSlot);
+// джокер у руці бота: знає свою руку (напр. Двійник копіює значення з руки)
+const handSlot = (hand) => (c) => jokerSlot(c, { hand });
 const comboOf = (cards, trump) => evaluate(slotsOf(cards.map(slot)), trump);
 
 /** Потенціал карт, що лишаються в руці (під майбутні комбінації): пари, однакові масті, сусіди, джокер. */
@@ -314,7 +316,7 @@ function comboDecide(view, rng, style, over) {
       let pick;
       if (P.greedy || P.greedyPick) {
         const jk = P.forceJoker && hand.findIndex((c) => c.kind === 'joker');
-        pick = bestSet(hand, trump, { k, joker: jokerSlot, filter: jk >= 0 && jk !== false ? (idx) => idx.includes(jk) : null }).idx.map((i) => hand[i]);
+        pick = bestSet(hand, trump, { k, joker: handSlot(hand), filter: jk >= 0 && jk !== false ? (idx) => idx.includes(jk) : null }).idx.map((i) => hand[i]);
       } else {
         // Розумний: сила зараз + потенціал того, що лишиться в руці; джокер — за бажанням стилю
         const keepJoker = hand.some((c) => c.kind === 'joker') && rng() > (P.jokerPlay ?? 0.6) && view.round < view.maxRounds;
@@ -325,7 +327,7 @@ function comboDecide(view, rng, style, over) {
           if (keepJoker && cards.some((c) => c.kind === 'joker')) continue;
           if (P.forceJoker && hand.some((c) => c.kind === 'joker') && !cards.some((c) => c.kind === 'joker')) continue;
           const rest = hand.filter((c) => !cards.includes(c));
-          const st = strengthOf(comboOf(cards, trump));
+          const st = strengthOf(evaluate(slotsOf(cards.map((c) => slotOf(c, handSlot(rest)))), trump));
           const late = view.round >= view.maxRounds; // в останньому раунді майбутнього немає
           const fut = late ? 0 : P.mc ? futureMC(rest, pool, rng, P.mc, view.cfg.handSize || 6) : potential(rest);
           const sc = st + (late ? 0 : P.future * fut) + (rng() - 0.5) * P.noise;

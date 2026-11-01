@@ -62,40 +62,40 @@ export const CONFIG = Object.freeze({
 // ───────── Джокери: числа ефектів (комбінації з 3 карт; підібрано симуляціями на 45–55% перемог) ─────────
 // Значення — у комбінації (1–10). Ключі — id джокерів (переосмислені джокери зберегли id).
 export const JOKER_TUNING = Object.freeze({
-  turncoat: { v: null },                 // Перевертень: місце порожнє
-  roulette: {},
-  thief: { max: 10, loseTie: true },     // Дикун
+  turncoat: { v: 10 },                   // Перевертень: сам — 10 без масті (заважає власній «слабкості»)
+  roulette: { k: 8 },
+  thief: { max: 3, loseTie: false },     // Дикун
   fist: { v: 8, fee: 10 },
-  insurance: { high: 10, low: 2 },       // Чет-нечет
+  insurance: { v: 2 },                   // Чет-нечет
   twin: {},
-  chameleon: { v: 5 },
-  modest: {},                            // Підробка
+  chameleon: { v: 6 },
+  modest: { alt: 9 },                    // Підробка
   tax: { v: 6, fee: 5 },
   dice: { d: 2 },                        // Стрибок
-  counter: { ranks: 1 },                 // Сходинка
-  brazen: {},                            // Близнюк
-  magnet: { v: 7, d: 2 },
-  temptation: { v: 4, step: 10 },        // Аутсайдер
-  storm: {},
+  counter: { v: 1, ranks: 1 },           // Сходинка
+  brazen: { suit: false },               // Близнюк
+  magnet: { v: 6 },
+  temptation: { v: 3, gap: 40 },         // Аутсайдер
+  storm: { v: 4 },
   swap: {},
-  shadow: { v: 6, scouted: 10 },
-  trap: { v: 2, ranks3: 2 },
-  highroller: { v: 6 },
-  pocket: { tries: 1 },
-  sharper: { v: 7, alt: 9 },
-  luck: { high: 10, low: 1 },
-  brave: { v: 4, perRaise: 2 },
-  antitrump: {},                         // Ламач
-  echo: { v: 6 },
+  shadow: { v: 5 },
+  trap: { v: 3, ranks: 1 },
+  highroller: { v: 7 },
+  pocket: { v: 6 },
+  sharper: { v: 5, alt: 9 },
+  luck: { v: 5, up: 1 },
+  brave: { v: 6, perRaise: 2 },
+  antitrump: { ranks: 3 },               // Ламач
+  echo: { v: 7 },
   quake: { v: 6 },
   castling: { v: 6, myTie: true },
   frenzy: { v: 6 },
-  mirrorworld: { v: 5 },
+  mirrorworld: { v: 7 },
+  duel: { extra: 2 },
 });
 
 // Гра втрьох: ті самі ідеї джокерів, інші числа (треба побити двох суперників). Решта — як для двох.
 export const JOKER_TUNING_3 = Object.freeze({
-  pocket: { tries: 2 },
 });
 
 // Коли роздаються джокери: один і той самий випадковий раунд для обох

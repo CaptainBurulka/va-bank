@@ -60,7 +60,7 @@ export function simulateJokers(gamesPer = 400) {
       if (s.stats[0].jokers.includes(j.id) && s.winner !== 'draw') { gameWin[j.id].n++; if (s.winner === 0) gameWin[j.id].w++; }
     }
   }
-  for (let g = 0; g < 2000; g++) games.off.push(playGame(900000 + g, [[], []], 12, false).s.round);
+  if (!process.env.ONLY) for (let g = 0; g < 2000; g++) games.off.push(playGame(900000 + g, [[], []], 12, false).s.round);
   const rows = JOKERS.map((j) => ({
     id: j.id, name: j.name, rarity: j.rarity, plays: per[j.id].n, showdowns: per[j.id].sn,
     showdownWinPct: per[j.id].sn ? Math.round((1000 * per[j.id].ssum) / per[j.id].sn) / 10 : null,

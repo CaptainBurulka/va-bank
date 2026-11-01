@@ -968,6 +968,11 @@ function jokerEnv(s, ctx) {
         return a;
       },
       drawNum: () => { const c = drawNumeric(s, ctx); if (c) s.jokerTrash.push(c); return c; },
+      handOf: (p) => s.players[p].hand.slice(),
+      moveCard: (from, to, card) => {
+        const h = s.players[from].hand, i = h.findIndex((c) => c.id === card.id);
+        if (i >= 0 && !s.players[to].out) s.players[to].hand.push(h.splice(i, 1)[0]);
+      },
       randomInHand: (p) => {
         const h = s.players[p].hand.filter((c) => c.kind !== 'joker');
         return h.length ? h[Math.floor(ctx.rng() * h.length)] : null;
