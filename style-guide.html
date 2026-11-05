@@ -1,0 +1,4136 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171512" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Workwear довідник</title>
+<style>
+:root{
+  --bg:#f4efe6; --surface:#fffaf2; --surface2:#ece4d6; --text:#2a241d; --muted:#6f6355;
+  --line:#ddd2c0; --accent:#8a5a2b; --accent-ink:#fffaf2; --accent-soft:#efe0cc;
+  --mark:#f1d79f; --warn:#8a5a00; --warn-bg:#f7ead0; --ok:#4f6b3a; --shadow:0 1px 2px rgba(60,40,20,.08),0 4px 14px rgba(60,40,20,.06);
+  --ring:rgba(0,0,0,.18); --r:14px; --tab-h:56px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px); --sar:env(safe-area-inset-right,0px);
+  --gutL:max(16px,var(--sal)); --gutR:max(16px,var(--sar));
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#171512; --surface:#211e1a; --surface2:#2b2722; --text:#ece5d8; --muted:#a69a89;
+    --line:#3a342d; --accent:#c48a52; --accent-ink:#1b1712; --accent-soft:#3a2c1f;
+    --mark:#6a4c22; --ring:rgba(255,255,255,.32); --warn:#e6bf72; --warn-bg:#3a2f1b; --ok:#a9c48e; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  overflow-x:hidden;-webkit-tap-highlight-color:transparent;
+  padding-bottom:calc(var(--tab-h) + var(--sab) + 72px)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
+
+/* ── Шапка ── */
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);
+  -webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);
+  padding:calc(var(--sat) + 10px) var(--gutR) 8px var(--gutL);border-bottom:1px solid var(--line)}
+.filters{padding:0 var(--gutR) 4px var(--gutL);border-bottom:1px solid var(--line)}
+.top{border-bottom:0}
+.brandline{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+.brandline h1{font-size:20px;margin:0;letter-spacing:-.01em}
+.brandline small{color:var(--muted);font-size:12px}
+.search{position:relative}
+.search input{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  padding:0 44px 0 40px;font-size:16px;-webkit-appearance:none;appearance:none}
+.search input::placeholder{color:var(--muted)}
+.search svg{position:absolute;left:12px;top:12px;width:20px;height:20px;color:var(--muted)}
+.search .clear{position:absolute;right:0;top:0;width:44px;height:44px;border:0;background:none;color:var(--muted);font-size:20px;display:none}
+.search.has .clear{display:block}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  margin:0 calc(-1 * var(--gutR)) 0 calc(-1 * var(--gutL));padding-left:var(--gutL);padding-right:var(--gutR);scroll-padding-left:var(--gutL)}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;min-height:36px;min-width:44px;justify-content:center;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);
+  display:inline-flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap;position:relative}
+.chip::after{content:"";position:absolute;inset:-4px 0}/* тап-зона ≥44px */
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip .dot{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 1px var(--ring)}
+.chiplabel{flex:0 0 auto;align-self:center;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding-right:2px}
+.resline{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);padding:6px 0 0;min-height:30px}
+.resline button{border:0;background:none;color:var(--accent);min-height:44px;padding:0 4px;margin:-8px 0}
+
+/* ── Контент ── */
+main{padding:12px var(--gutR) 0 var(--gutL)}
+.view{display:none}
+.view.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.vhead{padding:calc(var(--sat) + 14px) var(--gutR) 10px var(--gutL);border-bottom:1px solid var(--line)}
+.vhead h1{margin:0;font-size:24px;letter-spacing:-.01em}
+.vhead p{margin:4px 0 0;color:var(--muted);font-size:14px}
+h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 0 8px}
+h2.sec:first-child{margin-top:4px}
+.empty{padding:40px 12px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--text);font-size:17px;margin-bottom:6px}
+
+/* ── Картка ── */
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.card.flash{animation:flash 1.2s ease}
+@keyframes flash{0%,40%{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}}
+.head{display:flex;align-items:center;gap:10px;padding:10px 4px 10px 12px;min-height:64px;width:100%;text-align:left;background:none;border:0}
+.sw{display:flex;flex:0 0 auto}
+.sw i{width:22px;height:22px;border-radius:50%;border:2px solid var(--surface);margin-left:-8px;box-shadow:0 0 0 1px var(--ring)}
+.sw i:first-child{margin-left:0}
+.ttl{flex:1;min-width:0}
+.ttl h3{margin:0;font-size:16px;line-height:1.25;font-weight:600;overflow-wrap:anywhere}
+.ttl p{margin:2px 0 0;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.ttl .hit{display:block;font-size:12px;color:var(--accent);margin-top:2px}
+.pr{flex:0 0 auto;text-align:right;font-size:14px;font-weight:600;white-space:nowrap;padding-left:4px}
+.pr small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.star{flex:0 0 44px;width:44px;height:44px;border:0;background:none;font-size:22px;color:var(--muted);border-radius:50%}
+.star[aria-pressed="true"]{color:var(--accent)}
+.chev{width:16px;height:16px;flex:0 0 16px;color:var(--muted);transition:transform .2s ease;margin-right:2px}
+.card.open .chev{transform:rotate(180deg)}
+.body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
+.card.open .body{grid-template-rows:1fr}
+.body>div{overflow:hidden;min-height:0}
+.inner{padding:0 12px 14px;border-top:1px solid var(--line)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;padding-top:12px}
+.badge{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--surface2);color:var(--muted)}
+.badge.acc{background:var(--accent-soft);color:var(--accent)}
+.warn{margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--warn-bg);color:var(--warn);font-size:13px}
+dl.kv{margin:10px 0 0;display:grid;grid-template-columns:minmax(84px,30%) 1fr;gap:6px 10px;font-size:14px}
+dl.kv dt{color:var(--muted)}
+dl.kv dd{margin:0;overflow-wrap:anywhere}
+.colors{display:flex;flex-wrap:wrap;gap:6px}
+.colors span{display:inline-flex;align-items:center;gap:5px;font-size:13px}
+.colors span i{width:14px;height:14px;border-radius:50%;box-shadow:0 0 0 1px var(--ring)}
+.blk{margin-top:12px}
+.blk h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.blk p{margin:0}
+.shops,.links{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.shops li,.links li{font-size:14px}
+.links a,.shops a{display:flex;align-items:center;gap:8px;min-height:44px;text-decoration:none;color:var(--text);border-bottom:1px solid var(--line);padding:6px 0}
+.links li:last-child a,.shops li:last-child a{border-bottom:0}
+.links a .k{flex:0 0 auto;font-size:11px;padding:2px 6px;border-radius:6px;background:var(--surface2);color:var(--muted)}
+.links a .k.v{background:var(--accent-soft);color:var(--accent)}
+.links a .t,.shops a .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.shops a small{display:block;color:var(--muted);font-size:12px}
+.qrow{display:flex;align-items:center;gap:8px;padding:4px 0}
+.qrow code{flex:1;min-width:0;font:13px/1.35 ui-monospace,Menlo,monospace;background:var(--surface2);padding:8px 10px;border-radius:8px;overflow-wrap:anywhere}
+.qrow .lang{font-size:11px;color:var(--muted);width:20px}
+.btn{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface2);font-size:14px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.sm{min-width:44px;padding:0 10px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.actions .wide{grid-column:1/-1}
+.fake{font-size:13px;color:var(--muted);border-left:3px solid var(--accent);padding:4px 0 4px 10px}
+
+/* ── Образи ── */
+.look{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 12px;box-shadow:var(--shadow);margin-bottom:10px}
+.look h3{margin:0;font-size:17px}
+.look .meta{font-size:13px;color:var(--muted);margin:2px 0 10px}
+.layers{list-style:none;margin:0;padding:0}
+.layers li{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.layers li span{color:var(--muted);font-size:13px}
+.look p.why{margin:10px 0;font-size:14px}
+.pieces{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.pieces button{min-height:36px;position:relative;font-size:13px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface2)}
+.pieces button::after{content:"";position:absolute;inset:-4px 0}
+.look .actions{grid-template-columns:1fr 1fr}
+
+/* ── Гайд ── */
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.pal button{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:0;overflow:hidden;text-align:left;min-height:44px}
+.pal button i{display:block;height:56px}
+.pal button span{display:block;padding:6px 8px;font-size:13px}
+.pal button small{display:block;color:var(--muted);font:11px ui-monospace,Menlo,monospace}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
+.panel ul{margin:0;padding-left:18px}
+.panel li{margin:4px 0}
+.panel p{margin:0 0 8px}
+.rule{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.rule:first-child{border-top:0;padding-top:0}
+.rule b{flex:0 0 auto;min-width:64px;color:var(--accent)}
+.store{padding:10px 0;border-top:1px solid var(--line)}
+.store:first-child{border-top:0;padding-top:0}
+.store h3{margin:0;font-size:15px;display:flex;gap:6px;align-items:center}
+.store p{margin:2px 0;font-size:13px;color:var(--muted)}
+.store a{display:inline-flex;align-items:center;min-height:44px;font-size:14px}
+.legbar{display:flex;align-items:flex-end;gap:12px;margin:8px 0 4px}
+.legbar svg{flex:0 0 auto}
+.legbar p{margin:0;font-size:13px;color:var(--muted)}
+
+/* ── Порівняння ── */
+.cmpbar{position:fixed;left:var(--gutL);right:var(--gutR);bottom:calc(var(--tab-h) + var(--sab) + 10px);z-index:30;
+  display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border-radius:16px;background:var(--text);color:var(--bg);
+  box-shadow:0 8px 24px rgba(0,0,0,.25);transform:translateY(140%);opacity:0;transition:transform .25s ease,opacity .25s ease;pointer-events:none}
+.cmpbar.on{transform:none;opacity:1;pointer-events:auto}
+.cmpbar span{flex:1;font-size:14px;min-width:0}
+.cmpbar .btn{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.cmpbar .x{background:transparent;border-color:transparent;color:var(--bg);width:44px;padding:0}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overscroll-behavior-x:contain}
+table.cmp{border-collapse:separate;border-spacing:0;font-size:14px;min-width:100%}
+table.cmp th,table.cmp td{padding:10px;vertical-align:top;border-bottom:1px solid var(--line);text-align:left;width:190px;min-width:170px;max-width:220px;overflow-wrap:anywhere}
+table.cmp th.rh{position:sticky;left:0;z-index:1;background:var(--surface2);color:var(--muted);font-weight:500;width:104px;min-width:104px;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+table.cmp thead td{font-weight:600;background:var(--surface)}
+table.cmp thead td small{display:block;font-weight:400;color:var(--muted)}
+table.cmp tr:last-child>*{border-bottom:0}
+.rm{display:inline-flex;margin-top:6px;min-height:36px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:none;font-size:13px;align-items:center}
+.hint{font-size:12px;color:var(--muted);margin:6px 2px 0}
+
+/* ── Bottom sheet ── */
+.scrim{position:fixed;inset:0;background:rgba(10,8,5,.45);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;max-height:86vh;max-height:86dvh;display:flex;flex-direction:column;
+  background:var(--bg);border-radius:18px 18px 0 0;transform:translateY(102%);transition:transform .3s cubic-bezier(.2,.8,.2,1);
+  padding:0 var(--gutR) calc(var(--sab) + 12px) var(--gutL);box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.sheet.on{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 4px}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 10px}
+.sheet header h2{margin:0;font-size:18px}
+.sheet .scroll{overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:4px}
+
+/* ── Таб-бар ── */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:color-mix(in srgb,var(--surface) 92%,transparent);
+  -webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);border-top:1px solid var(--line);
+  padding:0 var(--sar) var(--sab) var(--sal)}
+.tabs button{flex:1;height:var(--tab-h);border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--muted);position:relative;min-width:0}
+.tabs button svg{width:24px;height:24px}
+.tabs button[aria-selected="true"]{color:var(--accent)}
+.tabs .cnt{position:absolute;top:5px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;font-weight:600;display:none}
+.tabs .cnt.on{display:block}
+
+/* ── Toast ── */
+.toast{position:fixed;left:50%;bottom:calc(var(--tab-h) + var(--sab) + 76px);z-index:60;transform:translate(-50%,10px);opacity:0;
+  background:var(--text);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;pointer-events:none;transition:opacity .2s ease,transform .2s ease;max-width:calc(100vw - 32px);text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (min-width:720px){
+  main,.vhead,.top{max-width:760px;margin-left:auto;margin-right:auto}
+  .top{border-radius:0 0 14px 14px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═════ КАТАЛОГ ═════ -->
+<section class="view on" id="v-catalog" aria-labelledby="t-catalog">
+  <div class="top">
+    <div class="brandline"><h1>Workwear довідник</h1><small id="upd"></small></div>
+    <div class="search" id="searchBox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <label for="q" class="vh">Пошук</label>
+      <input id="q" type="search" inputmode="search" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" placeholder="Назва, бренд, тканина, колір, магазин…">
+      <button class="clear" id="qClear" type="button" aria-label="Очистити пошук">×</button>
+    </div>
+  </div>
+  <div class="filters">
+    <div class="chips" id="fCat" role="group" aria-label="Категорія"></div>
+    <div class="chips" id="fMore" role="group" aria-label="Фільтри"></div>
+    <div class="chips" id="fColor" role="group" aria-label="Колір"></div>
+    <div class="resline"><span id="resCount" aria-live="polite"></span><button type="button" id="resetF" hidden>Скинути фільтри</button></div>
+  </div>
+  <main><div class="list" id="list"></div></main>
+</section>
+
+<!-- ═════ ОБРАЗИ ═════ -->
+<section class="view" id="v-looks">
+  <div class="vhead"><h1>Референси образів</h1><p>Комплекти «верх + середній шар + низ + взуття». Кадрів із серіалу немає — лише опис і пошукові посилання.</p></div>
+  <main id="looks"></main>
+</section>
+
+<!-- ═════ ПОРІВНЯННЯ ═════ -->
+<section class="view" id="v-compare">
+  <div class="vhead"><h1>Порівняння</h1><p>До 3 позицій. Таблиця гортається вбік.</p></div>
+  <main id="cmpView"></main>
+</section>
+
+<!-- ═════ ГАЙД ═════ -->
+<section class="view" id="v-guide">
+  <div class="vhead"><h1>Гайд</h1><p>Палітра, посадка, чого уникати, як не купити підробку.</p></div>
+  <main id="guide"></main>
+</section>
+
+<!-- ═════ ОБРАНЕ ═════ -->
+<section class="view" id="v-fav">
+  <div class="vhead"><h1>Обране</h1><p>Зберігається лише на цьому пристрої.</p></div>
+  <main><div class="list" id="favList"></div></main>
+</section>
+
+<div class="cmpbar" id="cmpBar" role="region" aria-label="Порівняння">
+  <span id="cmpBarTxt"></span>
+  <button class="btn" type="button" id="cmpOpen">Порівняти</button>
+  <button class="btn x" type="button" id="cmpClear" aria-label="Очистити порівняння">×</button>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-hidden="true">
+  <div class="grab" aria-hidden="true"></div>
+  <header><h2 id="sheetTitle">Порівняння</h2><button class="btn sm" type="button" id="sheetClose" aria-label="Закрити">Готово</button></header>
+  <div class="scroll" id="sheetBody"></div>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="Розділи">
+  <button role="tab" id="t-catalog" data-v="catalog" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Каталог</button>
+  <button role="tab" id="t-looks" data-v="looks" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 4 6v4l3-1v12h10V9l3 1V6l-5-3a3 3 0 0 1-6 0Z"/></svg>Образи</button>
+  <button role="tab" id="t-compare" data-v="compare" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="16" rx="1.5"/></svg>Порівняння<span class="cnt" id="cmpCnt"></span></button>
+  <button role="tab" id="t-guide" data-v="guide" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 19a2 2 0 0 1 2-2h13"/></svg>Гайд</button>
+  <button role="tab" id="t-fav" data-v="fav" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8L12 3Z"/></svg>Обране<span class="cnt" id="favCnt"></span></button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!--
+  ДАНІ. Редагуйте цей JSON — інтерфейс побудується автоматично.
+  Поля позиції: id, name, brand, cat (outer|shirts|knit|pants|shoes|acc), tier (€|€€|€€€), price, checked,
+  colors[{n,hex,g}], fabric, fit, season, tmin, tmax, why, pair, shops[{name,addr,url,offline}],
+  links[{label,url,kind,ok,note}], q{ua,en}, fakes, tags[], kyiv (є в Києві офлайн), black (під чорне взуття), warn.
+  Візуальні референси (Pinterest + Google Images) генеруються автоматично з бренду і назви.
+-->
+<script type="application/json" id="catalog-data">
+{
+ "updated": "05.11.2026",
+ "eurRate": "курс ≈50,5 грн/€ (НБУ, 05.10.2026)",
+ "items": [
+  {
+   "id": "cwip-detroit-winter",
+   "name": "Detroit Jacket (Winter)",
+   "brand": "Carhartt WIP",
+   "cat": "outer",
+   "tier": "€€€",
+   "price": "≈10 050 грн (199 € на офіційному сайті, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Hamilton Brown",
+     "hex": "#8b5a3c",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Канвас Dearborn 12 oz (органічна бавовна), утеплена підкладка-ковдра",
+   "fit": "Укорочена, коробкова, по талії; вельветовий комір",
+   "season": "−8…+8 °C",
+   "tmin": -8,
+   "tmax": 8,
+   "why": "Головна куртка образу «Вінчестерів»: важкий канвас, вельветовий комір, з часом гарно зношується. Без великих принтів — лише маленький лейбл.",
+   "pair": "Фланелева сорочка або хенлі, Levi's 501 / Dickies 874, чорні Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    },
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "warn": "Саме WIP-версію в UNIFORM станом на 05.11 не знайдено — там є схожі Carhartt Duck Detroit (див. окрему картку).",
+   "links": [
+    {
+     "label": "Carhartt WIP — Detroit Jacket (Winter), Hamilton Brown/Tobacco",
+     "url": "https://www.carhartt-wip.com/en-de/p/detroit-jacket-hamilton-brown-tobacco-rigid-2191",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "UNIFORM — колекція курток Carhartt",
+     "url": "https://u-niform.com.ua/collections/jackets-carhartt-wip",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Detroit Jacket зимова коричнева купити Київ",
+    "en": "Carhartt WIP Detroit Jacket Winter Hamilton Brown"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "канвас",
+    "workwear",
+    "Winchester",
+    "куртка"
+   ],
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "cwip-og-detroit",
+   "name": "OG Detroit Jacket",
+   "brand": "Carhartt WIP",
+   "cat": "outer",
+   "tier": "€€€",
+   "price": "≈9 040 грн (179 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Rinse indigo",
+     "hex": "#2f3d55",
+     "g": "denim"
+    }
+   ],
+   "fabric": "Бавовняний канвас, rinsed",
+   "fit": "Коротка, широка в плечах, вільна",
+   "season": "+2…+12 °C (з худі/светром до 0 °C)",
+   "tmin": 0,
+   "tmax": 12,
+   "why": "Чорна версія класики — найменш помітна, легко поєднується з чорним взуттям і графітовими штанами.",
+   "pair": "Сірий светр Firth, Carhartt WIP Landon (чорні), Timberland Sprint Trekker Mid.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    },
+    {
+     "name": "NEWBORN K",
+     "addr": "Київ, вул. Велика Житомирська, 20 (вхід через арку), щодня 11–21",
+     "url": "https://newbornk.com/pages/contact",
+     "offline": true
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — OG Detroit Jacket Black/Black, Rinsed",
+     "url": "https://www.carhartt-wip.com/en-de/p/og-detroit-jacket-black-black-rinsed-929",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP OG Detroit Jacket чорна",
+    "en": "Carhartt WIP OG Detroit Jacket black rinsed"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "канвас",
+    "чорне",
+    "куртка"
+   ],
+   "warn": "Наявність у NEWBORN K не підтверджена (сайт закритий перевіркою від ботів) — уточнюйте в магазині.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "cwip-michigan-winter",
+   "name": "Michigan Coat (Winter)",
+   "brand": "Carhartt WIP",
+   "cat": "outer",
+   "tier": "€€€",
+   "price": "≈9 545 грн (189 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026)); у UNIFORM — Michigan Coat від 4 100 грн",
+   "colors": [
+    {
+     "n": "Hamilton Brown",
+     "hex": "#8b5a3c",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    },
+    {
+     "n": "Tobacco",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    }
+   ],
+   "fabric": "Канвас Dearborn, підкладка-ковдра в смужку, вельветовий комір",
+   "fit": "Chore coat: пряма, нижче пояса, накладні кишені",
+   "season": "−5…+8 °C",
+   "tmin": -5,
+   "tmax": 8,
+   "why": "Довша за Detroit і закриває пояс — краще для київського вітру. Силует робочої куртки 80-х.",
+   "pair": "Светр з V-вирізом або хенлі, Dickies 874, Timberland Killington Chukka / 6-Inch.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    },
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Michigan Coat (Winter) Black",
+     "url": "https://www.carhartt-wip.com/en-de/p/michigan-coat-winter-black-black-rigid-2201",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Carhartt WIP — Michigan Coat (Winter) Hamilton Brown",
+     "url": "https://www.carhartt-wip.com/en-de/p/michigan-coat-winter-hamilton-brown-tobacco-rigid-2200",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "UNIFORM — Michigan Coat Wall Rinsed (4 100 грн, в наявності 05.11)",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-michigan-coat-wall-rinsed",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Michigan Coat зимова купити",
+    "en": "Carhartt WIP Michigan Coat Winter Hamilton Brown"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "chore coat",
+    "канвас",
+    "Winchester",
+    "Memories of Murder"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "carhartt-duck-detroit",
+   "name": "Duck Detroit Jacket (J97)",
+   "brand": "Carhartt (USA, основна лінія)",
+   "cat": "outer",
+   "tier": "€€",
+   "price": "5 150–5 350 грн (UNIFORM, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Hamilton Brown",
+     "hex": "#8b5a3c",
+     "g": "brown"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Важкий бавовняний дак (duck), стьобана підкладка",
+   "fit": "Робочий крій, ширша за WIP, по талії",
+   "season": "−5…+8 °C",
+   "tmin": -5,
+   "tmax": 8,
+   "why": "Оригінальна «робоча» Carhartt — грубіша й дешевша за WIP. Найближче до того, що носили на трасі в 80-90-х.",
+   "pair": "Фланель Dickies Gulfport, Levi's 505, Timberland 6-Inch Premium.",
+   "shops": [
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "UNIFORM — Carhartt Duck Detroit Jacket Black",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-duck-detroit-jacket-black",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "UNIFORM — J97 Sandstone Duck Detroit Navy",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-j97-sandstone-duck-detroit-navy",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt J97 Duck Detroit Jacket купити Київ",
+    "en": "Carhartt J97 Duck Detroit Jacket black"
+   },
+   "fakes": "Магазин підписує її як Carhartt WIP, але J97/J140 — основна американська лінія Carhartt (не підробка, просто інша лінійка з великим логотипом-нашивкою на грудях). Перевіряйте, щоб нашивка вас влаштовувала.",
+   "tags": [
+    "дак",
+    "workwear",
+    "бюджетніше"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-og-active",
+   "name": "OG Active Jacket",
+   "brand": "Carhartt WIP",
+   "cat": "outer",
+   "tier": "€€€",
+   "price": "≈9 040 грн (179 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "WIP H Brown",
+     "hex": "#7a5233",
+     "g": "brown"
+    },
+    {
+     "n": "Salt",
+     "hex": "#e9e1d0",
+     "g": "cream"
+    }
+   ],
+   "fabric": "Канвас, утеплена підкладка, капюшон",
+   "fit": "Вільна, з капюшоном, на рівні стегна",
+   "season": "−5…+6 °C",
+   "tmin": -5,
+   "tmax": 6,
+   "why": "Робоча куртка з капюшоном — як у Діна в дощову ніч. Найпрактичніша для мокрого снігу.",
+   "pair": "Худі не потрібне — під неї фланель і хенлі; Newel, Sprint Trekker Mid.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    },
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — OG Active Jacket Black, Rinsed",
+     "url": "https://www.carhartt-wip.com/en-de/p/og-active-jacket-black-rinsed-984",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "UNIFORM — Carhartt J140 Duck Active Jacket Black (5 990 грн)",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-j140-duck-active-jacket-black",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt Active Jacket з капюшоном канвас",
+    "en": "Carhartt WIP OG Active Jacket black"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "капюшон",
+    "канвас",
+    "куртка"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-arizona-leather",
+   "name": "Arizona Jacket (шкіра)",
+   "brand": "Carhartt WIP",
+   "cat": "outer",
+   "tier": "€€€",
+   "price": "≈15 100 грн (299 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Tobacco",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Шкіра",
+   "fit": "Пряма, по талії",
+   "season": "+5…+15 °C",
+   "tmin": 5,
+   "tmax": 15,
+   "why": "Шкіряна куртка в дусі Діна Вінчестера, але без байкерських деталей — стримано.",
+   "pair": "Хенлі + фланелева сорочка навипуск, Levi's 501, Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Arizona Jacket Tobacco",
+     "url": "https://www.carhartt-wip.com/en-de/p/phoenix-leather-jacket-tobacco-711",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "чоловіча шкіряна куртка коричнева пряма без блискавок",
+    "en": "Carhartt WIP Arizona leather jacket tobacco"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "шкіра",
+    "Winchester",
+    "Dean"
+   ],
+   "warn": "Склад і деталі уточнюйте на сторінці товару; у Києві офлайн не знайдено.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "levis-type1",
+   "name": "Type I Trucker Jacket",
+   "brand": "Levi's",
+   "cat": "outer",
+   "tier": "€€",
+   "price": "≈4 500–7 000 грн (орієнтовно, залежить від лінії)",
+   "colors": [
+    {
+     "n": "Rinse indigo",
+     "hex": "#2f3d55",
+     "g": "denim"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "100% бавовняний денім",
+   "fit": "Коротка, коробкова (Type I — одна кишеня, складки спереду)",
+   "season": "+8…+18 °C (як середній шар під пальто — до +2 °C)",
+   "tmin": 2,
+   "tmax": 18,
+   "why": "Вінтажна джинсова куртка без зайвих деталей. Під неї — светр, поверх — плащ.",
+   "pair": "Сірий светр, Dickies 874 чорні, Timberland Killington Chukka.",
+   "shops": [
+    {
+     "name": "Rozetka — пошук",
+     "addr": "онлайн",
+     "url": "https://rozetka.com.ua/ua/search/?text=Levis+Type+I+Trucker",
+     "offline": false
+    },
+    {
+     "name": "Rozetka",
+     "addr": "онлайн (частина товарів — доставка з ЄС через Meest)",
+     "url": "https://rozetka.com.ua/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Levi's — Type I Trucker Jacket (офіційний сайт, EU)",
+     "url": "https://www.levi.com/CZ/en/clothing/men/truckers-sherpas/type-i-trucker-jacket/p/A91370004",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Levi's Type I Trucker джинсова куртка чоловіча",
+    "en": "Levi's Type I Trucker Jacket rinse"
+   },
+   "fakes": "Підробляють 501 і Trucker. Справжні: червоний ярлик Tab з ®, шкіряна або джакрон нашивка з двома конями, номер на звороті ґудзиків, акуратний бар-так на кишенях, внутрішній лейбл з кодом моделі.",
+   "tags": [
+    "денім",
+    "trucker",
+    "шари"
+   ],
+   "warn": "Офіційного UA-магазину Levi's не знайдено; сайт levi.com блокує автоматичні перевірки — сторінку підтверджено пошуковим індексом.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "levis-sherpa",
+   "name": "Sherpa Trucker Jacket",
+   "brand": "Levi's",
+   "cat": "outer",
+   "tier": "€€",
+   "price": "≈5 000–7 500 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Rinse indigo",
+     "hex": "#2f3d55",
+     "g": "denim"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Денім, підкладка шерпа (хутро-фліс), стьобані рукави",
+   "fit": "Regular / Relaxed (є Vintage Relaxed — вільніша)",
+   "season": "−3…+8 °C",
+   "tmin": -3,
+   "tmax": 8,
+   "why": "Класика 80-х: денім + шерпа. Тепла, але виглядає як робоча річ, а не пуховик.",
+   "pair": "Фланелева сорочка, Levi's 505 у темнішому відтінку або Dickies 874, Originals Ultra.",
+   "shops": [
+    {
+     "name": "Rozetka — пошук",
+     "addr": "онлайн",
+     "url": "https://rozetka.com.ua/ua/search/?text=Levis+Sherpa+Trucker",
+     "offline": false
+    },
+    {
+     "name": "Rozetka",
+     "addr": "онлайн (частина товарів — доставка з ЄС через Meest)",
+     "url": "https://rozetka.com.ua/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Levi's — Sherpa Trucker Jacket",
+     "url": "https://www.levi.com/US/en_US/clothing/men/outerwear/sherpa/sherpa-trucker-jacket/p/163650040",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Levi's Sherpa Trucker куртка з хутром",
+    "en": "Levi's Sherpa Trucker Jacket men"
+   },
+   "fakes": "Підробляють 501 і Trucker. Справжні: червоний ярлик Tab з ®, шкіряна або джакрон нашивка з двома конями, номер на звороті ґудзиків, акуратний бар-так на кишенях, внутрішній лейбл з кодом моделі.",
+   "tags": [
+    "денім",
+    "шерпа",
+    "тепле"
+   ],
+   "warn": "Сторінку підтверджено пошуковим індексом (levi.com блокує автоматичні запити).",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "dickies-lined-chore",
+   "name": "Lined Chore Canvas Jacket",
+   "brand": "Dickies",
+   "cat": "outer",
+   "tier": "€€",
+   "price": "7 799 грн (Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Канвас, утеплена підкладка",
+   "fit": "Chore coat, пряма",
+   "season": "−3…+8 °C",
+   "tmin": -3,
+   "tmax": 8,
+   "why": "Альтернатива Michigan Coat від Dickies — простіша, чорна, без помітних деталей.",
+   "pair": "Фланель Gulfport, Dickies 874 Khaki, Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Lined Chore Canvas Jacket Black",
+     "url": "https://www.footshop.ua/uk/kurtki/561091-dickies-lined-chore-canvas-jacket-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies утеплена канвасова куртка chore чорна",
+    "en": "Dickies Lined Chore Canvas Jacket black"
+   },
+   "tags": [
+    "chore coat",
+    "канвас"
+   ],
+   "checked": "05.11.2026",
+   "fakes": "",
+   "warn": ""
+  },
+  {
+   "id": "dickies-union-barn",
+   "name": "Union Barn Jacket",
+   "brand": "Dickies",
+   "cat": "outer",
+   "tier": "€€",
+   "price": "3 630 грн зі знижкою (було 6 599; Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Timber Brown",
+     "hex": "#6e4b2f",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Канвас, комір-вельвет (barn jacket)",
+   "fit": "Пряма, нижче пояса",
+   "season": "+2…+12 °C",
+   "tmin": 2,
+   "tmax": 12,
+   "why": "Барн-джекет — сільська робоча класика, прямо з провінційних 80-х. Найвигідніша ціна в розділі.",
+   "pair": "Светр з V-вирізом + сорочка, Levi's 505, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Union Barn Jacket Timber Brown",
+     "url": "https://www.footshop.ua/uk/kurtki/470761-dickies-union-barn-jacket-timber-brown.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Footshop.ua — Union Barn Jacket Black",
+     "url": "https://www.footshop.ua/uk/kurtki/470764-dickies-union-barn-jacket-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies barn jacket коричнева канвас",
+    "en": "Dickies Union Barn Jacket timber brown"
+   },
+   "tags": [
+    "barn jacket",
+    "Memories of Murder",
+    "знижка"
+   ],
+   "checked": "05.11.2026",
+   "fakes": "",
+   "warn": ""
+  },
+  {
+   "id": "mango-trench",
+   "name": "Тренч / плащ (Mango Man)",
+   "brand": "Mango",
+   "cat": "outer",
+   "tier": "€",
+   "price": "від 2 999 грн у розпродажі (водовідштовхувальний плащ, було 7 299)",
+   "colors": [
+    {
+     "n": "Бежевий",
+     "hex": "#c9b48f",
+     "g": "khaki"
+    },
+    {
+     "n": "Олива",
+     "hex": "#5d6140",
+     "g": "olive"
+    },
+    {
+     "n": "Темно-синій",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Бавовна / водовідштовхувальна тканина",
+   "fit": "Пряма, нижче коліна або до середини стегна",
+   "season": "+5…+15 °C (з светром і хенлі — до +2 °C)",
+   "tmin": 2,
+   "tmax": 15,
+   "why": "Плащ детектива з «Спогадів про вбивство»: простий, бежевий або оливковий, без погонів і пряжок.",
+   "pair": "Светр з V-вирізом + сорочка, вельветові штани, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — чоловічі тренчі (категорія)",
+     "url": "https://shop.mango.com/ua/en/c/men/trench-coats/6337428e",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Mango чоловічий тренч бежевий простий",
+    "en": "Mango men trench coat beige straight"
+   },
+   "tags": [
+    "плащ",
+    "Memories of Murder",
+    "детектив"
+   ],
+   "warn": "Посилання на категорію (конкретні моделі змінюються щосезону); сайт Mango блокує автоматичну перевірку — підтверджено пошуковим індексом.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "mango-flannel-overshirt",
+   "name": "Check flannel overshirt",
+   "brand": "Mango",
+   "cat": "shirts",
+   "tier": "€",
+   "price": "≈2 000–3 600 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Олива",
+     "hex": "#5d6140",
+     "g": "olive"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Темно-синій",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Бавовняна фланель",
+   "fit": "Regular, накладні кишені",
+   "season": "+5…+15 °C як верх; до −5 °C як шар",
+   "tmin": -5,
+   "tmax": 15,
+   "why": "Фланель у приглушену клітинку — базовий шар «Вінчестерів». Вибирайте оливу/коричневий, не червону.",
+   "pair": "Хенлі під низ, Detroit або Sherpa Trucker зверху, Levi's 501.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — фланелеві сорочки (категорія)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D1%81%D0%BE%D1%80%D0%BE%D1%87%D0%BA%D0%B8/%D1%84%D0%BB%D0%B0%D0%BD%D0%B5%D0%BB%D1%8C/9cae7794",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Mango Україна — верхні сорочки (овершоти)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D0%B2%D0%B5%D1%80%D1%85%D0%BD%D1%96-%D1%81%D0%BE%D1%80%D0%BE%D1%87%D0%BA%D0%B8/41a897fb",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Mango фланелева сорочка овершот клітинка олива",
+    "en": "Mango check flannel overshirt olive"
+   },
+   "tags": [
+    "фланель",
+    "клітинка",
+    "Winchester",
+    "шари"
+   ],
+   "warn": "Посилання на категорію; сайт Mango блокує автоматичну перевірку — підтверджено пошуковим індексом.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "mango-wool-overshirt",
+   "name": "Wool-blend overshirt",
+   "brand": "Mango",
+   "cat": "shirts",
+   "tier": "€",
+   "price": "≈3 000–4 500 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Кремовий",
+     "hex": "#e9e1d0",
+     "g": "cream"
+    }
+   ],
+   "fabric": "Вовна в суміші",
+   "fit": "Regular / злегка оверсайз",
+   "season": "0…+12 °C",
+   "tmin": 0,
+   "tmax": 12,
+   "why": "Вовняний овершот замінює легку куртку в міжсезоння і виглядає дорожче за свою ціну.",
+   "pair": "Светр-поло з мериносу, Levi's 505, Timberland Killington Chukka.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — вовняні верхні сорочки (категорія)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D0%B2%D0%B5%D1%80%D1%85%D0%BD%D1%96-%D1%81%D0%BE%D1%80%D0%BE%D1%87%D0%BA%D0%B8/%D0%B2%D0%BE%D0%B2%D0%BD%D0%B0/608752fe",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Mango — Wool-blend overshirt with pockets (приклад моделі, інший регіон)",
+     "url": "https://shop.mango.com/nz/en/p/men/jackets-and-overshirts/overshirts/wool-blend-overshirt-with-pockets_77057939",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Mango вовняна верхня сорочка овершот",
+    "en": "Mango wool-blend overshirt with pockets"
+   },
+   "tags": [
+    "вовна",
+    "овершот",
+    "шари"
+   ],
+   "warn": "Конкретну модель в UA-каталозі не підтверджено — є лише категорія «вовна».",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "cwip-kellworth",
+   "name": "Kellworth Shirt Jac",
+   "brand": "Carhartt WIP",
+   "cat": "shirts",
+   "tier": "€€€",
+   "price": "≈7 525 грн (149 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Tobacco",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    },
+    {
+     "n": "Cypress",
+     "hex": "#4f5a45",
+     "g": "olive"
+    }
+   ],
+   "fabric": "Щільна бавовна (rinsed) — склад уточнюйте на сторінці",
+   "fit": "Shirt jacket: пряма, кишені на грудях",
+   "season": "+5…+15 °C",
+   "tmin": 5,
+   "tmax": 15,
+   "why": "Сорочка-куртка кольору тютюну — точне попадання в палітру. Добрий середній шар під Michigan.",
+   "pair": "Хенлі, Newel / Landon, Sprint Trekker Mid.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Kellworth Shirt Jac Tobacco",
+     "url": "https://www.carhartt-wip.com/en-de/p/kellworth-shirt-jac-tobacco-rinsed-1190",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Kellworth shirt jac тютюновий",
+    "en": "Carhartt WIP Kellworth Shirt Jac tobacco"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "овершот",
+    "тютюн"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-whitsome",
+   "name": "Whitsome Shirt Jac",
+   "brand": "Carhartt WIP",
+   "cat": "shirts",
+   "tier": "€€€",
+   "price": "≈7 525 грн (149 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "WIP H Brown",
+     "hex": "#7a5233",
+     "g": "brown"
+    },
+    {
+     "n": "Raven",
+     "hex": "#3b3d3a",
+     "g": "graphite"
+    }
+   ],
+   "fabric": "Склад уточнюйте на сторінці",
+   "fit": "Shirt jacket, пряма",
+   "season": "+5…+15 °C",
+   "tmin": 5,
+   "tmax": 15,
+   "why": "Ще один овершот у коричневому/графітовому — для тих, кому Kellworth не підійшов кольором.",
+   "pair": "Светр Firth, Levi's 501, Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Whitsome Shirt Jac WIP H Brown",
+     "url": "https://www.carhartt-wip.com/en-de/p/whitsome-shirt-jac-wip-h-brown-1465",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Whitsome сорочка-куртка",
+    "en": "Carhartt WIP Whitsome Shirt Jac brown"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "овершот"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-madison-cord",
+   "name": "L/S Madison Cord Shirt",
+   "brand": "Carhartt WIP",
+   "cat": "shirts",
+   "tier": "€€",
+   "price": "≈4 495 грн (89 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026)); у UNIFORM — 3 100 грн (не в наявності 05.11)",
+   "colors": [
+    {
+     "n": "Tobacco",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Raven",
+     "hex": "#3b3d3a",
+     "g": "graphite"
+    },
+    {
+     "n": "Soot",
+     "hex": "#3a3a38",
+     "g": "graphite"
+    },
+    {
+     "n": "Wall",
+     "hex": "#cfc3a8",
+     "g": "cream"
+    }
+   ],
+   "fabric": "Вельвет (бавовна)",
+   "fit": "Regular",
+   "season": "+5…+18 °C; як шар — до 0 °C",
+   "tmin": 0,
+   "tmax": 18,
+   "why": "Вельветова сорочка дає ту саму фактуру 80-х, що й плащ детектива. Без принтів.",
+   "pair": "Светр з V-вирізом зверху, Dickies 874, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    },
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — L/S Madison Cord Shirt Tobacco",
+     "url": "https://www.carhartt-wip.com/en-de/p/l-s-madison-cord-shirt-tobacco-951",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "UNIFORM — Madison Corduroy Shirt",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-madison-corduroy-shirt-black-wax",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "вельветова сорочка чоловіча коричнева Carhartt Madison",
+    "en": "Carhartt WIP Madison Cord Shirt tobacco"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "вельвет",
+    "Memories of Murder"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-esterson",
+   "name": "L/S Esterson Shirt (клітинка)",
+   "brand": "Carhartt WIP",
+   "cat": "shirts",
+   "tier": "€€",
+   "price": "≈6 010 грн (119 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Tobacco",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Бавовна, клітинка",
+   "fit": "Regular",
+   "season": "+5…+18 °C",
+   "tmin": 5,
+   "tmax": 18,
+   "why": "Клітинка в тютюнових або синіх тонах — фланельний настрій без «лісорубського» червоного.",
+   "pair": "Хенлі, Michigan Coat, Levi's 501.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — L/S Esterson Shirt, Tobacco",
+     "url": "https://www.carhartt-wip.com/en-de/p/l-s-esterson-shirt-esterson-check-tobacco-146",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP сорочка в клітинку тютюнова",
+    "en": "Carhartt WIP Esterson check shirt tobacco"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "клітинка",
+    "Winchester"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "dickies-gulfport",
+   "name": "Gulfport Flannel Shirt",
+   "brand": "Dickies",
+   "cat": "shirts",
+   "tier": "€",
+   "price": "2 879 грн з кодом (3 599; Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Ecru",
+     "hex": "#ddd3bd",
+     "g": "cream"
+    }
+   ],
+   "fabric": "Бавовняна фланель",
+   "fit": "Regular",
+   "season": "+5…+15 °C; як шар до −5 °C",
+   "tmin": -5,
+   "tmax": 15,
+   "why": "Проста фланелева сорочка за адекватні гроші — робоча кінська сила гардеробу.",
+   "pair": "Хенлі, Carhartt Duck Detroit, Dickies 874 Khaki.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Gulfport Flannel Shirt Black",
+     "url": "https://www.footshop.ua/uk/sorochki/557416-dickies-gulfport-flannel-shirt-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Footshop.ua — Gulfport Flannel Shirt Bone",
+     "url": "https://www.footshop.ua/uk/sorochki/557422-dickies-gulfport-flannel-shirt-bone.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies фланелева сорочка Gulfport",
+    "en": "Dickies Gulfport Flannel Shirt black"
+   },
+   "tags": [
+    "фланель",
+    "Winchester",
+    "бюджет"
+   ],
+   "checked": "05.11.2026",
+   "fakes": "",
+   "warn": ""
+  },
+  {
+   "id": "vintage-flannel",
+   "name": "Вінтажна фланелева сорочка (секонд)",
+   "brand": "Різні (Pendleton, L.L.Bean, Wrangler…)",
+   "cat": "shirts",
+   "tier": "€",
+   "price": "≈150–800 грн (секонд-хенд, орієнтовно)",
+   "colors": [
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Олива",
+     "hex": "#5d6140",
+     "g": "olive"
+    },
+    {
+     "n": "Темно-синій",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Бавовняна або вовняна фланель",
+   "fit": "Різна — шукайте regular, плече по плечу",
+   "season": "+5…+15 °C; як шар до −5 °C",
+   "tmin": -5,
+   "tmax": 15,
+   "why": "Найавтентичніший варіант: справді зношена фланель має ту фактуру, яку не підробиш.",
+   "pair": "Що завгодно з каталогу; особливо Detroit і 501.",
+   "shops": [
+    {
+     "name": "OLX — пошук вживаних",
+     "addr": "вживане / вінтаж",
+     "url": "https://www.olx.ua/uk/list/q-фланелева-сорочка-pendleton/",
+     "offline": false
+    },
+    {
+     "name": "OLX / секонд-хенди",
+     "addr": "вживане, вінтаж",
+     "url": "https://www.olx.ua/uk/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "OLX — пошук «Pendleton фланель»",
+     "url": "https://www.olx.ua/uk/list/q-pendleton/",
+     "kind": "search",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "OLX — пошук «фланелева сорочка»",
+     "url": "https://www.olx.ua/uk/list/q-%D1%84%D0%BB%D0%B0%D0%BD%D0%B5%D0%BB%D0%B5%D0%B2%D0%B0-%D1%81%D0%BE%D1%80%D0%BE%D1%87%D0%BA%D0%B0/",
+     "kind": "search",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "вінтажна фланелева сорочка Pendleton вовна",
+    "en": "vintage Pendleton wool flannel shirt"
+   },
+   "fakes": "Pendleton підробляють рідко; перевіряйте лейбл «Pendleton Woolen Mills» і склад «100% virgin wool».",
+   "tags": [
+    "секонд",
+    "вінтаж",
+    "Winchester"
+   ],
+   "warn": "Посилання — пошукові сторінки OLX, а не конкретний товар (асортимент змінюється щодня).",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "zara-henley",
+   "name": "Henley (довгий рукав)",
+   "brand": "Zara",
+   "cat": "knit",
+   "tier": "€",
+   "price": "≈1 300–1 700 грн (орієнтовно; на Кіпрі 27,95 €)",
+   "colors": [
+    {
+     "n": "Кремовий",
+     "hex": "#e9e1d0",
+     "g": "cream"
+    },
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    },
+    {
+     "n": "Олива",
+     "hex": "#5d6140",
+     "g": "olive"
+    }
+   ],
+   "fabric": "Бавовна / вафельний трикотаж",
+   "fit": "Regular",
+   "season": "+5…+20 °C; як базовий шар — будь-коли",
+   "tmin": -10,
+   "tmax": 20,
+   "why": "Хенлі з ґудзиками — підпис Сема Вінчестера. Носіть під фланель чи овершот.",
+   "pair": "Фланелева сорочка навипуск, Detroit, Levi's 501.",
+   "shops": [
+    {
+     "name": "Zara",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://www.zara.com/ua/uk/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Zara — чоловічі хенлі (категорія, регіон CY)",
+     "url": "https://www.zara.com/cy/en/man-t-shirts-henley-l16940.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Zara Україна — головна (шукайте «henley»)",
+     "url": "https://www.zara.com/ua/uk/",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "чоловіча хенлі довгий рукав вафельна кремова",
+    "en": "men waffle henley long sleeve cream"
+   },
+   "tags": [
+    "хенлі",
+    "Winchester",
+    "Sam",
+    "базовий шар"
+   ],
+   "warn": "Категорію хенлі в zara.com/ua не підтверджено — наявність в Україні уточнюйте.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "cwip-firth",
+   "name": "Firth Sweater",
+   "brand": "Carhartt WIP",
+   "cat": "knit",
+   "tier": "€€€",
+   "price": "≈8 030 грн (159 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Soot",
+     "hex": "#3a3a38",
+     "g": "graphite"
+    },
+    {
+     "n": "Salt",
+     "hex": "#e9e1d0",
+     "g": "cream"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Трикотаж — склад уточнюйте на сторінці",
+   "fit": "Regular, круглий виріз",
+   "season": "−5…+10 °C (під куртку)",
+   "tmin": -5,
+   "tmax": 10,
+   "why": "Однотонний светр у графітовому — нейтральний середній шар, на якому все тримається.",
+   "pair": "OG Detroit, Landon чорні, Sprint Trekker Mid.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Firth Sweater Soot",
+     "url": "https://www.carhartt-wip.com/en-de/p/firth-sweater-soot-689",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Firth светр графітовий",
+    "en": "Carhartt WIP Firth Sweater soot"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "светр",
+    "середній шар"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-anglistic",
+   "name": "Anglistic Sweater",
+   "brand": "Carhartt WIP",
+   "cat": "knit",
+   "tier": "€€",
+   "price": "≈6 010 грн (119 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Tobacco",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Olive",
+     "hex": "#5d6140",
+     "g": "olive"
+    }
+   ],
+   "fabric": "Меланжевий трикотаж (speckled)",
+   "fit": "Regular, круглий виріз",
+   "season": "−5…+10 °C",
+   "tmin": -5,
+   "tmax": 10,
+   "why": "Крапчастий тютюновий светр має «сільську» фактуру — пасує до вельвету й канвасу.",
+   "pair": "Michigan Coat, вельветові штани, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Anglistic Sweater Speckled Tobacco",
+     "url": "https://www.carhartt-wip.com/en-de/p/anglistic-sweater-speckled-tobacco-1",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "меланжевий светр тютюновий чоловічий",
+    "en": "Carhartt WIP Anglistic Sweater speckled tobacco"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "светр",
+    "фактура"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-detroit-halfzip",
+   "name": "Detroit Half Zip Sweater",
+   "brand": "Carhartt WIP",
+   "cat": "knit",
+   "tier": "€€€",
+   "price": "≈9 040 грн (179 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "WIP H Brown",
+     "hex": "#7a5233",
+     "g": "brown"
+    },
+    {
+     "n": "Сірий меланж",
+     "hex": "#8a8a86",
+     "g": "graphite"
+    }
+   ],
+   "fabric": "Трикотаж — склад уточнюйте",
+   "fit": "Regular, комір на блискавці",
+   "season": "−5…+8 °C",
+   "tmin": -5,
+   "tmax": 8,
+   "why": "Светр з коміром закриває шию — замінює шарф у вітряний день.",
+   "pair": "Sherpa Trucker, Levi's 505, Originals Ultra.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Detroit Half Zip Sweater WIP H Brown",
+     "url": "https://www.carhartt-wip.com/en-de/p/detroit-half-zip-sweater-wip-h-brown-1154",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "светр на блискавці коричневий чоловічий",
+    "en": "Carhartt WIP Detroit Half Zip Sweater brown"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "светр",
+    "half-zip"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "mango-vneck",
+   "name": "Светр з V-вирізом",
+   "brand": "Mango",
+   "cat": "knit",
+   "tier": "€",
+   "price": "≈1 500–2 500 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    },
+    {
+     "n": "Темно-синій",
+     "hex": "#232a3a",
+     "g": "navy"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    }
+   ],
+   "fabric": "Вовна / вовна в суміші — дивіться склад (бажано ≥50% вовни)",
+   "fit": "Regular",
+   "season": "−5…+12 °C",
+   "tmin": -5,
+   "tmax": 12,
+   "why": "V-виріз поверх сорочки — точний костюм провінційного детектива 1986 року.",
+   "pair": "Вельветова сорочка або оксфорд, тренч, Dickies 874, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — кардигани та светри (підкатегорія поло)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D0%BA%D0%B0%D1%80%D0%B4%D0%B8%D0%B3%D0%B0%D0%BD%D0%B8-%D1%82%D0%B0-%D1%81%D0%B2%D0%B5%D1%82%D1%80%D0%B8/%D1%81%D0%BE%D1%80%D0%BE%D1%87%D0%BA%D0%B8-%D0%BF%D0%BE%D0%BB%D0%BE/277544d6",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Mango — V-neck jumper (John Lewis, UK)",
+     "url": "https://www.johnlewis.com/mango-v-neck-fine-knit-jumper-green/p114997339",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "чоловічий светр V-виріз вовна графіт",
+    "en": "men V-neck wool sweater charcoal"
+   },
+   "tags": [
+    "V-виріз",
+    "Memories of Murder",
+    "детектив"
+   ],
+   "warn": "⚠️ не перевірено: чоловічий V-виріз у UA-каталозі Mango не знайдено; ціна орієнтовна.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "mango-merino-polo",
+   "name": "Светр-поло 100% мериносова вовна",
+   "brand": "Mango",
+   "cat": "knit",
+   "tier": "€",
+   "price": "1 199 грн у розпродажі (було 2 299)",
+   "colors": [
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Кремовий",
+     "hex": "#e9e1d0",
+     "g": "cream"
+    }
+   ],
+   "fabric": "100% мериносова вовна",
+   "fit": "Regular, комір-поло",
+   "season": "−5…+12 °C",
+   "tmin": -5,
+   "tmax": 12,
+   "why": "Тонкий меринос гріє без об'єму і виглядає охайно під овершот або плащ.",
+   "pair": "Вовняний овершот, Levi's 505, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — светри-поло (категорія)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D0%BA%D0%B0%D1%80%D0%B4%D0%B8%D0%B3%D0%B0%D0%BD%D0%B8-%D1%82%D0%B0-%D1%81%D0%B2%D0%B5%D1%82%D1%80%D0%B8/%D1%81%D0%BE%D1%80%D0%BE%D1%87%D0%BA%D0%B8-%D0%BF%D0%BE%D0%BB%D0%BE/277544d6",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Mango светр-поло мериносова вовна чоловічий",
+    "en": "Mango merino wool polo sweater men"
+   },
+   "tags": [
+    "меринос",
+    "поло",
+    "вовна"
+   ],
+   "warn": "Ціну взято з індексу пошуку; сайт Mango блокує автоматичну перевірку.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "eastpeak-fleece",
+   "name": "Men's fleece halfzip",
+   "brand": "East Peak",
+   "cat": "knit",
+   "tier": "€",
+   "price": "1 160 грн (1 044 — клубна; MEGASPORT, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    },
+    {
+     "n": "Олива",
+     "hex": "#5d6140",
+     "g": "olive"
+    }
+   ],
+   "fabric": "Поліестер-фліс",
+   "fit": "Regular, напівблискавка",
+   "season": "−10…+8 °C (як середній шар)",
+   "tmin": -10,
+   "tmax": 8,
+   "why": "Не «натуральна» річ, але дешевий теплий шар під канвасову куртку в мороз. Обирайте темний колір.",
+   "pair": "Під Detroit або Michigan, поверх хенлі.",
+   "shops": [
+    {
+     "name": "MEGASPORT",
+     "addr": "магазини в Києві + онлайн",
+     "url": "https://megasport.ua/ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": false,
+   "links": [
+    {
+     "label": "MEGASPORT — East Peak men's fleece halfzip",
+     "url": "https://megasport.ua/ua/product/east-peak_mens-fleece-halfzip_72f022f37364/",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "фліс напівблискавка чоловічий темний",
+    "en": "men fleece half zip dark olive"
+   },
+   "tags": [
+    "фліс",
+    "середній шар",
+    "бюджет"
+   ],
+   "checked": "05.11.2026",
+   "fakes": "",
+   "warn": ""
+  },
+  {
+   "id": "levis-501",
+   "name": "501 Original",
+   "brand": "Levi's",
+   "cat": "pants",
+   "tier": "€€",
+   "price": "≈3 500–4 500 грн (Rozetka: 3 529 зі знижкою, було 4 509)",
+   "colors": [
+    {
+     "n": "Rinse indigo",
+     "hex": "#2f3d55",
+     "g": "denim"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Blue denim",
+     "hex": "#3d5068",
+     "g": "denim"
+    }
+   ],
+   "fabric": "100% бавовняний денім, ґудзиковий гульфик",
+   "fit": "Прямі, середня посадка; низ ≈20–21 см",
+   "season": "−5…+20 °C",
+   "tmin": -5,
+   "tmax": 20,
+   "why": "Канонічні прямі джинси «Вінчестерів». Темний rinse — найкраще з чорним взуттям.",
+   "pair": "Фланель, Detroit / Sherpa Trucker, будь-які чорні Timberland.",
+   "shops": [
+    {
+     "name": "Rozetka — пошук",
+     "addr": "онлайн",
+     "url": "https://rozetka.com.ua/ua/search/?text=Levis+501+Original",
+     "offline": false
+    },
+    {
+     "name": "Rozetka",
+     "addr": "онлайн (частина товарів — доставка з ЄС через Meest)",
+     "url": "https://rozetka.com.ua/",
+     "offline": false
+    },
+    {
+     "name": "OLX — пошук вживаних",
+     "addr": "вживане / вінтаж",
+     "url": "https://www.olx.ua/uk/list/q-levis-501/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Levi's — 501 Original Jeans (офіційний сайт)",
+     "url": "https://www.levi.com/GE/en/clothing/men/jeans/501-original-jeans/p/005013199",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Rozetka — Levi's 501 Original (приклад лоту)",
+     "url": "https://rozetka.com.ua/levis-5401187346731/p574998733/",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Levi's 501 Original чоловічі темні rinse",
+    "en": "Levi's 501 Original Fit rinse dark"
+   },
+   "fakes": "Підробляють 501 і Trucker. Справжні: червоний ярлик Tab з ®, шкіряна або джакрон нашивка з двома конями, номер на звороті ґудзиків, акуратний бар-так на кишенях, внутрішній лейбл з кодом моделі.",
+   "tags": [
+    "денім",
+    "прямі",
+    "Winchester"
+   ],
+   "warn": "levi.com блокує автоматичну перевірку — сторінку підтверджено пошуковим індексом.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "levis-505",
+   "name": "505 Regular Fit",
+   "brand": "Levi's",
+   "cat": "pants",
+   "tier": "€€",
+   "price": "≈3 000–4 000 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Rinse indigo",
+     "hex": "#2f3d55",
+     "g": "denim"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Денім (є версії без стрейчу)",
+   "fit": "Regular, прямі, на блискавці; вільніші в стегні за 501",
+   "season": "−5…+20 °C",
+   "tmin": -5,
+   "tmax": 20,
+   "why": "Як 501, але на блискавці та трохи вільніші — «тато-джинси» 80-х у хорошому сенсі.",
+   "pair": "Светр з V-вирізом, тренч, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Rozetka — пошук",
+     "addr": "онлайн",
+     "url": "https://rozetka.com.ua/ua/search/?text=Levis+505",
+     "offline": false
+    },
+    {
+     "name": "Rozetka",
+     "addr": "онлайн (частина товарів — доставка з ЄС через Meest)",
+     "url": "https://rozetka.com.ua/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Levi's — 505 Regular Fit Men's Jeans",
+     "url": "https://www.levi.com/US/en_US/clothing/men/jeans/505-regular-fit-mens-jeans/p/005051434",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Levi's 505 regular fit темні",
+    "en": "Levi's 505 Regular Fit dark rinse"
+   },
+   "fakes": "Підробляють 501 і Trucker. Справжні: червоний ярлик Tab з ®, шкіряна або джакрон нашивка з двома конями, номер на звороті ґудзиків, акуратний бар-так на кишенях, внутрішній лейбл з кодом моделі.",
+   "tags": [
+    "денім",
+    "regular",
+    "Memories of Murder"
+   ],
+   "warn": "Сторінку підтверджено пошуковим індексом (levi.com блокує автоматичні запити).",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "dickies-874",
+   "name": "874 Original Work Pant",
+   "brand": "Dickies",
+   "cat": "pants",
+   "tier": "€",
+   "price": "3 959 грн (зі знижками від 2 376; Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Khaki",
+     "hex": "#b5a27a",
+     "g": "khaki"
+    },
+    {
+     "n": "Olive",
+     "hex": "#5d6140",
+     "g": "olive"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    }
+   ],
+   "fabric": "Твіл 65% поліестер / 35% бавовна, ≈8,5 oz",
+   "fit": "Original Fit: прямі, висока посадка, широка штанина (≈22 см)",
+   "season": "−5…+20 °C",
+   "tmin": -5,
+   "tmax": 20,
+   "why": "Робочі штани, що тримають стрілку. Чорні й хакі — ідеальні під чорні Timberland.",
+   "pair": "Фланель або светр, будь-яка канвасова куртка, Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    },
+    {
+     "name": "Kapkan Shop",
+     "addr": "Київ, вул. Рейтарська, 9",
+     "url": "https://kapkanshop.com/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Original 874 Black",
+     "url": "https://www.footshop.ua/uk/dzhinsi-i-shtani/271333-dickies-original-874-work-pant-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Footshop.ua — Dickies Original 874 Khaki",
+     "url": "https://www.footshop.ua/uk/dzhinsi-i-shtani/271330-dickies-original-874-work-pant-khaki.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Dickies EU — історія 874",
+     "url": "https://dickies.eu/en-fi/blogs/productos/874-historia-del-clasico",
+     "kind": "brand",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies 874 Original чорні купити",
+    "en": "Dickies 874 Original Work Pant black"
+   },
+   "fakes": "Підробляють рідко. Справжні: лейбл Dickies з підковою на поясі, металевий гачок і блискавка, твіл, що тримає складку.",
+   "tags": [
+    "робочі",
+    "прямі",
+    "під чорне"
+   ],
+   "warn": "Наявність саме 874 у Kapkan не підтверджена (сайт обмежує запити) — у магазині є Dickies.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "dickies-873",
+   "name": "873 Slim Straight Work Pant",
+   "brand": "Dickies",
+   "cat": "pants",
+   "tier": "€",
+   "price": "≈3 000–3 900 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Khaki",
+     "hex": "#b5a27a",
+     "g": "khaki"
+    },
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    }
+   ],
+   "fabric": "Твіл (є перероблена версія), механічний стрейч",
+   "fit": "Slim Straight — вужчі за 874, але прямі, не skinny",
+   "season": "−5…+20 °C",
+   "tmin": -5,
+   "tmax": 20,
+   "why": "Якщо 874 здаються мішкуватими — 873 охайніші, але низ ще прямий і лягає на черевик.",
+   "pair": "Овершот, светр Firth, Sprint Trekker Mid.",
+   "shops": [
+    {
+     "name": "Rozetka — пошук",
+     "addr": "онлайн",
+     "url": "https://rozetka.com.ua/ua/search/?text=Dickies+873",
+     "offline": false
+    },
+    {
+     "name": "Rozetka",
+     "addr": "онлайн (частина товарів — доставка з ЄС через Meest)",
+     "url": "https://rozetka.com.ua/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Urban Industry — Dickies 873 Recycled Work Pant Black",
+     "url": "https://www.urbanindustry.co.uk/en-fr/products/dickies-873-recycled-work-pant-black",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Footshop.ua — бренд Dickies в Україні",
+     "url": "https://www.footshop.ua/uk/478_dickies",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies 873 slim straight чорні",
+    "en": "Dickies 873 Slim Straight work pant black"
+   },
+   "tags": [
+    "робочі",
+    "slim straight"
+   ],
+   "warn": "В українських магазинах 873 не знайдено станом на 05.11 — посилання на зарубіжний магазин.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "cwip-newel",
+   "name": "Newel Pant",
+   "brand": "Carhartt WIP",
+   "cat": "pants",
+   "tier": "€€",
+   "price": "≈6 515 грн (129 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Blue denim",
+     "hex": "#3d5068",
+     "g": "denim"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Денім Maitland 13,5 oz (бувають твіл і вельвет)",
+   "fit": "Relaxed tapered — вільні в стегні, звужені донизу",
+   "season": "−5…+20 °C",
+   "tmin": -5,
+   "tmax": 20,
+   "why": "Вільні зверху, акуратні знизу — сидять на «кросівках-черевиках» без гармошки.",
+   "pair": "Kellworth Shirt Jac, OG Active Jacket, Sprint Trekker Mid.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Newel Pant Blue, Marble used wash",
+     "url": "https://www.carhartt-wip.com/en-de/p/newel-pant-blue-marble-used-wash-731",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Newel Pant relaxed tapered",
+    "en": "Carhartt WIP Newel Pant relaxed tapered"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "денім",
+    "tapered"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-landon",
+   "name": "Landon Pant",
+   "brand": "Carhartt WIP",
+   "cat": "pants",
+   "tier": "€€",
+   "price": "≈5 000–6 515 грн (99–129 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "WIP H Brown",
+     "hex": "#7a5233",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Raven",
+     "hex": "#3b3d3a",
+     "g": "graphite"
+    },
+    {
+     "n": "Blue denim",
+     "hex": "#3d5068",
+     "g": "denim"
+    }
+   ],
+   "fabric": "Денім Robertson 12 oz / канвас Dearborn / дріл (залежно від версії)",
+   "fit": "Loose — вільні, прямі, робочий силует",
+   "season": "−5…+20 °C",
+   "tmin": -5,
+   "tmax": 20,
+   "why": "Найширші з базових — дають об'єм «вільних штанів 80-х». Чорні — під чорне взуття.",
+   "pair": "OG Detroit, светр Firth, Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Landon Pant Black, Stone washed",
+     "url": "https://www.carhartt-wip.com/en-de/p/landon-pant-black-stone-washed-2077",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Carhartt WIP — Landon Pant WIP H Brown",
+     "url": "https://www.carhartt-wip.com/en-de/p/landon-pant-wip-h-brown-rinsed-1335",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Landon вільні прямі чорні",
+    "en": "Carhartt WIP Landon Pant black stone washed"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "вільні",
+    "Memories of Murder"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "cwip-single-knee",
+   "name": "Single Knee Pant",
+   "brand": "Carhartt WIP",
+   "cat": "pants",
+   "tier": "€€",
+   "price": "≈6 010 грн (119 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "WIP H Brown",
+     "hex": "#7a5233",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Канвас (rinsed)",
+   "fit": "Прямі робочі, вільні",
+   "season": "−5…+18 °C",
+   "tmin": -5,
+   "tmax": 18,
+   "why": "Канвасові штани старіють красиво, як куртка Detroit. Коричневі — з чорним верхом і взуттям.",
+   "pair": "Чорний OG Detroit, хенлі, Timberland Britton Road.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Carhartt WIP — Single Knee Pant WIP H Brown",
+     "url": "https://www.carhartt-wip.com/en-de/p/single-knee-pant-wip-h-brown-rinsed-4002",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Single Knee канвас коричневі",
+    "en": "Carhartt WIP Single Knee Pant brown"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "канвас",
+    "робочі"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "ck-90s-cord",
+   "name": "90s Straight Corduroy Pants",
+   "brand": "Calvin Klein Jeans",
+   "cat": "pants",
+   "tier": "€€",
+   "price": "3 816 грн з кодом (5 299; Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Dark Coffee",
+     "hex": "#4a3528",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Вельвет (бавовна)",
+   "fit": "Прямі, крій 90-х",
+   "season": "−5…+12 °C",
+   "tmin": -5,
+   "tmax": 12,
+   "why": "Вельветові прямі штани — головна фактура детективів 80-х. Темна кава + чорне взуття працює.",
+   "pair": "Светр з V-вирізом, тренч, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": true,
+   "links": [
+    {
+     "label": "Footshop.ua — CK Jeans 90s Straight Corduroy Dark Coffee",
+     "url": "https://www.footshop.ua/uk/dzhinsi-i-shtani/515743-calvin-klein-jeans-90s-straight-corduro-dark-coffee.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Footshop.ua — CK Jeans 90s Straight Corduroy Black",
+     "url": "https://www.footshop.ua/uk/dzhinsi-i-shtani/430936-calvin-klein-jeans-90s-straight-corduroy-pants-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "вельветові штани прямі чоловічі коричневі",
+    "en": "men straight corduroy pants dark brown"
+   },
+   "tags": [
+    "вельвет",
+    "Memories of Murder"
+   ],
+   "warn": "Можлива невелика нашивка бренду — перевірте фото на сторінці.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "mango-trousers",
+   "name": "Вельветові / вовняні штани (Mango Man)",
+   "brand": "Mango",
+   "cat": "pants",
+   "tier": "€",
+   "price": "≈2 600–3 600 грн (діапазон категорії)",
+   "colors": [
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Графіт",
+     "hex": "#4a4a48",
+     "g": "graphite"
+    },
+    {
+     "n": "Бежевий",
+     "hex": "#c9b48f",
+     "g": "khaki"
+    }
+   ],
+   "fabric": "Вельвет / вовна в суміші — залежно від сезону",
+   "fit": "Обирайте straight або relaxed, не slim",
+   "season": "−5…+12 °C",
+   "tmin": -5,
+   "tmax": 12,
+   "why": "Бюджетний спосіб додати вельвет або вовну. Беріть «straight», ширина низу ≥19 см.",
+   "pair": "Светр-поло з мериносу, вовняний овершот, Killington Chukka.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — чоловічі штани (категорія)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D1%88%D1%82%D0%B0%D0%BD%D0%B8/b126cc9c",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Mango чоловічі вельветові штани прямі",
+    "en": "Mango men corduroy trousers straight"
+   },
+   "tags": [
+    "вельвет",
+    "вовна"
+   ],
+   "warn": "⚠️ не перевірено: вельветових моделей у UA-каталозі Mango пошук не знайшов — лише категорія штанів.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "timb-sprint-trekker",
+   "name": "Sprint Trekker Mid (чорні)",
+   "brand": "Timberland",
+   "cat": "shoes",
+   "tier": "€€",
+   "price": "5 599 грн (Modivo.ua, в наявності 05.11.2026); інші версії 2 500–9 400 грн",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Шкіра/нубук + текстиль ReBOTL, устілка OrthoLite, EVA (є Waterproof і GTX)",
+   "fit": "Кросівок-черевик, середня висота",
+   "season": "−5…+15 °C (GTX/WP — для сльоти)",
+   "tmin": -5,
+   "tmax": 15,
+   "why": "Ваша основна пара. Легка, практична, чорна — нічого не «кричить».",
+   "pair": "Прямі або relaxed tapered штани з легкою складкою над черевиком.",
+   "shops": [
+    {
+     "name": "Intertop",
+     "addr": "мережа магазинів у Києві + онлайн",
+     "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+     "offline": true
+    },
+    {
+     "name": "Modivo.ua",
+     "addr": "онлайн",
+     "url": "https://modivo.ua/",
+     "offline": false
+    },
+    {
+     "name": "Rozetka",
+     "addr": "онлайн (частина товарів — доставка з ЄС через Meest)",
+     "url": "https://rozetka.com.ua/",
+     "offline": false
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Timberland (IE) — Sprint Trekker Mid Black TB0A1YN5015",
+     "url": "https://timberland.ie/en-ie/p/men-10029/sprint-trekker-mid-lace-up-trainer-for-men-in-black-TB0A1YN5015",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Modivo.ua — Sprint Trekker Mid Hiker TB0A1YN50151 чорні",
+     "url": "https://modivo.ua/p/timberland-chereviki-sprint-trekker-mid-hiker-tb0a1yn50151-chornii",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Intertop — Sprint Trekker Waterproof",
+     "url": "https://intertop.ua/uk-ua/product/boots-and-ankle-boots-timberland-8865466",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Timberland Sprint Trekker Mid чорні купити Київ",
+    "en": "Timberland Sprint Trekker Mid black"
+   },
+   "fakes": "Часто підробляють. Перевіряйте артикул TB0A… на язичку й на коробці (мають збігатися), рівний чіткий логотип-дерево, якісний нубук без «пластикового» блиску, устілку OrthoLite. Підозрілі домени на кшталт timberland-uk.it.com — фейкові магазини.",
+   "tags": [
+    "кросівки-черевики",
+    "чорне взуття",
+    "щодня"
+   ],
+   "warn": "Сторінки Timberland та Intertop підтверджено пошуковим індексом (сайти блокують автоматичні запити); Modivo перевірено напряму.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "timb-originals-ultra",
+   "name": "TBL Originals Ultra Mid WP (чорні)",
+   "brand": "Timberland",
+   "cat": "shoes",
+   "tier": "€€",
+   "price": "≈7 000–10 000 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Шкіра, водонепроникна мембрана, устілка OrthoLite",
+   "fit": "Кросівок-черевик, силует 6-Inch на легкій підошві",
+   "season": "−8…+10 °C",
+   "tmin": -8,
+   "tmax": 10,
+   "why": "Виглядає як класичні «тімбери», але легкі як кросівки — компроміс для щодня.",
+   "pair": "Levi's 501, Dickies 874, Landon.",
+   "shops": [
+    {
+     "name": "Intertop",
+     "addr": "мережа магазинів у Києві + онлайн",
+     "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Timberland (UK) — Originals Ultra Mid WP Black TB1A44SS015",
+     "url": "https://www.timberland.co.uk/en-gb/p/outlet-collection/mens-outlet-79698/timberland-originals-ultra-mid-lace-up-waterproof-boot-for-men-in-black-TB1A44SS015",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Intertop — чорні чоловічі черевики Timberland",
+     "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Timberland Originals Ultra чорні водонепроникні",
+    "en": "Timberland TBL Originals Ultra Mid waterproof black"
+   },
+   "fakes": "Часто підробляють. Перевіряйте артикул TB0A… на язичку й на коробці (мають збігатися), рівний чіткий логотип-дерево, якісний нубук без «пластикового» блиску, устілку OrthoLite. Підозрілі домени на кшталт timberland-uk.it.com — фейкові магазини.",
+   "tags": [
+    "чорне взуття",
+    "водонепроникні"
+   ],
+   "warn": "Ціна в грн орієнтовна — точну наявність в Intertop не підтверджено.",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "timb-6inch",
+   "name": "6-Inch Premium Waterproof Boot (чорні)",
+   "brand": "Timberland",
+   "cat": "shoes",
+   "tier": "€€€",
+   "price": "9 599 грн (з кодом −20% — 6 912; Footshop.ua, 05.11.2026); Intertop ≈12 000–13 000",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Нубук, шви з герметизацією, водонепроникні",
+   "fit": "Класичний робочий черевик 6 дюймів",
+   "season": "−10…+8 °C",
+   "tmin": -10,
+   "tmax": 8,
+   "why": "Канонічний робочий черевик. Чорний нубук — без «жовтого» кліше.",
+   "pair": "Levi's 501 з підворотом 2–3 см або Dickies 874 навипуск.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    },
+    {
+     "name": "Intertop",
+     "addr": "мережа магазинів у Києві + онлайн",
+     "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Footshop.ua — 6-Inch Premium Waterproof Boot Black",
+     "url": "https://www.footshop.ua/uk/choloviche-vzuttya/354733-timberland-6-inch-premium-waterproof-boot-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Timberland (UK) — Premium 6 Inch WP Black TB0A2E2P001",
+     "url": "https://www.timberland.co.uk/en-gb/p/men-10029/timberland-premium-6-inch-lace-up-waterproof-boot-for-men-in-black-TB0A2E2P001",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Timberland 6 inch Premium чорні нубук",
+    "en": "Timberland 6-Inch Premium Waterproof Boot black nubuck"
+   },
+   "fakes": "Часто підробляють. Перевіряйте артикул TB0A… на язичку й на коробці (мають збігатися), рівний чіткий логотип-дерево, якісний нубук без «пластикового» блиску, устілку OrthoLite. Підозрілі домени на кшталт timberland-uk.it.com — фейкові магазини.",
+   "tags": [
+    "класика",
+    "чорне взуття",
+    "зима"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "timb-killington",
+   "name": "Killington Chukka (чорні)",
+   "brand": "Timberland",
+   "cat": "shoes",
+   "tier": "€€",
+   "price": "≈4 800 грн (Killington GTX в Intertop, орієнтовно)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Шкіра / нубук, підкладка ReBOTL",
+   "fit": "Чукка — нижче за 6-Inch, охайніша",
+   "season": "0…+15 °C",
+   "tmin": 0,
+   "tmax": 15,
+   "why": "Найстриманіші з чорних Timberland — пасують і до вельвету, і до тренча.",
+   "pair": "Вельветові штани, Levi's 505, светр з V-вирізом.",
+   "shops": [
+    {
+     "name": "Intertop",
+     "addr": "мережа магазинів у Києві + онлайн",
+     "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Timberland (IE) — Killington Chukka Black",
+     "url": "https://www.timberland.ie/shop/en/tbl-ie/trainers/killington-chukka-for-men-in-black-a2j3f001",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "Timberland (US) — Killington Trekker Mid (схожа модель)",
+     "url": "https://www.timberland.com/en-us/p/men/footwear-10039/mens-killington-trekker-boot-TB0A2HEN015",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Timberland Killington Chukka чорні",
+    "en": "Timberland Killington Chukka black"
+   },
+   "fakes": "Часто підробляють. Перевіряйте артикул TB0A… на язичку й на коробці (мають збігатися), рівний чіткий логотип-дерево, якісний нубук без «пластикового» блиску, устілку OrthoLite. Підозрілі домени на кшталт timberland-uk.it.com — фейкові магазини.",
+   "tags": [
+    "чукка",
+    "чорне взуття",
+    "Memories of Murder"
+   ],
+   "warn": "Ціну взято з індексу пошуку Intertop — уточніть; офіційні сторінки можуть показувати «немає в наявності».",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "timb-britton",
+   "name": "Britton Road WP (чорні)",
+   "brand": "Timberland",
+   "cat": "shoes",
+   "tier": "€€",
+   "price": "7 999 грн зі знижкою (було 9 999; Intertop)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Водонепроникна шкіра Premium, мембрана TimberDry",
+   "fit": "Черевик середньої висоти",
+   "season": "−8…+10 °C",
+   "tmin": -8,
+   "tmax": 10,
+   "why": "Більш «міська» чорна шкіра — якщо нубук 6-Inch здається надто робочим.",
+   "pair": "Single Knee, Levi's 501, Michigan Coat.",
+   "shops": [
+    {
+     "name": "Intertop",
+     "addr": "мережа магазинів у Києві + онлайн",
+     "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Intertop — Timberland Britton Road TB0A69TWW02 чорні",
+     "url": "https://intertop.ua/uk-ua/product/boots-and-ankle-boots-timberland-8800406",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Timberland Britton Road чорні шкіряні",
+    "en": "Timberland Britton Road waterproof black"
+   },
+   "fakes": "Часто підробляють. Перевіряйте артикул TB0A… на язичку й на коробці (мають збігатися), рівний чіткий логотип-дерево, якісний нубук без «пластикового» блиску, устілку OrthoLite. Підозрілі домени на кшталт timberland-uk.it.com — фейкові магазини.",
+   "tags": [
+    "шкіра",
+    "чорне взуття"
+   ],
+   "warn": "Сторінку Intertop підтверджено пошуковим індексом (сайт блокує автоматичні запити).",
+   "checked": "05.11.2026"
+  },
+  {
+   "id": "cwip-watch-hat",
+   "name": "Acrylic Watch Hat",
+   "brand": "Carhartt WIP",
+   "cat": "acc",
+   "tier": "€",
+   "price": "≈1 260 грн (25 €, курс ≈50,5 грн/€ (НБУ, 05.10.2026))",
+   "colors": [
+    {
+     "n": "Styx",
+     "hex": "#3f3a35",
+     "g": "graphite"
+    },
+    {
+     "n": "Salt",
+     "hex": "#e9e1d0",
+     "g": "cream"
+    },
+    {
+     "n": "Olive",
+     "hex": "#5d6140",
+     "g": "olive"
+    }
+   ],
+   "fabric": "Акриловий рубчастий трикотаж",
+   "fit": "Шапка з відворотом",
+   "season": "−15…+5 °C",
+   "tmin": -15,
+   "tmax": 5,
+   "why": "Шапка докера з 80-х. Маленький квадратний лейбл — найменше лого в каталозі.",
+   "pair": "Будь-яка куртка з каталогу.",
+   "shops": [
+    {
+     "name": "Carhartt WIP (офіційний EU-магазин)",
+     "addr": "онлайн, доставка в Україну — уточнюйте",
+     "url": "https://www.carhartt-wip.com/en-de",
+     "offline": false
+    },
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": false,
+   "links": [
+    {
+     "label": "Carhartt WIP — Acrylic Watch Hat Styx Heather",
+     "url": "https://www.carhartt-wip.com/en-de/p/acrylic-watch-hat-styx-heather-4601",
+     "kind": "product",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "UNIFORM — Carhartt WIP Scott Watch Hat (950 грн, немає в наявності)",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-scott-watch-hat",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP Watch Hat шапка з відворотом",
+    "en": "Carhartt WIP Acrylic Watch Hat"
+   },
+   "fakes": "Найчастіше підроблюваний аксесуар Carhartt. Справжня: щільна в'язка, лейбл пришитий рівно по 4 сторонах, на внутрішньому ярлику — артикул I0xxxxx.",
+   "tags": [
+    "шапка",
+    "докер"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "dickies-gibsland",
+   "name": "Gibsland Beanie",
+   "brand": "Dickies",
+   "cat": "acc",
+   "tier": "€",
+   "price": "999 грн (Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Ecru",
+     "hex": "#ddd3bd",
+     "g": "cream"
+    }
+   ],
+   "fabric": "Трикотаж",
+   "fit": "Шапка з відворотом",
+   "season": "−15…+5 °C",
+   "tmin": -15,
+   "tmax": 5,
+   "why": "Дешевша альтернатива Watch Hat у теплому коричневому.",
+   "pair": "Michigan Coat, Union Barn Jacket.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": false,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Gibsland Beanie Dark Brown",
+     "url": "https://www.footshop.ua/uk/shapki/561079-dickies-gibsland-beanie-dark-brown.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies шапка коричнева з відворотом",
+    "en": "Dickies Gibsland Beanie dark brown"
+   },
+   "tags": [
+    "шапка"
+   ],
+   "checked": "05.11.2026",
+   "fakes": "",
+   "warn": ""
+  },
+  {
+   "id": "dickies-lockwood",
+   "name": "Lockwood Beanie",
+   "brand": "Dickies",
+   "cat": "acc",
+   "tier": "€",
+   "price": "999 грн (Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Dark Navy",
+     "hex": "#232a3a",
+     "g": "navy"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    }
+   ],
+   "fabric": "Трикотаж",
+   "fit": "Шапка",
+   "season": "−15…+5 °C",
+   "tmin": -15,
+   "tmax": 5,
+   "why": "Темно-синя або чорна шапка — максимально непомітна.",
+   "pair": "OG Detroit чорний, Sherpa Trucker.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": false,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Lockwood Beanie Navy",
+     "url": "https://www.footshop.ua/uk/shapki/561109-dickies-lockwood-beanie-navy.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Dickies Lockwood шапка темно-синя",
+    "en": "Dickies Lockwood Beanie navy"
+   },
+   "tags": [
+    "шапка"
+   ],
+   "checked": "05.11.2026",
+   "fakes": "",
+   "warn": ""
+  },
+  {
+   "id": "mango-belt",
+   "name": "Шкіряний ремінь (Mango Man)",
+   "brand": "Mango",
+   "cat": "acc",
+   "tier": "€",
+   "price": "≈1 000–2 000 грн (орієнтовно)",
+   "colors": [
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Шкіра",
+   "fit": "Ширина 3–3,5 см, проста пряжка",
+   "season": "цілий рік",
+   "tmin": -30,
+   "tmax": 35,
+   "why": "Простий шкіряний ремінь без логотипу завершує джинси й робочі штани.",
+   "pair": "Levi's 501, Dickies 874. Колір під взуття — чорний.",
+   "shops": [
+    {
+     "name": "Mango",
+     "addr": "магазини в ТРЦ Києва + онлайн",
+     "url": "https://shop.mango.com/ua/uk",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "Mango Україна — ремені та підтяжки (категорія)",
+     "url": "https://shop.mango.com/ua/uk/c/%D1%87%D0%BE%D0%BB%D0%BE%D0%B2%D1%96%D0%BA%D0%B8/%D1%80%D0%B5%D0%BC%D0%B5%D0%BD%D1%96-%D1%82%D0%B0-%D0%BF%D1%96%D0%B4%D1%82%D1%8F%D0%B6%D0%BA%D0%B8/addae968",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "чоловічий шкіряний ремінь чорний простий 3,5 см",
+    "en": "men plain black leather belt 35mm"
+   },
+   "tags": [
+    "ремінь",
+    "шкіра"
+   ],
+   "warn": "Посилання на категорію; ціна орієнтовна.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "dickies-hardwick-cap",
+   "name": "Hardwick Corduroy Cap",
+   "brand": "Dickies",
+   "cat": "acc",
+   "tier": "€",
+   "price": "1 859 грн (Footshop.ua, 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    }
+   ],
+   "fabric": "Вельвет",
+   "fit": "Кепка",
+   "season": "+5…+20 °C",
+   "tmin": 5,
+   "tmax": 20,
+   "why": "Вельветова кепка — деталь у дусі Боббі Сінгера, але без «трак-кер» сітки.",
+   "pair": "Union Barn Jacket, фланель.",
+   "shops": [
+    {
+     "name": "Footshop.ua",
+     "addr": "онлайн, доставка Новою поштою",
+     "url": "https://www.footshop.ua/uk/",
+     "offline": false
+    }
+   ],
+   "kyiv": false,
+   "black": false,
+   "links": [
+    {
+     "label": "Footshop.ua — Dickies Hardwick Corduroy Cap Black",
+     "url": "https://www.footshop.ua/uk/kepki/557425-dickies-hardwick-corduroy-cap-black.html",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "вельветова кепка чорна",
+    "en": "Dickies Hardwick Corduroy Cap black"
+   },
+   "tags": [
+    "кепка",
+    "вельвет"
+   ],
+   "warn": "Може мати невелику вишивку бренду — перевірте фото.",
+   "checked": "05.11.2026",
+   "fakes": ""
+  },
+  {
+   "id": "cwip-watch-gloves",
+   "name": "Watch Gloves",
+   "brand": "Carhartt WIP",
+   "cat": "acc",
+   "tier": "€",
+   "price": "990 грн (UNIFORM; немає в наявності 05.11.2026)",
+   "colors": [
+    {
+     "n": "Black",
+     "hex": "#1d1d1b",
+     "g": "black"
+    },
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    }
+   ],
+   "fabric": "Трикотаж",
+   "fit": "В'язані рукавички",
+   "season": "−15…+5 °C",
+   "tmin": -15,
+   "tmax": 5,
+   "why": "Прості в'язані рукавички в комплект до Watch Hat.",
+   "pair": "Detroit, Michigan.",
+   "shops": [
+    {
+     "name": "UNIFORM",
+     "addr": "Київ, вул. Валерія Лобановського, 9/1",
+     "url": "https://u-niform.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": false,
+   "links": [
+    {
+     "label": "UNIFORM — Carhartt WIP Watch Gloves Black",
+     "url": "https://u-niform.com.ua/products/carhartt-wip-watch-gloves-black",
+     "kind": "shop",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "Carhartt WIP рукавички в'язані",
+    "en": "Carhartt WIP Watch Gloves black"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак.",
+   "tags": [
+    "рукавички"
+   ],
+   "checked": "05.11.2026",
+   "warn": ""
+  },
+  {
+   "id": "vintage-workwear",
+   "name": "Вінтажна робоча куртка (секонд)",
+   "brand": "Різні (Carhartt, Dickies, Lee, Wrangler)",
+   "cat": "outer",
+   "tier": "€",
+   "price": "≈800–3 500 грн (вживане, орієнтовно)",
+   "colors": [
+    {
+     "n": "Коричневий",
+     "hex": "#6b4a2e",
+     "g": "brown"
+    },
+    {
+     "n": "Хакі",
+     "hex": "#b5a27a",
+     "g": "khaki"
+    },
+    {
+     "n": "Чорний",
+     "hex": "#1d1d1b",
+     "g": "black"
+    }
+   ],
+   "fabric": "Канвас / дак / денім",
+   "fit": "Різна — міряйте плечі й довжину рукава",
+   "season": "−5…+12 °C",
+   "tmin": -5,
+   "tmax": 12,
+   "why": "Справжня зношеність — найкращий спосіб виглядати «непомітно круто», а не «щойно з магазину».",
+   "pair": "Хенлі, 501, Timberland 6-Inch.",
+   "shops": [
+    {
+     "name": "OLX — пошук вживаних",
+     "addr": "вживане / вінтаж",
+     "url": "https://www.olx.ua/uk/list/q-carhartt-detroit/",
+     "offline": false
+    },
+    {
+     "name": "Humana (мережа секонд-хендів)",
+     "addr": "Київ, кілька адрес (напр., вул. Олени Теліги, 35) ⚠️",
+     "url": "https://humana.com.ua/",
+     "offline": true
+    }
+   ],
+   "kyiv": true,
+   "black": true,
+   "links": [
+    {
+     "label": "OLX — пошук «carhartt detroit»",
+     "url": "https://www.olx.ua/uk/list/q-carhartt-detroit/",
+     "kind": "search",
+     "ok": true,
+     "note": ""
+    },
+    {
+     "label": "OLX — пошук «carhartt jacket»",
+     "url": "https://www.olx.ua/uk/list/q-carhartt-jacket/",
+     "kind": "search",
+     "ok": true,
+     "note": ""
+    }
+   ],
+   "q": {
+    "ua": "вінтажна куртка Carhartt Detroit вживана",
+    "en": "vintage Carhartt Detroit jacket J97 blanket lined"
+   },
+   "fakes": "Підробки часті. Справжні: квадратний тканий лейбл з рівними краями, щільний канвас Dearborn 12 oz, потрійні шви, фурнітура з гравіюванням, внутрішній лейбл з артикулом I0xxxxx. Ціна суттєво нижче за 60% від офіційної — тривожний знак. На вторинці особливо уважно: перевіряйте фото лейблів і просіть фото внутрішнього ярлика.",
+   "tags": [
+    "секонд",
+    "вінтаж",
+    "Winchester"
+   ],
+   "warn": "⚠️ не перевірено: адреси Humana взято з довідників (сайт humana.com.ua недоступний для перевірки); посилання OLX — пошукові.",
+   "checked": "05.11.2026"
+  }
+ ],
+ "outfits": [
+  {
+   "id": "o1",
+   "name": "Траса 41, листопад",
+   "mood": "Вінчестери",
+   "temp": "−3…+5 °C",
+   "items": [
+    "cwip-michigan-winter",
+    "dickies-gulfport",
+    "zara-henley",
+    "levis-501",
+    "timb-6inch"
+   ],
+   "layers": {
+    "Верх": "Michigan Coat (Winter), Hamilton Brown",
+    "Середній": "Фланель Gulfport + хенлі",
+    "Низ": "Levi's 501 rinse",
+    "Взуття": "Timberland 6-Inch чорні"
+   },
+   "why": "Три шари різної фактури (канвас → фланель → трикотаж) і один колір-акцент — коричневий. Чорне взуття з'єднується з темним денімом.",
+   "q": "Michigan coat flannel henley 501 black boots outfit"
+  },
+  {
+   "id": "o2",
+   "name": "Провінційний детектив, 1986",
+   "mood": "Спогади про вбивство",
+   "temp": "+2…+10 °C",
+   "items": [
+    "mango-trench",
+    "mango-vneck",
+    "cwip-madison-cord",
+    "dickies-874",
+    "timb-killington"
+   ],
+   "layers": {
+    "Верх": "Бежевий тренч Mango",
+    "Середній": "Светр з V-вирізом поверх вельветової сорочки",
+    "Низ": "Dickies 874 Khaki",
+    "Взуття": "Killington Chukka чорні"
+   },
+   "why": "Плащ, V-виріз і вельвет — головні коди фільму. Хакі-штани й чорні чукки тримають усе в стриманій гамі.",
+   "q": "trench coat v-neck sweater corduroy shirt khaki chinos 80s detective outfit"
+  },
+  {
+   "id": "o3",
+   "name": "Сірий ранок на Подолі",
+   "mood": "Мінімум",
+   "temp": "0…+6 °C",
+   "items": [
+    "cwip-og-detroit",
+    "cwip-firth",
+    "cwip-landon",
+    "timb-sprint-trekker"
+   ],
+   "layers": {
+    "Верх": "OG Detroit Jacket, чорна",
+    "Середній": "Светр Firth, Soot",
+    "Низ": "Landon Pant чорні",
+    "Взуття": "Sprint Trekker Mid чорні"
+   },
+   "why": "Монохром графіт/чорний — найменш помітний комплект, але фактура канвасу й в'язки робить його цікавим.",
+   "q": "black Carhartt Detroit jacket grey sweater black loose pants outfit"
+  },
+  {
+   "id": "o4",
+   "name": "Денім, тепло й тихо",
+   "mood": "Вінчестери",
+   "temp": "−3…+6 °C",
+   "items": [
+    "levis-sherpa",
+    "mango-flannel-overshirt",
+    "dickies-874",
+    "timb-originals-ultra"
+   ],
+   "layers": {
+    "Верх": "Levi's Sherpa Trucker",
+    "Середній": "Фланелевий овершот, олива",
+    "Низ": "Dickies 874 чорні",
+    "Взуття": "Originals Ultra чорні"
+   },
+   "why": "Джинсова куртка з шерпою + олива + чорний низ: денім не повторюється вдруге, тому образ не «джинсовий костюм».",
+   "q": "sherpa trucker jacket olive flannel black work pants outfit"
+  },
+  {
+   "id": "o5",
+   "name": "Шкіра й тютюн",
+   "mood": "Дін",
+   "temp": "+5…+12 °C",
+   "items": [
+    "cwip-arizona-leather",
+    "cwip-esterson",
+    "zara-henley",
+    "levis-501",
+    "timb-6inch"
+   ],
+   "layers": {
+    "Верх": "Arizona Jacket, Tobacco",
+    "Середній": "Сорочка в клітинку навипуск + хенлі",
+    "Низ": "Levi's 501",
+    "Взуття": "Timberland 6-Inch"
+   },
+   "why": "Коричнева шкіра замість чорної — менш агресивно. Сорочка навипуск із-під куртки — фірмовий силует.",
+   "q": "brown leather jacket plaid shirt henley straight jeans boots outfit"
+  },
+  {
+   "id": "o6",
+   "name": "Місто без краватки",
+   "mood": "Охайно",
+   "temp": "+3…+12 °C",
+   "items": [
+    "mango-wool-overshirt",
+    "mango-merino-polo",
+    "levis-505",
+    "timb-killington"
+   ],
+   "layers": {
+    "Верх": "Вовняний овершот, графіт",
+    "Середній": "Светр-поло з мериносу",
+    "Низ": "Levi's 505 темні",
+    "Взуття": "Killington Chukka"
+   },
+   "why": "Для офісу чи зустрічі: вовна + меринос виглядають дорожче, ніж коштують, а силует лишається робочим.",
+   "q": "wool overshirt merino polo sweater dark jeans chukka boots outfit"
+  },
+  {
+   "id": "o7",
+   "name": "Майстерня",
+   "mood": "Workwear",
+   "temp": "−2…+8 °C",
+   "items": [
+    "dickies-lined-chore",
+    "dickies-gulfport",
+    "cwip-single-knee",
+    "timb-britton",
+    "cwip-watch-hat"
+   ],
+   "layers": {
+    "Верх": "Dickies Lined Chore, чорна",
+    "Середній": "Фланель Gulfport, Bone",
+    "Низ": "Single Knee, коричневі",
+    "Взуття": "Britton Road чорні"
+   },
+   "why": "Чорний верх і низ коричневого канвасу — класична робоча пара кольорів. Шапка докера закриває образ.",
+   "q": "black chore coat cream flannel brown canvas work pants beanie outfit"
+  },
+  {
+   "id": "o8",
+   "name": "Нуль градусів, чотири шари",
+   "mood": "Холод",
+   "temp": "−8…0 °C",
+   "items": [
+    "cwip-detroit-winter",
+    "eastpeak-fleece",
+    "cwip-kellworth",
+    "levis-501",
+    "timb-6inch",
+    "cwip-watch-hat"
+   ],
+   "layers": {
+    "Верх": "Detroit Jacket (Winter)",
+    "Середній": "Фліс + Kellworth Shirt Jac",
+    "Низ": "Levi's 501",
+    "Взуття": "Timberland 6-Inch"
+   },
+   "why": "Утеплена канвасова куртка + фліс тримають мінус; овершот видно на комірі й низу — це і є «шари».",
+   "q": "Carhartt Detroit winter jacket layering shirt jacket jeans boots winter outfit"
+  },
+  {
+   "id": "o9",
+   "name": "Бар на виїзді з міста",
+   "mood": "Вечір",
+   "temp": "+5…+12 °C",
+   "items": [
+    "levis-type1",
+    "cwip-anglistic",
+    "ck-90s-cord",
+    "timb-killington"
+   ],
+   "layers": {
+    "Верх": "Levi's Type I Trucker",
+    "Середній": "Меланжевий светр, тютюн",
+    "Низ": "Вельветові штани, темна кава",
+    "Взуття": "Killington Chukka"
+   },
+   "why": "Денім + меланж + вельвет — три фактури, одна тепла гама. Ідеально для неспішного вечора.",
+   "q": "denim trucker jacket speckled sweater brown corduroy pants outfit"
+  },
+  {
+   "id": "o10",
+   "name": "Сльота, понеділок",
+   "mood": "Практично",
+   "temp": "0…+6 °C, дощ",
+   "items": [
+    "cwip-og-active",
+    "dickies-gulfport",
+    "cwip-newel",
+    "timb-sprint-trekker"
+   ],
+   "layers": {
+    "Верх": "OG Active Jacket (капюшон)",
+    "Середній": "Фланель Gulfport, чорна",
+    "Низ": "Newel Pant",
+    "Взуття": "Sprint Trekker Mid (WP/GTX)"
+   },
+   "why": "Капюшон замість парасолі, водонепроникне взуття й штани, що звужуються донизу й не мокнуть об калюжі.",
+   "q": "Carhartt active jacket hooded flannel tapered jeans hiking sneakers outfit"
+  }
+ ],
+ "stores": [
+  {
+   "name": "UNIFORM",
+   "addr": "вул. Валерія Лобановського, 9/1",
+   "url": "https://u-niform.com.ua/",
+   "ok": true,
+   "note": "Мультибренд: Carhartt WIP та основна лінія Carhartt (Duck Detroit J97, Active J140), Stone Island тощо. Примірка при самовивозі. Адресу підтверджено на сайті магазину."
+  },
+  {
+   "name": "NEWBORN K",
+   "addr": "вул. Велика Житомирська, 20 (вхід через арку), щодня 11:00–21:00",
+   "url": "https://newbornk.com/pages/contact",
+   "ok": true,
+   "note": "Концепт-стор; серед брендів згадано Carhartt WIP. Асортимент онлайн перевірити не вдалося (захист від ботів)."
+  },
+  {
+   "name": "Kapkan Shop",
+   "addr": "вул. Рейтарська, 9",
+   "url": "https://kapkanshop.com/",
+   "ok": true,
+   "note": "Скейт-шоп: Dickies, Brixton, Polar, Dime. Адресу підтверджено в розмітці сайту."
+  },
+  {
+   "name": "Mango",
+   "addr": "ТРЦ Києва; онлайн shop.mango.com/ua",
+   "url": "https://shop.mango.com/ua/uk",
+   "ok": true,
+   "note": "Фланель, вовняні овершоти, мериносові светри, тренчі. Сайт блокує автоматичні запити — посилання з пошукового індексу."
+  },
+  {
+   "name": "Rozetka",
+   "addr": "онлайн",
+   "url": "https://rozetka.com.ua/",
+   "ok": true,
+   "note": "Levi's 501 та інші — часто від продавців з ЄС через Meest. Перевіряйте продавця і відгуки."
+  },
+  {
+   "name": "Intertop",
+   "addr": "мережа магазинів у Києві + онлайн",
+   "url": "https://intertop.ua/uk-ua/shopping/catalog/men/shoes/boots-and-ankle-boots/brand_timberland/color_black/",
+   "ok": true,
+   "note": "Управляє монобрендовими Timberland. Великий вибір чорних моделей; онлайн- і офлайн-ціни можуть відрізнятися."
+  },
+  {
+   "name": "Footshop.ua",
+   "addr": "онлайн, Нова пошта",
+   "url": "https://www.footshop.ua/uk/",
+   "ok": true,
+   "note": "Dickies (874, chore, barn), Timberland 6-Inch, CK вельвет. Carhartt WIP у UA-версії станом на 05.11 не знайдено."
+  },
+  {
+   "name": "MEGASPORT",
+   "addr": "кілька магазинів у Києві (напр., вул. Берковецька, 6Д) + онлайн",
+   "url": "https://megasport.ua/ua/",
+   "ok": true,
+   "note": "Timberland, Levi's, Dickies, Carhartt у пошуку сайту не знайдено (05.11.2026). Корисне — недорогі флісові середні шари."
+  },
+  {
+   "name": "Humana та інші секонд-хенди",
+   "addr": "напр., вул. Олени Теліги, 35 (за довідниками) ⚠️",
+   "url": "https://humana.com.ua/",
+   "ok": false,
+   "note": "⚠️ не перевірено: адреси з довідників, сайт недоступний для перевірки. Вінтажний воркверк також шукайте на OLX."
+  }
+ ]
+}
+
+</script>
+
+<script>
+(function(){
+"use strict";
+var DATA = JSON.parse(document.getElementById('catalog-data').textContent);
+var ITEMS = DATA.items, BY = {};
+ITEMS.forEach(function(it){ BY[it.id] = it; });
+
+var CATS = {outer:'Верхній одяг', shirts:'Сорочки та овершоти', knit:'Трикотаж', pants:'Штани', shoes:'Взуття', acc:'Аксесуари'};
+var CGROUPS = {brown:['Коричневий','#6b4a2e'], khaki:['Хакі','#b5a27a'], olive:['Олива','#5d6140'], navy:['Темно-синій','#232a3a'],
+  graphite:['Графіт','#4a4a48'], cream:['Кремовий','#e9e1d0'], black:['Чорний','#1d1d1b'], denim:['Денім','#3d5068']};
+
+/* ── Сховище (localStorage у try/catch) ── */
+var store = {
+  get:function(k,d){ try{ var v = window.localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set:function(k,v){ try{ window.localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+var fav = store.get('sg.fav', []).filter(function(id){ return BY[id]; });
+var cmp = store.get('sg.cmp', []).filter(function(id){ return BY[id]; }).slice(0,3);
+var open = {};
+var F = {cat:'all', tier:[], color:[], kyiv:false, black:false, q:''};
+
+/* ── Утиліти ── */
+function $(s,r){ return (r||document).querySelector(s); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function norm(s){ return String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[’'`ʼ]/g,"'"); }
+function tokens(q){ return norm(q).split(/\s+/).filter(Boolean); }
+function reEsc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+var hlRe = null;
+function setHl(q){ var t = tokens(q); hlRe = t.length ? new RegExp('('+t.map(reEsc).sort(function(a,b){return b.length-a.length;}).join('|')+')','gi') : null; }
+function hl(s){
+  s = String(s==null?'':s);
+  if(!hlRe) return esc(s);
+  var out = '', last = 0; hlRe.lastIndex = 0; var m;
+  var low = norm(s);
+  var re = new RegExp(hlRe.source,'gi');
+  while((m = re.exec(low))){ if(!m[0].length){ re.lastIndex++; continue; }
+    out += esc(s.slice(last,m.index)) + '<mark>' + esc(s.slice(m.index,m.index+m[0].length)) + '</mark>'; last = m.index + m[0].length; }
+  return out + esc(s.slice(last));
+}
+function shortPrice(p){ return String(p).split(' (')[0].split(';')[0].replace(/ з кодом$/,''); }
+function enc(s){ return encodeURIComponent(s); }
+function pinUrl(q){ return 'https://www.pinterest.com/search/pins/?q=' + enc(q); }
+function gimgUrl(q){ return 'https://www.google.com/search?tbm=isch&q=' + enc(q); }
+function visualQ(it){ return it.brand.replace(/\s*\(.*\)/,'') + ' ' + it.name.replace(/\s*\(.*?\)/g,'') + ' outfit'; }
+function hasWarn(it){ return /⚠️/.test(it.warn||'') || (it.links||[]).some(function(l){return l.ok===false;}); }
+
+/* ── Пошук ── */
+var FIELD_NAMES = {name:'назва',brand:'бренд',cat:'категорія',fabric:'тканина',fit:'посадка',season:'сезон',colors:'колір',tags:'теги',shops:'магазин',why:'опис',pair:'поєднання',q:'пошукова фраза'};
+ITEMS.forEach(function(it){
+  it._f = {
+    name:norm(it.name), brand:norm(it.brand), cat:norm(CATS[it.cat]), fabric:norm(it.fabric), fit:norm(it.fit), season:norm(it.season),
+    colors:norm(it.colors.map(function(c){return c.n+' '+(CGROUPS[c.g]?CGROUPS[c.g][0]:'');}).join(' ')),
+    tags:norm(it.tags.join(' ')+' '+it.tier), shops:norm(it.shops.map(function(s){return s.name+' '+s.addr;}).join(' ')),
+    why:norm(it.why), pair:norm(it.pair), q:norm(it.q.ua+' '+it.q.en)
+  };
+});
+function matchQ(it, t){
+  if(!t.length) return {ok:true, where:[]};
+  var where = {};
+  for(var i=0;i<t.length;i++){
+    var hit = false;
+    for(var k in it._f){ if(it._f[k].indexOf(t[i]) > -1){ hit = true; where[k] = 1; } }
+    if(!hit) return {ok:false};
+  }
+  return {ok:true, where:Object.keys(where)};
+}
+function passFilters(it){
+  if(F.cat !== 'all' && it.cat !== F.cat) return false;
+  if(F.tier.length && F.tier.indexOf(it.tier) < 0) return false;
+  if(F.color.length && !it.colors.some(function(c){ return F.color.indexOf(c.g) > -1; })) return false;
+  if(F.kyiv && !it.kyiv) return false;
+  if(F.black && !it.black) return false;
+  return true;
+}
+
+/* ── Рендер картки ── */
+function swatches(it){ return '<span class="sw" aria-hidden="true">' + it.colors.slice(0,3).map(function(c){ return '<i style="background:'+esc(c.hex)+'"></i>'; }).join('') + '</span>'; }
+var ICON_CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+function cardHTML(it, where){
+  var isOpen = !!open[it.id], isFav = fav.indexOf(it.id) > -1, inCmp = cmp.indexOf(it.id) > -1;
+  var hitLine = '';
+  if(where && where.length){
+    var extra = where.filter(function(w){ return w!=='name' && w!=='brand'; });
+    if(extra.length) hitLine = '<span class="hit">Збіг: ' + extra.map(function(w){return FIELD_NAMES[w];}).join(', ') + '</span>';
+  }
+  var vq = visualQ(it);
+  var links = it.links.map(function(l){
+    var k = l.kind==='shop' ? 'магазин' : l.kind==='search' ? 'пошук' : l.kind==='brand' ? 'бренд' : 'товар';
+    return '<li><a href="'+esc(l.url)+'" target="_blank" rel="noopener"><span class="k v">'+k+'</span><span class="t">'+hl(l.label)+'</span></a></li>';
+  }).join('') +
+    '<li><a href="'+esc(pinUrl(vq))+'" target="_blank" rel="noopener"><span class="k">Pinterest</span><span class="t">Образи: «'+esc(vq)+'»</span></a></li>' +
+    '<li><a href="'+esc(gimgUrl(vq))+'" target="_blank" rel="noopener"><span class="k">Google</span><span class="t">Картинки: «'+esc(vq)+'»</span></a></li>';
+  var shops = it.shops.map(function(s){
+    return '<li><a href="'+esc(s.url)+'" target="_blank" rel="noopener"><span class="t">'+hl(s.name)+'<small>'+hl(s.addr)+(s.offline?' · офлайн':'')+'</small></span></a></li>';
+  }).join('');
+  var colors = it.colors.map(function(c){ return '<span><i style="background:'+esc(c.hex)+'"></i>'+hl(c.n)+'</span>'; }).join('');
+  return '<article class="card'+(isOpen?' open':'')+'" data-id="'+esc(it.id)+'" id="card-'+esc(it.id)+'">' +
+    '<div class="head" data-act="toggle" role="button" tabindex="0" aria-expanded="'+isOpen+'" aria-controls="b-'+esc(it.id)+'">' +
+      swatches(it) +
+      '<div class="ttl"><h3>'+hl(it.name)+(hasWarn(it)?' <span title="Є неперевірені дані" aria-label="є неперевірені дані">⚠️</span>':'')+'</h3><p>'+hl(it.brand)+'</p>'+hitLine+'</div>' +
+      '<div class="pr">'+esc(shortPrice(it.price))+'<small>'+esc(it.tier)+'</small></div>' +
+      '<button class="star" type="button" data-act="fav" aria-pressed="'+isFav+'" aria-label="'+(isFav?'Прибрати з обраного':'Додати в обране')+'">'+(isFav?'★':'☆')+'</button>' +
+      ICON_CHEV +
+    '</div>' +
+    '<div class="body" id="b-'+esc(it.id)+'"><div><div class="inner">' +
+      '<div class="badges"><span class="badge acc">'+esc(CATS[it.cat])+'</span><span class="badge">'+esc(it.tier)+'</span>' +
+        (it.kyiv?'<span class="badge">є в Києві офлайн</span>':'') + (it.black?'<span class="badge">під чорне взуття</span>':'') +
+        it.tags.map(function(t){return '<span class="badge">'+hl(t)+'</span>';}).join('') + '</div>' +
+      (it.warn ? '<div class="warn">'+(/⚠️/.test(it.warn)?'':'ℹ️ ')+hl(it.warn)+'</div>' : '') +
+      '<dl class="kv">' +
+        '<dt>Ціна</dt><dd>'+hl(it.price)+'<br><small style="color:var(--muted)">перевірено '+esc(it.checked)+'</small></dd>' +
+        '<dt>Кольори</dt><dd class="colors">'+colors+'</dd>' +
+        '<dt>Тканина</dt><dd>'+hl(it.fabric)+'</dd>' +
+        '<dt>Посадка</dt><dd>'+hl(it.fit)+'</dd>' +
+        '<dt>Сезон</dt><dd>'+hl(it.season)+'</dd>' +
+      '</dl>' +
+      '<div class="blk"><h4>Чому пасує стилю</h4><p>'+hl(it.why)+'</p></div>' +
+      '<div class="blk"><h4>З чим поєднувати</h4><p>'+hl(it.pair)+'</p></div>' +
+      '<div class="blk"><h4>Де купити</h4><ul class="shops">'+shops+'</ul></div>' +
+      '<div class="blk"><h4>Посилання й референси</h4><ul class="links">'+links+'</ul></div>' +
+      '<div class="blk"><h4>Фрази для пошуку</h4>' +
+        '<div class="qrow"><span class="lang">UA</span><code>'+hl(it.q.ua)+'</code><button class="btn sm" type="button" data-act="copyq" data-l="ua" aria-label="Копіювати українську фразу">⧉</button></div>' +
+        '<div class="qrow"><span class="lang">EN</span><code>'+hl(it.q.en)+'</code><button class="btn sm" type="button" data-act="copyq" data-l="en" aria-label="Копіювати англійську фразу">⧉</button></div>' +
+      '</div>' +
+      (it.fakes ? '<div class="blk"><h4>Підробки</h4><p class="fake">'+hl(it.fakes)+'</p></div>' : '') +
+      '<div class="actions">' +
+        '<button class="btn wide '+(inCmp?'':'pri')+'" type="button" data-act="cmp" aria-pressed="'+inCmp+'">'+(inCmp?'✓ У порівнянні':'+ Порівняти')+'</button>' +
+        '<button class="btn" type="button" data-act="copyname">Копіювати назву</button>' +
+        '<button class="btn" type="button" data-act="copyq" data-l="ua">Копіювати пошук</button>' +
+        '<button class="btn wide" type="button" data-act="copycard">Копіювати всю картку</button>' +
+      '</div>' +
+    '</div></div></div>' +
+  '</article>';
+}
+
+function renderList(){
+  var t = tokens(F.q); setHl(F.q);
+  var html = '', n = 0;
+  ITEMS.forEach(function(it){
+    if(!passFilters(it)) return;
+    var m = matchQ(it, t); if(!m.ok) return;
+    n++; html += cardHTML(it, m.where);
+  });
+  $('#list').innerHTML = n ? html : '<div class="empty"><b>Нічого не знайдено</b>Спробуйте коротше слово або скиньте фільтри.</div>';
+  $('#resCount').textContent = n + ' з ' + ITEMS.length + ' позицій';
+  var active = F.cat!=='all' || F.tier.length || F.color.length || F.kyiv || F.black || F.q;
+  $('#resetF').hidden = !active;
+}
+function renderFav(){
+  setHl('');
+  var arr = fav.map(function(id){ return BY[id]; }).filter(Boolean);
+  $('#favList').innerHTML = arr.length ? arr.map(function(it){ return cardHTML(it); }).join('') :
+    '<div class="empty"><b>Поки порожньо</b>Натисніть ☆ на картці в каталозі, щоб зберегти річ сюди.</div>';
+  setHl(F.q);
+}
+
+/* ── Фільтри ── */
+function chip(label, attrs, pressed, dot){
+  return '<button type="button" class="chip" '+attrs+' aria-pressed="'+pressed+'">'+(dot?'<span class="dot" style="background:'+dot+'"></span>':'')+esc(label)+'</button>';
+}
+function renderChips(){
+  var c = chip('Усі','data-f="cat" data-v="all"',F.cat==='all');
+  Object.keys(CATS).forEach(function(k){ c += chip(CATS[k],'data-f="cat" data-v="'+k+'"',F.cat===k); });
+  $('#fCat').innerHTML = c;
+  var m = '<span class="chiplabel">Ціна</span>';
+  ['€','€€','€€€'].forEach(function(t){ m += chip(t,'data-f="tier" data-v="'+t+'"',F.tier.indexOf(t)>-1); });
+  m += chip('📍 Є в Києві офлайн','data-f="kyiv"',F.kyiv) + chip('Під чорне взуття','data-f="black"',F.black);
+  $('#fMore').innerHTML = m;
+  var cc = '<span class="chiplabel">Колір</span>';
+  Object.keys(CGROUPS).forEach(function(g){ cc += chip(CGROUPS[g][0],'data-f="color" data-v="'+g+'"',F.color.indexOf(g)>-1,CGROUPS[g][1]); });
+  $('#fColor').innerHTML = cc;
+}
+function onChip(e){
+  var b = e.target.closest('.chip'); if(!b) return;
+  var f = b.getAttribute('data-f'), v = b.getAttribute('data-v');
+  if(f==='cat') F.cat = v;
+  else if(f==='tier' || f==='color'){ var a = F[f], i = a.indexOf(v); if(i>-1) a.splice(i,1); else a.push(v); }
+  else F[f] = !F[f];
+  var row = b.parentNode, rowId = row.id, sl = row.scrollLeft;
+  renderList();
+  renderChips(); document.getElementById(rowId).scrollLeft = sl;
+}
+['#fCat','#fMore','#fColor'].forEach(function(s){ $(s).addEventListener('click', onChip); });
+$('#resetF').addEventListener('click', function(){
+  F.cat='all'; F.tier=[]; F.color=[]; F.kyiv=false; F.black=false; F.q=''; $('#q').value=''; $('#searchBox').classList.remove('has');
+  renderChips(); renderList();
+});
+
+var qIn = $('#q'), qTimer;
+qIn.addEventListener('input', function(){
+  $('#searchBox').classList.toggle('has', !!qIn.value);
+  clearTimeout(qTimer); qTimer = setTimeout(function(){ F.q = qIn.value.trim(); renderList(); }, 60);
+});
+qIn.addEventListener('keydown', function(e){ if(e.key==='Enter'){ qIn.blur(); } });
+$('#qClear').addEventListener('click', function(){ qIn.value=''; F.q=''; $('#searchBox').classList.remove('has'); renderList(); qIn.focus(); });
+
+/* ── Копіювання ── */
+var toastT;
+function toast(msg){ var t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove('on'); }, 1600); }
+function fallbackCopy(text){
+  var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly','');
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+  document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+  var ok = false; try{ ok = document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta); return ok;
+}
+function copy(text, msg){
+  msg = msg || 'Скопійовано';
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ toast(msg); }, function(){ toast(fallbackCopy(text) ? msg : 'Не вдалося скопіювати'); });
+  } else { toast(fallbackCopy(text) ? msg : 'Не вдалося скопіювати'); }
+}
+function cardText(it){
+  var L = [];
+  L.push(it.brand + ' — ' + it.name + ' (' + CATS[it.cat] + ', ' + it.tier + ')');
+  L.push('Ціна: ' + it.price + ' · перевірено ' + it.checked);
+  L.push('Кольори: ' + it.colors.map(function(c){return c.n;}).join(', '));
+  L.push('Тканина: ' + it.fabric);
+  L.push('Посадка: ' + it.fit);
+  L.push('Сезон: ' + it.season);
+  L.push('Чому пасує: ' + it.why);
+  L.push('Поєднувати: ' + it.pair);
+  L.push('Де купити:'); it.shops.forEach(function(s){ L.push('• ' + s.name + ' — ' + s.addr + ' — ' + s.url); });
+  L.push('Посилання:'); it.links.forEach(function(l){ L.push('• ' + l.label + ': ' + l.url); });
+  L.push('• Pinterest: ' + pinUrl(visualQ(it)));
+  L.push('Пошук UA: ' + it.q.ua); L.push('Пошук EN: ' + it.q.en);
+  if(it.fakes) L.push('Підробки: ' + it.fakes);
+  if(it.warn) L.push('Примітка: ' + it.warn);
+  return L.join('\n');
+}
+
+/* ── Обране / Порівняння ── */
+function toggleFav(id){
+  var i = fav.indexOf(id);
+  if(i>-1){ fav.splice(i,1); toast('Прибрано з обраного'); } else { fav.push(id); toast('Додано в обране ★'); }
+  store.set('sg.fav', fav); refreshCounts();
+}
+function toggleCmp(id){
+  var i = cmp.indexOf(id);
+  if(i>-1){ cmp.splice(i,1); toast('Прибрано з порівняння'); }
+  else { if(cmp.length>=3){ toast('Можна порівняти до 3 позицій'); return false; } cmp.push(id); toast('Додано до порівняння ('+cmp.length+'/3)'); }
+  store.set('sg.cmp', cmp); refreshCounts(); renderCmpView(); if(sheetOpen) renderSheet();
+  return true;
+}
+function refreshCounts(){
+  var fc = $('#favCnt'); fc.textContent = fav.length; fc.classList.toggle('on', fav.length>0);
+  var cc = $('#cmpCnt'); cc.textContent = cmp.length; cc.classList.toggle('on', cmp.length>0);
+  var bar = $('#cmpBar'); var showBar = cmp.length>0 && curView!=='compare';
+  bar.classList.toggle('on', showBar);
+  $('#cmpBarTxt').textContent = 'Порівняння: ' + cmp.length + '/3' + (cmp.length===1 ? ' — додайте ще' : '');
+}
+function cmpTable(){
+  if(!cmp.length) return '<div class="empty"><b>Нічого порівнювати</b>Розгорніть картку в каталозі й натисніть «+ Порівняти» (до 3 позицій).</div>';
+  var its = cmp.map(function(id){return BY[id];});
+  var rows = [
+    ['Ціна', function(it){return esc(it.price);}],
+    ['Рівень', function(it){return esc(it.tier);}],
+    ['Категорія', function(it){return esc(CATS[it.cat]);}],
+    ['Кольори', function(it){return '<span class="colors">'+it.colors.map(function(c){return '<span><i style="background:'+esc(c.hex)+'"></i>'+esc(c.n)+'</span>';}).join('')+'</span>';}],
+    ['Тканина', function(it){return esc(it.fabric);}],
+    ['Посадка', function(it){return esc(it.fit);}],
+    ['Сезон', function(it){return esc(it.season);}],
+    ['Київ офлайн', function(it){return it.kyiv?'так':'ні';}],
+    ['Під чорне взуття', function(it){return it.black?'так':'—';}],
+    ['Де купити', function(it){return it.shops.map(function(s){return '<a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.name)+'</a>';}).join('<br>');}],
+    ['Чому', function(it){return esc(it.why);}]
+  ];
+  var h = '<div class="tbl-wrap"><table class="cmp"><thead><tr><th class="rh" scope="col">Позиція</th>' +
+    its.map(function(it){ return '<td>'+esc(it.name)+'<small>'+esc(it.brand)+'</small><button class="rm" type="button" data-rm="'+esc(it.id)+'">Прибрати</button></td>'; }).join('') + '</tr></thead><tbody>';
+  rows.forEach(function(r){ h += '<tr><th class="rh" scope="row">'+r[0]+'</th>' + its.map(function(it){ return '<td>'+r[1](it)+'</td>'; }).join('') + '</tr>'; });
+  h += '</tbody></table></div>';
+  if(its.length>1) h += '<p class="hint">← Гортайте таблицю вбік, перша колонка закріплена.</p>';
+  h += '<div class="actions"><button class="btn wide" type="button" data-cmpcopy>Копіювати порівняння</button></div>';
+  return h;
+}
+function cmpText(){
+  return cmp.map(function(id){ var it = BY[id];
+    return it.brand+' — '+it.name+'\n  Ціна: '+it.price+'\n  Тканина: '+it.fabric+'\n  Посадка: '+it.fit+'\n  Сезон: '+it.season; }).join('\n\n');
+}
+function renderCmpView(){ $('#cmpView').innerHTML = cmpTable(); }
+var sheetOpen = false, lastFocus = null;
+function renderSheet(){ $('#sheetBody').innerHTML = cmpTable(); $('#sheetTitle').textContent = 'Порівняння · ' + cmp.length + '/3'; }
+function openSheet(){
+  lastFocus = document.activeElement; renderSheet(); sheetOpen = true;
+  $('#scrim').classList.add('on'); var s = $('#sheet'); s.classList.add('on'); s.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden'; setTimeout(function(){ $('#sheetClose').focus(); }, 50);
+}
+function closeSheet(){
+  sheetOpen = false; $('#scrim').classList.remove('on'); var s = $('#sheet'); s.classList.remove('on'); s.setAttribute('aria-hidden','true');
+  document.body.style.overflow = ''; if(lastFocus && lastFocus.focus) lastFocus.focus();
+}
+$('#cmpOpen').addEventListener('click', openSheet);
+$('#cmpClear').addEventListener('click', function(){ cmp = []; store.set('sg.cmp', cmp); refreshCounts(); renderCmpView(); rerenderCards(); toast('Порівняння очищено'); });
+$('#scrim').addEventListener('click', closeSheet);
+$('#sheetClose').addEventListener('click', closeSheet);
+document.addEventListener('keydown', function(e){ if(e.key==='Escape' && sheetOpen) closeSheet(); });
+/* свайп вниз, щоб закрити */
+(function(){ var y0 = null, s = $('#sheet');
+  s.addEventListener('touchstart', function(e){ var sc = $('#sheetBody'); y0 = (sc.scrollTop<=0 || !sc.contains(e.target)) ? e.touches[0].clientY : null; }, {passive:true});
+  s.addEventListener('touchmove', function(e){ if(y0===null) return; var dy = e.touches[0].clientY - y0; if(dy>0 && Math.abs(dy)>8){ s.style.transform = 'translateY('+dy+'px)'; } }, {passive:true});
+  s.addEventListener('touchend', function(e){ if(y0===null) return; var dy = e.changedTouches[0].clientY - y0; s.style.transform = ''; y0 = null; if(dy>90) closeSheet(); });
+})();
+function onCmpArea(e){
+  var rm = e.target.closest('[data-rm]'); if(rm){ toggleCmp(rm.getAttribute('data-rm')); rerenderCards(); return; }
+  if(e.target.closest('[data-cmpcopy]')) copy(cmpText());
+}
+$('#sheetBody').addEventListener('click', onCmpArea);
+$('#cmpView').addEventListener('click', onCmpArea);
+
+/* ── Дії на картках (делегування) ── */
+function rerenderCards(){ renderList(); renderFav(); }
+function updateCard(id){
+  document.querySelectorAll('[data-id="'+id+'"]').forEach(function(el){
+    var inFav = el.closest('#favList');
+    var w = null;
+    if(!inFav && F.q){ var m = matchQ(BY[id], tokens(F.q)); w = m.where; }
+    if(inFav) setHl('');
+    var tmp = document.createElement('div'); tmp.innerHTML = cardHTML(BY[id], w);
+    el.parentNode.replaceChild(tmp.firstChild, el);
+    if(inFav) setHl(F.q);
+  });
+}
+function onCards(e){
+  var card = e.target.closest('.card'); if(!card) return;
+  var id = card.getAttribute('data-id'), it = BY[id];
+  var a = e.target.closest('[data-act]'); if(!a) return;
+  var act = a.getAttribute('data-act');
+  if(act==='fav'){ e.stopPropagation(); toggleFav(id); updateCard(id); if(curView!=='fav') renderFav(); return; }
+  if(act==='toggle'){
+    if(e.target.closest('.star')) return;
+    open[id] = !open[id];
+    document.querySelectorAll('[data-id="'+id+'"]').forEach(function(c){ c.classList.toggle('open', !!open[id]); var h = c.querySelector('.head'); if(h) h.setAttribute('aria-expanded', !!open[id]); });
+    return;
+  }
+  if(act==='cmp'){ toggleCmp(id); updateCard(id); return; }
+  if(act==='copyname'){ copy(it.brand + ' ' + it.name); return; }
+  if(act==='copyq'){ copy(it.q[a.getAttribute('data-l')||'ua'], 'Пошукову фразу скопійовано'); return; }
+  if(act==='copycard'){ copy(cardText(it), 'Картку скопійовано'); return; }
+}
+['#list','#favList'].forEach(function(s){
+  $(s).addEventListener('click', onCards);
+  $(s).addEventListener('keydown', function(e){ if((e.key==='Enter'||e.key===' ') && e.target.classList.contains('head')){ e.preventDefault(); onCards(e); } });
+});
+
+/* ── Образи ── */
+function renderLooks(){
+  var h = '<h2 class="sec">'+DATA.outfits.length+' готових комплектів</h2>';
+  DATA.outfits.forEach(function(o){
+    h += '<article class="look"><h3>'+esc(o.name)+'</h3><div class="meta">'+esc(o.mood)+' · '+esc(o.temp)+'</div><ul class="layers">';
+    Object.keys(o.layers).forEach(function(k){ h += '<li><span>'+esc(k)+'</span>'+esc(o.layers[k])+'</li>'; });
+    h += '</ul><p class="why">'+esc(o.why)+'</p><div class="pieces" aria-label="Речі з каталогу">' +
+      o.items.map(function(id){ var it = BY[id]; return it ? '<button type="button" data-go="'+esc(id)+'">'+esc(it.name.replace(/\s*\(.*?\)/g,''))+' →</button>' : ''; }).join('') +
+      '</div><div class="actions">' +
+      '<a class="btn" href="'+esc(pinUrl(o.q))+'" target="_blank" rel="noopener">Pinterest</a>' +
+      '<a class="btn" href="'+esc(gimgUrl(o.q))+'" target="_blank" rel="noopener">Google Images</a>' +
+      '<button class="btn wide" type="button" data-copylook="'+esc(o.id)+'">Копіювати образ</button></div></article>';
+  });
+  $('#looks').innerHTML = h;
+}
+$('#looks').addEventListener('click', function(e){
+  var g = e.target.closest('[data-go]'); if(g){ goToItem(g.getAttribute('data-go')); return; }
+  var c = e.target.closest('[data-copylook]');
+  if(c){ var o = DATA.outfits.filter(function(x){return x.id===c.getAttribute('data-copylook');})[0];
+    var t = o.name + ' (' + o.temp + ')\n' + Object.keys(o.layers).map(function(k){return k+': '+o.layers[k];}).join('\n') + '\n' + o.why + '\nPinterest: ' + pinUrl(o.q);
+    copy(t, 'Образ скопійовано'); }
+});
+function goToItem(id){
+  F.cat='all'; F.tier=[]; F.color=[]; F.kyiv=false; F.black=false; F.q=''; qIn.value=''; $('#searchBox').classList.remove('has');
+  open[id] = true; renderChips(); renderList(); show('catalog');
+  var el = document.getElementById('card-'+id);
+  if(el){ var top = el.getBoundingClientRect().top + window.scrollY - $('#v-catalog .top').offsetHeight - 12;
+    window.scrollTo({top:top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+    el.classList.add('flash'); setTimeout(function(){ el.classList.remove('flash'); }, 1300); }
+}
+
+/* ── Гайд ── */
+function renderGuide(){
+  var pal = [['Коричневий','#6b4a2e','канвас, шкіра, вельвет'],['Тютюн','#8a5a2b','акцент: сорочки, овершоти'],['Хакі','#b5a27a','робочі штани, плащ'],
+    ['Олива','#5d6140','фланель, куртки'],['Темно-синій','#232a3a','денім, трикотаж'],['Графіт','#4a4a48','светри, штани'],
+    ['Кремовий','#e9e1d0','хенлі, базовий шар'],['Чорний','#1d1d1b','взуття, штани, куртки']];
+  var h = '<h2 class="sec">Палітра</h2><div class="pal">' + pal.map(function(p){
+    return '<button type="button" data-hex="'+p[1]+'" aria-label="'+p[0]+', копіювати '+p[1]+'"><i style="background:'+p[1]+'"></i><span>'+p[0]+'<small>'+p[1]+'</small></span></button>'; }).join('') +
+    '</div><p class="hint">Тап по свотчу — копіює HEX. Правило: один теплий акцент (коричневий/тютюн) + нейтральні; не більше трьох кольорів в образі.</p>';
+
+  h += '<h2 class="sec">Посадка штанів</h2><div class="panel">' +
+    '<div class="legbar"><svg width="96" height="120" viewBox="0 0 96 120" aria-hidden="true"><path d="M30 4h36l4 80H58l-6-58h-8l-6 58H26z" fill="var(--surface2)" stroke="var(--muted)" stroke-width="1.5"/><path d="M24 84h20M52 84h20" stroke="var(--accent)" stroke-width="2"/><rect x="22" y="92" width="24" height="20" rx="4" fill="var(--text)"/><rect x="50" y="92" width="24" height="20" rx="4" fill="var(--text)"/><path d="M24 88c6 3 14 3 20 0" stroke="var(--muted)" fill="none"/></svg>' +
+    '<p>Низ штанини лягає на черевик з однією м\'якою складкою, не збирається гармошкою і не відкриває шкарпетку.</p></div>' +
+    '<div class="rule"><b>19–22 см</b><span>Ширина штанини внизу (у розкладеному вигляді). Вужче — силует «skinny» і конфлікт з масивним Timberland.</span></div>' +
+    '<div class="rule"><b>Довжина</b><span>Легка складка над черевиком. Для 6-Inch — можна підвернути 2–3 см (денім). Для Sprint Trekker — довжина «до верху підошви ззаду».</span></div>' +
+    '<div class="rule"><b>Крій</b><span>Straight, regular, relaxed або relaxed tapered (Newel). Без skinny і slim. Dickies 873 — межа допустимого.</span></div>' +
+    '<div class="rule"><b>Посадка</b><span>Середня або висока. Сорочки й светри мають закривати пояс або доходити до середини гульфика.</span></div>' +
+    '<div class="rule"><b>Верх</b><span>Плече на плечі; куртка не тягне в спині, коли руки вперед. Рукав закриває зап\'ясток.</span></div></div>';
+
+  h += '<h2 class="sec">Під чорні Timberland</h2><div class="panel"><ul>' +
+    '<li><b>Найкраще:</b> чорні та графітові (Dickies 874, Landon Black), темний rinse-денім (501/505), оливкові й хакі робочі штани.</li>' +
+    '<li><b>Працює:</b> коричневий канвас і темно-кавовий вельвет — якщо верх містить чорний або графіт.</li>' +
+    '<li><b>Обережно:</b> дуже світлий денім і світлий беж — розривають силует, взуття виглядає «важким».</li>' +
+    '<li>Ремінь — чорний. Шкарпетки — темні, у тон штанів.</li></ul></div>';
+
+  h += '<h2 class="sec">Чого уникати</h2><div class="panel"><ul>' +
+    '<li>Великі логотипи, принти, написи на спині (у Carhartt — обирайте моделі з маленьким квадратним лейблом).</li>' +
+    '<li>Skinny/slim джинси, джогери, штани з манжетами внизу.</li>' +
+    '<li>Яскравий червоний «лісорубський» буффало-чек — краще приглушена клітинка.</li>' +
+    '<li>Глянцеві пуховики, синтетика з блиском, «тактичні» деталі й камуфляж.</li>' +
+    '<li>Штучно рвані джинси та потертості з магазину.</li>' +
+    '<li>Жовті класичні Timberland у цьому образі — надто впізнавані; ваші чорні — саме те.</li>' +
+    '<li>Більше трьох кольорів і більше однієї «головної» речі в образі.</li></ul></div>';
+
+  h += '<h2 class="sec">Як відрізнити підробки</h2><div class="panel">' +
+    '<p><b>Timberland</b></p><ul>' +
+    '<li>Артикул TB0A…/TB1A… на язичку і на коробці збігається; на коробці — розмір і штрихкод.</li>' +
+    '<li>Логотип-дерево чіткий, без «розмазаних» гілок; шви рівні, щільні, без ниток.</li>' +
+    '<li>Нубук бархатистий, без пластикового блиску; підошва гнучка, не дерев\'яна.</li>' +
+    '<li>Устілка OrthoLite або Anti-Fatigue з маркуванням.</li>' +
+    '<li>Ціна «−70%» на невідомому сайті й домени на кшталт timberland-uk.it.com — фейк.</li></ul>' +
+    '<p style="margin-top:10px"><b>Carhartt / Carhartt WIP</b></p><ul>' +
+    '<li>WIP: квадратний тканий лейбл пришитий рівно по периметру; внутрішній ярлик з артикулом I0xxxxx.</li>' +
+    '<li>Канвас Dearborn важкий і жорсткий з магазину; потрійні шви на навантажених місцях.</li>' +
+    '<li>Фурнітура (ґудзики, кнопки, блискавки) з гравіюванням бренду.</li>' +
+    '<li>Carhartt (USA) з артикулами J97, J140 — не підробка WIP, а основна лінія з великою нашивкою.</li></ul>' +
+    '<p style="margin-top:10px"><b>Levi\'s</b></p><ul>' +
+    '<li>Червоний ярлик Tab з ®, нашивка з двома конями, номер на звороті ґудзиків, лейбл з кодом моделі (501…, 505…).</li></ul></div>';
+
+  h += '<h2 class="sec">Магазини (перевірено '+esc(DATA.updated)+')</h2><div class="panel">' + DATA.stores.map(function(s){
+    return '<div class="store"><h3>'+(s.ok?'':'⚠️ ')+esc(s.name)+'</h3><p>📍 '+esc(s.addr)+'</p><p>'+esc(s.note)+'</p><a href="'+esc(s.url)+'" target="_blank" rel="noopener">'+esc(s.url.replace(/^https?:\/\//,'').replace(/\/$/,''))+' ↗</a></div>'; }).join('') + '</div>';
+
+  var warned = ITEMS.filter(function(it){ return /⚠️/.test(it.warn||''); });
+  h += '<h2 class="sec">Про дані</h2><div class="panel"><p>Ціни й наявність перевірено '+esc(DATA.updated)+'. Ціни з офіційного EU-магазину Carhartt WIP перераховано за '+esc(DATA.eurRate)+' і не включають доставку та мито.</p>' +
+    '<p>Частина сайтів (Levi\'s, Timberland, Intertop, Rozetka, Mango, OLX) блокує автоматичні запити — їхні сторінки підтверджено через пошуковий індекс, це позначено в картках.</p>' +
+    (warned.length ? '<p><b>⚠️ Не перевірено ('+warned.length+'):</b></p><ul>' + warned.map(function(it){ return '<li><a href="#" data-go="'+esc(it.id)+'">'+esc(it.brand+' — '+it.name)+'</a></li>'; }).join('') + '</ul>' : '') + '</div>';
+  $('#guide').innerHTML = h;
+}
+$('#guide').addEventListener('click', function(e){
+  var p = e.target.closest('[data-hex]'); if(p){ copy(p.getAttribute('data-hex'), 'HEX скопійовано'); return; }
+  var g = e.target.closest('[data-go]'); if(g){ e.preventDefault(); goToItem(g.getAttribute('data-go')); }
+});
+
+/* ── Вкладки ── */
+var curView = 'catalog', scrollPos = {};
+function show(v){
+  scrollPos[curView] = window.scrollY;
+  curView = v;
+  document.querySelectorAll('.view').forEach(function(s){ s.classList.toggle('on', s.id === 'v-'+v); });
+  document.querySelectorAll('.tabs button').forEach(function(b){ b.setAttribute('aria-selected', b.getAttribute('data-v')===v); });
+  if(v==='fav') renderFav();
+  if(v==='compare') renderCmpView();
+  refreshCounts();
+  window.scrollTo(0, scrollPos[v] || 0);
+}
+document.querySelector('.tabs').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-v]'); if(!b) return;
+  if(b.getAttribute('data-v') === curView){ window.scrollTo({top:0, behavior:'smooth'}); return; }
+  show(b.getAttribute('data-v'));
+});
+
+/* ── Старт ── */
+$('#upd').textContent = 'дані на ' + DATA.updated;
+renderChips(); renderList(); renderLooks(); renderGuide(); renderCmpView(); refreshCounts();
+})();
+</script>
+</body>
+</html>
